@@ -12,69 +12,93 @@ pygame.font.init()
 # ------------------------------
 
 class Character:
-    def __init__(self, name, health, damage, heal, image_path, dead_image_path, x, y, w, h):
+    def __init__(self, name, health, damage, x, y, w, h, image_path, dead_image_path):
         self.name = name
         self.health = health
         self.damage = damage
-        self.heal = heal
+        self.rect = pygame.Rect(x, y, w, h)
+        self.acted = False
 
+        # images
         self.image_path = image_path
         self.dead_image_path = dead_image_path
         self.image = None
         self.dead_image = None
 
-        self.rect = pygame.Rect(x, y, w, h)
-        self.acted = False
-
-        # actions for gun bot
-        self.left_gun_used = False
-        self.right_gun_used = False
-
-        # actions for hybrid bot
-        self.hybrid_gun_used = False
-        self.heal_used = False
+        # animation
+        self.hurt_timer = 0
+        self.shake_x = 0
 
     def take_damage(self, amount):
         self.health -= amount
         if self.health < 0:
             self.health = 0
+        self.hurt_timer = 10
 
     def take_heal(self, amount):
         self.health += amount
     
+    def hurt_animations(self):
+        if self.hurt_timer > 0:
+            self.hurt_timer -= 1
+            self.shake_x = random.randint(-5, 5)
+        else:
+            self.shake_x = 0
+
+class GunBot(Character):
+    def __init__(self, name, health, damage, x, y, w, h, image_path, dead_image_path):
+        super().__init__(name, health, damage, x, y, w, h, image_path, dead_image_path)
+
+        # actions
+        self.left_gun_used = False
+        self.right_gun_used = False
+    
     def check_actions(self):
-        if self == gun_bot and self.left_gun_used and self.right_gun_used:
-            self.acted = True
-        elif self == hybrid_bot and self.hybrid_gun_used and self.heal_used:
+        if self.left_gun_used and self.right_gun_used:
             self.acted = True
     
     def reset_actions(self):
         self.acted = False
         self.left_gun_used = False
         self.right_gun_used = False
+
+class HybridBot(Character):
+    def __init__(self, name, health, damage, heal, x, y, w, h, image_path, dead_image_path):
+        super().__init__(name, health, damage, x, y, w, h, image_path, dead_image_path)
+        self.heal = heal
+
+        # actions
+        self.hybrid_gun_used = False
+        self.heal_used = False
+    
+    def check_actions(self):
+        if self.hybrid_gun_used and self.heal_used:
+            self.acted = True
+    
+    def reset_actions(self):
+        self.acted = False
         self.hybrid_gun_used = False
         self.heal_used = False
 
-gun_bot = Character(
+gun_bot = GunBot(
     "Gun Bot", # name
     10, # health
     1, # damage
-    0, # heal
+    150, 150, # x, y
+    100, 100, # w, h
     "assets/gun_bot.png", # image_path
     "assets/gun_bot_dead.png", # dead_image_path
-    150, 150, # x, y
-    100, 100 # w, h
 )
 
-hybrid_bot = Character(
+hybrid_bot = HybridBot(
     "Hybrid Bot", # name
     10, # health
     1, # damage
     2, # heal
-    "assets/hybrid_bot.png", # image_path
-    "assets/hybrid_bot_dead.png", # dead_image_path
     150, 300, # x, y
-    100, 100 # w, h
+    100, 100, # w, h
+    "assets/hybrid_bot.png", # image_path
+    "assets/hybrid_bot_dead.png" # dead_image_path
 )
 
 player_bots = [gun_bot, hybrid_bot]
@@ -83,22 +107,20 @@ basic_goon_1 = Character(
     "Basic Goon", # name
     5, # health
     1, # damage
-    0, # heal
-    "assets/basic_goon.png", # image_path
-    "assets/basic_goon_dead.png", # dead_image_path
     950, 150, # x, y
-    100, 100 # w, h
+    100, 100, # w, h
+    "assets/basic_goon.png", # image_path
+    "assets/basic_goon_dead.png" # dead_image_path
 )
 
 basic_goon_2 = Character(
     "Basic Goon", # name
     5, # health
     1, # damage
-    0, # heal
-    "assets/basic_goon.png", # image_path
-    "assets/basic_goon_dead.png", # dead_image_path
     950, 300, # x, y
-    100, 100 # w, h
+    100, 100, # w, h
+    "assets/basic_goon.png", # image_path
+    "assets/basic_goon_dead.png" # dead_image_path
 )
 
 enemy_goons = [basic_goon_1, basic_goon_2]
@@ -335,10 +357,10 @@ def draw_characters(screen, font, characters):
                 char.image.set_alpha(150)
             else:
                 char.image.set_alpha(255)
-            screen.blit(char.image, char.rect)
+            screen.blit(char.image, (char.rect.x + char.shake_x, char.rect.y))
         else:
             char.dead_image.set_alpha(100)
-            screen.blit(char.dead_image, char.rect)
+            screen.blit(char.dead_image, (char.rect.x + char.shake_x, char.rect.y))
 
         # draw name and health
         name_text = font.render(char.name, True, (255, 255, 255))
@@ -434,6 +456,12 @@ async def main():
     battle_log.append("Welcome to Rounds! Select a bot to start your turn.")
 
     while running:
+
+        # animate characters when they get hit
+        for bot in player_bots:
+            bot.hurt_animations()
+        for enemy in enemy_goons:
+            enemy.hurt_animations()
 
         # player turn logic
         running, battle_state, active_bot, chosen_action, battle_log, scroll_index = player_turn(running, battle_state, active_bot, chosen_action, battle_log, scroll_index)
