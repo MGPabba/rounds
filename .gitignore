@@ -1,0 +1,13 @@
+rounds-web/
+│
+├── main.py
+├── assets/
+│   ├── gun_bot.png
+│   ├── gun_bot_dead.png
+│   ├── hybrid_bot.png
+│   ├── hybrid_bot_dead.png
+│   ├── basic_goon.png
+│   └── basic_goon_dead.png
+│
+├── requirements.txt   (optional)
+└── .gitignore
