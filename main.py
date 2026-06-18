@@ -8,6 +8,25 @@ pygame.font.init()
 
 
 # ------------------------------
+# TEXT ANIMATION
+# ------------------------------
+
+class FloatingText:
+    def __init__(self, text, color, x, y):
+        self.text = text
+        self.color = color
+        self.x = x
+        self.y = y
+        self.timer = 120
+
+    def update(self):
+        self.y -= 1
+        self.timer -= 1
+
+active_floating_texts = []
+
+
+# ------------------------------
 # CHARACTERS
 # ------------------------------
 
@@ -33,10 +52,21 @@ class Character:
         self.health -= amount
         if self.health < 0:
             self.health = 0
+        
         self.hurt_timer = 10
+
+        # text animation
+        text_x = random.randint(self.rect.x, self.rect.x + self.rect.width - 30)
+        text_y = self.rect.y + 10
+        active_floating_texts.append(FloatingText(f"-{amount}", (255, 0, 0), text_x, text_y))
 
     def take_heal(self, amount):
         self.health += amount
+
+        # text animation
+        text_x = random.randint(self.rect.x, self.rect.x + self.rect.width - 30)
+        text_y = self.rect.y + 10
+        active_floating_texts.append(FloatingText(f"+{amount}", (0, 255, 0), text_x, text_y))
     
     def hurt_animations(self):
         if self.hurt_timer > 0:
@@ -346,7 +376,7 @@ def check_game_over(battle_state, battle_log):
 
 
 # ------------------------------
-# DRAWING AND RENDERING
+# DRAWING, ANIMATION, AND RENDERING
 # ------------------------------
 
 def draw_characters(screen, font, characters):
@@ -415,7 +445,13 @@ def draw_battle_log(screen, font, battle_log, scroll_index):
         log_text = font.render(line, True, (255, 255, 255))
         screen.blit(log_text, (370, 625 + i * 25))
 
-def draw_screen(screen, font, active_bot, chosen_action, battle_log, scroll_index):
+def draw_floating_text(screen, combat_font):
+    # draw floating text
+    for text in active_floating_texts:
+        text_surface = combat_font.render(text.text, True, text.color)
+        screen.blit(text_surface, (text.x, text.y))
+
+def draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log, scroll_index):
     # background color
     screen.fill((0, 0, 0))
 
@@ -432,6 +468,33 @@ def draw_screen(screen, font, active_bot, chosen_action, battle_log, scroll_inde
 
     # draw battle log
     draw_battle_log(screen, font, battle_log, scroll_index)
+    
+    # draw floating text
+    draw_floating_text(screen, combat_font)
+
+
+# ------------------------------
+# ANIMATION UPDATES
+# ------------------------------
+
+def update_character_hurt_position(characters):
+    for char in characters:
+        char.hurt_animations()
+
+def update_floating_texts():
+    # updates and removes floating text
+    for text in active_floating_texts[:]:
+        text.update()
+        if text.timer <= 0:
+            active_floating_texts.remove(text)
+
+def update_animations():
+    # update characters  position when they are hurt
+    update_character_hurt_position(player_bots)
+    update_character_hurt_position(enemy_goons)
+
+    # update floating text
+    update_floating_texts()
 
 
 async def main():
@@ -439,10 +502,12 @@ async def main():
     screen = pygame.display.set_mode((1200, 750))
     # title
     pygame.display.set_caption("Rounds")
-    # setup font
-    font = pygame.font.SysFont(None, 24)
     # setup timer to control game speed
     clock = pygame.time.Clock()
+
+    # setup fonts
+    font = pygame.font.SysFont(None, 24)
+    combat_font = pygame.font.SysFont(None, 30)
 
     load_characters()
 
@@ -457,11 +522,8 @@ async def main():
 
     while running:
 
-        # animate characters when they get hit
-        for bot in player_bots:
-            bot.hurt_animations()
-        for enemy in enemy_goons:
-            enemy.hurt_animations()
+        # update animations
+        update_animations()
 
         # player turn logic
         running, battle_state, active_bot, chosen_action, battle_log, scroll_index = player_turn(running, battle_state, active_bot, chosen_action, battle_log, scroll_index)
@@ -472,8 +534,8 @@ async def main():
         # check if game is over
         battle_state = check_game_over(battle_state, battle_log)
 
-        # drawing and rendering
-        draw_screen(screen, font, active_bot, chosen_action, battle_log, scroll_index)
+        # drawing, animation, and rendering
+        draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log, scroll_index)
 
         # keeps the game from flickering
         pygame.display.flip()
