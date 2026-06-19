@@ -8,22 +8,50 @@ pygame.font.init()
 
 
 # ------------------------------
-# TEXT ANIMATION
+# ANIMATIONS
 # ------------------------------
 
-class FloatingText:
-    def __init__(self, text, color, x, y):
-        self.text = text
+class ANIMATION:
+    def __init__(self, color, x, y):
         self.color = color
         self.x = x
         self.y = y
-        self.timer = 120
+        self.active = True
 
+class FloatingText(ANIMATION):
+    def __init__(self, color, x, y, text):
+        super().__init__(color, x, y)
+        self.text = text
+        self.timer = 120
+    
     def update(self):
         self.y -= 1
         self.timer -= 1
+        if self.timer <= 0:
+            self.active = False
 
-active_floating_texts = []
+class Projectile(ANIMATION):
+    def __init__(self, color, x, y, target_x, target_y, target_char, damage):
+        super().__init__(color, x, y)
+        self.target_x = target_x
+        self.target_y = target_y
+        self.target_char = target_char
+        self.damage = damage
+
+        self.distance_x = target_x - x
+        self.distance_y = target_y - y
+        self.frames = 100
+        self.speed_x = self.distance_x / self.frames
+        self.speed_y = self.distance_y / self.frames
+    
+    def update(self):
+        self.x += self.speed_x
+        self.y += self.speed_y
+        if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
+            self.target_char.take_damage(self.damage)
+            self.active = False
+
+active_effects = []
 
 
 # ------------------------------
@@ -34,6 +62,7 @@ class Character:
     def __init__(self, name, health, damage, x, y, w, h, image_path, dead_image_path):
         self.name = name
         self.health = health
+        self.ghost_health = health
         self.damage = damage
         self.rect = pygame.Rect(x, y, w, h)
         self.acted = False
@@ -56,18 +85,19 @@ class Character:
         self.hurt_timer = 10
 
         # text animation
-        text_x = random.randint(self.rect.x, self.rect.x + self.rect.width - 30)
-        text_y = self.rect.y + 10
-        active_floating_texts.append(FloatingText(f"-{amount}", (255, 0, 0), text_x, text_y))
+        text_x = random.randint(self.rect.left, self.rect.right - 30)
+        text_y = self.rect.top + 10
+        active_effects.append(FloatingText((255, 0, 0), text_x, text_y, f"-{amount}"))
 
     def take_heal(self, amount):
         self.health += amount
+        self.ghost_health += amount
 
         # text animation
-        text_x = random.randint(self.rect.x, self.rect.x + self.rect.width - 30)
-        text_y = self.rect.y + 10
-        active_floating_texts.append(FloatingText(f"+{amount}", (0, 255, 0), text_x, text_y))
-    
+        text_x = random.randint(self.rect.left, self.rect.right - 30)
+        text_y = self.rect.top + 10
+        active_effects.append(FloatingText((0, 255, 0), text_x, text_y, f"+{amount}"))
+
     def hurt_animations(self):
         if self.hurt_timer > 0:
             self.hurt_timer -= 1
@@ -196,7 +226,7 @@ def scroll_math(mouse_pos, event, battle_log, scroll_index):
 def select_bot(mouse_pos, active_bot, battle_state):
     for bot in player_bots:
         # bot is selected if it's clicked, alive, and hasn't acted yet
-        if bot.rect.collidepoint(mouse_pos) and bot.health > 0 and not bot.acted:
+        if bot.rect.collidepoint(mouse_pos) and bot.ghost_health > 0 and not bot.acted:
             active_bot = bot
             battle_state = "Select Action"
             return battle_state, active_bot
@@ -229,15 +259,16 @@ def select_action(mouse_pos, active_bot, battle_state, chosen_action):
 
 def check_bot_turn(player_bots):
     for bot in player_bots:
-        if bot.health > 0 and not bot.acted:
+        if bot.ghost_health > 0 and not bot.acted:
             return "Select Bot"
     return "Enemy Turn"
 
 def damage_enemy(mouse_pos, active_bot, chosen_action, battle_log, scroll_index):
     for enemy in enemy_goons:
-        if enemy.rect.collidepoint(mouse_pos) and enemy.health > 0:
+        if enemy.rect.collidepoint(mouse_pos) and enemy.ghost_health > 0:
             # damage the target enemy
-            enemy.take_damage(active_bot.damage)
+            enemy.ghost_health -= active_bot.damage
+            active_effects.append(Projectile((0, 0, 255), active_bot.rect.centerx, active_bot.rect.centery, enemy.rect.centerx, enemy.rect.centery, enemy, active_bot.damage))
             
             # mark the action as used for the active bot
             if active_bot == gun_bot:
@@ -260,7 +291,7 @@ def damage_enemy(mouse_pos, active_bot, chosen_action, battle_log, scroll_index)
 
 def heal_friendly(mouse_pos, active_bot, chosen_action, battle_log, scroll_index):
     for bot in player_bots:
-        if bot.rect.collidepoint(mouse_pos) and bot.health > 0:
+        if bot.rect.collidepoint(mouse_pos) and bot.ghost_health > 0:
             # heal the target bot
             bot.take_heal(active_bot.heal)
             # mark the action as used for the active bot
@@ -315,15 +346,16 @@ def player_turn(running, battle_state, active_bot, chosen_action, battle_log, sc
 def enemy_attacks(battle_log):
     # each alive enemy attacks a random alive bot
     for enemy in enemy_goons:
-        if enemy.health > 0:
+        if enemy.ghost_health > 0:
             bots_alive = []
             for bot in player_bots:
-                if bot.health > 0:
+                if bot.ghost_health > 0:
                     bots_alive.append(bot)
             
             if bots_alive:
                 target = random.choice(bots_alive)
-                target.take_damage(enemy.damage)
+                target.ghost_health -= enemy.damage
+                active_effects.append(Projectile((255, 0, 0), enemy.rect.x, enemy.rect.y, target.rect.centerx, target.rect.centery, target, enemy.damage))
                 battle_log.append(f"{enemy.name} attacks {target.name} for {enemy.damage} damage!")
 
 def enemy_turn(battle_state, battle_log):
@@ -351,7 +383,7 @@ def check_game_over(battle_state, battle_log):
     # player wins if all enemies are dead
     winning = True
     for enemy in enemy_goons:
-        if enemy.health > 0:
+        if enemy.ghost_health > 0:
             winning = False
             break
     if winning:
@@ -363,7 +395,7 @@ def check_game_over(battle_state, battle_log):
     # player loses if all bots are dead
     losing = True
     for bot in player_bots:
-        if bot.health > 0:
+        if bot.ghost_health > 0:
             losing = False
             break
     if losing:
@@ -445,11 +477,16 @@ def draw_battle_log(screen, font, battle_log, scroll_index):
         log_text = font.render(line, True, (255, 255, 255))
         screen.blit(log_text, (370, 625 + i * 25))
 
-def draw_floating_text(screen, combat_font):
-    # draw floating text
-    for text in active_floating_texts:
-        text_surface = combat_font.render(text.text, True, text.color)
-        screen.blit(text_surface, (text.x, text.y))
+def draw_effects(screen, combat_font):
+    # draw animation based on its type
+    for effect in active_effects:
+        # draw floating text
+        if isinstance(effect, FloatingText):
+            text = combat_font.render(effect.text, True, effect.color)
+            screen.blit(text, (effect.x, effect.y))
+        # draw projectile
+        elif isinstance(effect, Projectile):
+            pygame.draw.rect(screen, effect.color, (effect.x, effect.y, 10, 5))
 
 def draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log, scroll_index):
     # background color
@@ -463,14 +500,11 @@ def draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log
     if active_bot:
         pygame.draw.rect(screen, (0, 255, 0), active_bot.rect, 5)
     
-    # draw action options
     draw_action_options(screen, font, active_bot, chosen_action)
 
-    # draw battle log
     draw_battle_log(screen, font, battle_log, scroll_index)
     
-    # draw floating text
-    draw_floating_text(screen, combat_font)
+    draw_effects(screen, combat_font)
 
 
 # ------------------------------
@@ -481,20 +515,20 @@ def update_character_hurt_position(characters):
     for char in characters:
         char.hurt_animations()
 
-def update_floating_texts():
-    # updates and removes floating text
-    for text in active_floating_texts[:]:
-        text.update()
-        if text.timer <= 0:
-            active_floating_texts.remove(text)
+def update_effects():
+    # update and remove effects
+    for effect in active_effects[:]:
+        effect.update()
+        if not effect.active:
+            active_effects.remove(effect)
 
 def update_animations():
-    # update characters  position when they are hurt
+    # update characters position when they are hurt
     update_character_hurt_position(player_bots)
     update_character_hurt_position(enemy_goons)
 
-    # update floating text
-    update_floating_texts()
+    # update effects
+    update_effects()
 
 
 async def main():
