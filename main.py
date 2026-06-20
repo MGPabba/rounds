@@ -59,7 +59,7 @@ active_effects = []
 # ------------------------------
 
 class Character:
-    def __init__(self, name, health, damage, x, y, w, h, image_path, dead_image_path):
+    def __init__(self, name, health, damage, x, y, w, h, idle_images_path, hurt_image_path, dead_image_path):
         self.name = name
         self.health = health
         self.ghost_health = health
@@ -68,21 +68,43 @@ class Character:
         self.acted = False
 
         # images
-        self.image_path = image_path
+        self.idle_images_path = idle_images_path
+        self.hurt_image_path = hurt_image_path
         self.dead_image_path = dead_image_path
-        self.image = None
+        self.idle_images = []
+        self.hurt_image = None
         self.dead_image = None
 
         # animation
+        self.current_frame = 0
+        self.animation_timer = 0
+        self.animation_speed = 15
         self.hurt_timer = 0
         self.shake_x = 0
+
+    def load_images(self):
+        for path in self.idle_images_path:
+            self.idle_images.append(pygame.image.load(path).convert_alpha())
+        self.hurt_image = pygame.image.load(self.hurt_image_path).convert_alpha()
+        self.dead_image = pygame.image.load(self.dead_image_path).convert_alpha()
+
+        # randomize starting idle frame and animation timer
+        self.current_frame = random.randint(0, len(self.idle_images) - 1)
+        self.animation_timer = random.randint(0, self.animation_speed)
+
+    def update_idle_animation(self):
+        if self.health > 0:
+            self.animation_timer += 1
+            if self.animation_timer >= self.animation_speed:
+                self.animation_timer = 0
+                self.current_frame = (self.current_frame + 1) % len(self.idle_images)
 
     def take_damage(self, amount):
         self.health -= amount
         if self.health < 0:
             self.health = 0
         
-        self.hurt_timer = 10
+        self.hurt_timer = 30
 
         # text animation
         text_x = random.randint(self.rect.left, self.rect.right - 30)
@@ -106,13 +128,27 @@ class Character:
             self.shake_x = 0
 
 class GunBot(Character):
-    def __init__(self, name, health, damage, x, y, w, h, image_path, dead_image_path):
-        super().__init__(name, health, damage, x, y, w, h, image_path, dead_image_path)
+    def __init__(self, name, health, damage, x, y, w, h, idle_images_path, hurt_image_path, dead_image_path, active_image_path, left_gun_chosen_image_path, right_gun_chosen_image_path):
+        super().__init__(name, health, damage, x, y, w, h, idle_images_path, hurt_image_path, dead_image_path)
+
+        #images
+        self.active_image_path = active_image_path
+        self.left_gun_chosen_image_path = left_gun_chosen_image_path
+        self.right_gun_chosen_image_path = right_gun_chosen_image_path
+        self.active_image = None
+        self.left_gun_chosen_image = None
+        self.right_gun_chosen_image = None
 
         # actions
         self.left_gun_used = False
         self.right_gun_used = False
     
+    def load_images(self):
+        super().load_images()
+        self.active_image = pygame.image.load(self.active_image_path).convert_alpha()
+        self.left_gun_chosen_image = pygame.image.load(self.left_gun_chosen_image_path).convert_alpha()
+        self.right_gun_chosen_image = pygame.image.load(self.right_gun_chosen_image_path).convert_alpha()
+
     def check_actions(self):
         if self.left_gun_used and self.right_gun_used:
             self.acted = True
@@ -123,14 +159,28 @@ class GunBot(Character):
         self.right_gun_used = False
 
 class HybridBot(Character):
-    def __init__(self, name, health, damage, heal, x, y, w, h, image_path, dead_image_path):
-        super().__init__(name, health, damage, x, y, w, h, image_path, dead_image_path)
+    def __init__(self, name, health, damage, heal, x, y, w, h, idle_images_path, hurt_image_path, dead_image_path, active_image_path, hybrid_gun_chosen_image_path, heal_chosen_image_path):
+        super().__init__(name, health, damage, x, y, w, h, idle_images_path, hurt_image_path, dead_image_path)
         self.heal = heal
+
+        # images
+        self.active_image_path = active_image_path
+        self.hybrid_gun_chosen_image_path = hybrid_gun_chosen_image_path
+        self.heal_chosen_image_path = heal_chosen_image_path
+        self.active_image = None
+        self.hybrid_gun_chosen_image = None
+        self.heal_chosen_image = None
 
         # actions
         self.hybrid_gun_used = False
         self.heal_used = False
     
+    def load_images(self):
+        super().load_images()
+        self.active_image = pygame.image.load(self.active_image_path).convert_alpha()
+        self.hybrid_gun_chosen_image = pygame.image.load(self.hybrid_gun_chosen_image_path).convert_alpha()
+        self.heal_chosen_image = pygame.image.load(self.heal_chosen_image_path).convert_alpha()
+
     def check_actions(self):
         if self.hybrid_gun_used and self.heal_used:
             self.acted = True
@@ -146,8 +196,19 @@ gun_bot = GunBot(
     1, # damage
     150, 150, # x, y
     100, 100, # w, h
-    "assets/gun_bot.png", # image_path
-    "assets/gun_bot_dead.png", # dead_image_path
+    [
+        "assets/gun_bot/gun_bot_idle_1.png",
+        "assets/gun_bot/gun_bot_idle_2.png",
+        "assets/gun_bot/gun_bot_idle_3.png",
+        "assets/gun_bot/gun_bot_idle_4.png",
+        "assets/gun_bot/gun_bot_idle_3.png",
+        "assets/gun_bot/gun_bot_idle_2.png"
+    ], # idle_images_path
+    "assets/gun_bot/gun_bot_hurt.png", # hurt_image_path
+    "assets/gun_bot/gun_bot_dead.png", # dead_image_path
+    "assets/gun_bot/gun_bot_active.png", # active_image_path
+    "assets/gun_bot/gun_bot_left_gun.png", # left_gun_chosen_image_path
+    "assets/gun_bot/gun_bot_right_gun.png" # right_gun_chosen_image_path
 )
 
 hybrid_bot = HybridBot(
@@ -157,8 +218,19 @@ hybrid_bot = HybridBot(
     2, # heal
     150, 300, # x, y
     100, 100, # w, h
-    "assets/hybrid_bot.png", # image_path
-    "assets/hybrid_bot_dead.png" # dead_image_path
+    [
+        "assets/hybrid_bot/hybrid_bot_idle_1.png",
+        "assets/hybrid_bot/hybrid_bot_idle_2.png",
+        "assets/hybrid_bot/hybrid_bot_idle_3.png",
+        "assets/hybrid_bot/hybrid_bot_idle_4.png",
+        "assets/hybrid_bot/hybrid_bot_idle_3.png",
+        "assets/hybrid_bot/hybrid_bot_idle_2.png"
+    ], # idle_images_path
+    "assets/hybrid_bot/hybrid_bot_hurt.png", # hurt_image_path
+    "assets/hybrid_bot/hybrid_bot_dead.png", # dead_image_path
+    "assets/hybrid_bot/hybrid_bot_active.png", # active_image_path
+    "assets/hybrid_bot/hybrid_bot_hybrid_gun.png", # hybrid_gun_chosen_image_path
+    "assets/hybrid_bot/hybrid_bot_heal.png" # heal_chosen_image_path
 )
 
 player_bots = [gun_bot, hybrid_bot]
@@ -169,8 +241,16 @@ basic_goon_1 = Character(
     1, # damage
     950, 150, # x, y
     100, 100, # w, h
-    "assets/basic_goon.png", # image_path
-    "assets/basic_goon_dead.png" # dead_image_path
+    [
+        "assets/basic_goon/basic_goon_idle_1.png",
+        "assets/basic_goon/basic_goon_idle_2.png",
+        "assets/basic_goon/basic_goon_idle_3.png",
+        "assets/basic_goon/basic_goon_idle_4.png",
+        "assets/basic_goon/basic_goon_idle_3.png",
+        "assets/basic_goon/basic_goon_idle_2.png"
+    ], # idle_images_path
+    "assets/basic_goon/basic_goon_hurt.png", # hurt_image_path
+    "assets/basic_goon/basic_goon_dead.png" # dead_image_path
 )
 
 basic_goon_2 = Character(
@@ -179,19 +259,19 @@ basic_goon_2 = Character(
     1, # damage
     950, 300, # x, y
     100, 100, # w, h
-    "assets/basic_goon.png", # image_path
-    "assets/basic_goon_dead.png" # dead_image_path
+    [
+        "assets/basic_goon/basic_goon_idle_1.png",
+        "assets/basic_goon/basic_goon_idle_2.png",
+        "assets/basic_goon/basic_goon_idle_3.png",
+        "assets/basic_goon/basic_goon_idle_4.png",
+        "assets/basic_goon/basic_goon_idle_3.png",
+        "assets/basic_goon/basic_goon_idle_2.png"
+    ], # idle_images_path
+    "assets/basic_goon/basic_goon_hurt.png", # hurt_image_path
+    "assets/basic_goon/basic_goon_dead.png" # dead_image_path
 )
 
 enemy_goons = [basic_goon_1, basic_goon_2]
-
-def load_characters():
-    for bot in player_bots:
-        bot.image = pygame.image.load(bot.image_path).convert_alpha()
-        bot.dead_image = pygame.image.load(bot.dead_image_path).convert_alpha()
-    for enemy in enemy_goons:
-        enemy.image = pygame.image.load(enemy.image_path).convert_alpha()
-        enemy.dead_image = pygame.image.load(enemy.dead_image_path).convert_alpha() 
 
 
 # ------------------------------
@@ -411,18 +491,43 @@ def check_game_over(battle_state, battle_log):
 # DRAWING, ANIMATION, AND RENDERING
 # ------------------------------
 
-def draw_characters(screen, font, characters):
-    # draw characters
+def draw_characters(screen, font, characters, active_bot, chosen_action):
     for char in characters:
-        if char.health > 0:
-            if char.acted:
-                char.image.set_alpha(150)
-            else:
-                char.image.set_alpha(255)
-            screen.blit(char.image, (char.rect.x + char.shake_x, char.rect.y))
+        # dead state
+        if char.health <= 0:
+            current_image = char.dead_image
+            current_image.set_alpha(100)
+
+        # hurt state
+        elif char.hurt_timer > 0:
+            current_image = char.hurt_image
+
+        # action chosen state
+        elif char == active_bot and chosen_action:
+            if isinstance(char, GunBot):
+                if chosen_action == "Left Gun":
+                    current_image = char.left_gun_chosen_image
+                elif chosen_action == "Right Gun":
+                    current_image = char.right_gun_chosen_image
+            elif isinstance(char, HybridBot):
+                if chosen_action == "Hybrid Gun":
+                    current_image = char.hybrid_gun_chosen_image
+                elif chosen_action == "Heal":
+                    current_image = char.heal_chosen_image
+
+        # active state
+        elif char == active_bot:
+            current_image = char.active_image
+
+        # idle state
         else:
-            char.dead_image.set_alpha(100)
-            screen.blit(char.dead_image, (char.rect.x + char.shake_x, char.rect.y))
+            current_image = char.idle_images[char.current_frame]
+            if char.acted:
+                current_image.set_alpha(150)
+            else:
+                current_image.set_alpha(255)
+        
+        screen.blit(current_image, (char.rect.x + char.shake_x, char.rect.y))
 
         # draw name and health
         name_text = font.render(char.name, True, (255, 255, 255))
@@ -492,13 +597,9 @@ def draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log
     # background color
     screen.fill((0, 0, 0))
 
-    # draw bots and goons
-    draw_characters(screen, font, player_bots)
-    draw_characters(screen, font, enemy_goons)
-    
-    # highlight active bot
-    if active_bot:
-        pygame.draw.rect(screen, (0, 255, 0), active_bot.rect, 5)
+    # draw bots and goons with animations based on their states and actions
+    draw_characters(screen, font, player_bots, active_bot, chosen_action)
+    draw_characters(screen, font, enemy_goons, active_bot, chosen_action)
     
     draw_action_options(screen, font, active_bot, chosen_action)
 
@@ -511,10 +612,6 @@ def draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log
 # ANIMATION UPDATES
 # ------------------------------
 
-def update_character_hurt_position(characters):
-    for char in characters:
-        char.hurt_animations()
-
 def update_effects():
     # update and remove effects
     for effect in active_effects[:]:
@@ -524,8 +621,16 @@ def update_effects():
 
 def update_animations():
     # update characters position when they are hurt
-    update_character_hurt_position(player_bots)
-    update_character_hurt_position(enemy_goons)
+    for bot in player_bots:
+        bot.hurt_animations()
+    for enemy in enemy_goons:
+        enemy.hurt_animations()
+
+    # update idle animation frames
+    for bot in player_bots:
+        bot.update_idle_animation()
+    for enemy in enemy_goons:
+        enemy.update_idle_animation()
 
     # update effects
     update_effects()
@@ -543,7 +648,11 @@ async def main():
     font = pygame.font.SysFont(None, 24)
     combat_font = pygame.font.SysFont(None, 30)
 
-    load_characters()
+    # load character images
+    for bot in player_bots:
+        bot.load_images()
+    for enemy in enemy_goons:
+        enemy.load_images()
 
     # initial game state
     battle_state = "Select Bot"
