@@ -1,6 +1,7 @@
 import asyncio
 import random
 import pygame
+import math
 
 # initialize pygame and font module
 pygame.init()
@@ -11,14 +12,14 @@ pygame.font.init()
 # ANIMATIONS
 # ------------------------------
 
-class ANIMATION:
+class Animation:
     def __init__(self, color, x, y):
         self.color = color
         self.x = x
         self.y = y
         self.active = True
 
-class FloatingText(ANIMATION):
+class FloatingText(Animation):
     def __init__(self, color, x, y, text):
         super().__init__(color, x, y)
         self.text = text
@@ -30,17 +31,20 @@ class FloatingText(ANIMATION):
         if self.timer <= 0:
             self.active = False
 
-class Projectile(ANIMATION):
-    def __init__(self, color, x, y, target_x, target_y, target_char, damage):
+class Projectile(Animation):
+    def __init__(self, color, x, y, target_x, target_y, target_char):
         super().__init__(color, x, y)
         self.target_x = target_x
         self.target_y = target_y
         self.target_char = target_char
-        self.damage = damage
-
         self.distance_x = target_x - x
         self.distance_y = target_y - y
         self.frames = 100
+
+class DamageProjectile(Projectile):
+    def __init__(self, color, x, y, target_x, target_y, target_char, damage):
+        super().__init__(color, x, y, target_x, target_y, target_char)
+        self.damage = damage
         self.speed_x = self.distance_x / self.frames
         self.speed_y = self.distance_y / self.frames
     
@@ -50,6 +54,34 @@ class Projectile(ANIMATION):
         if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
             self.target_char.take_damage(self.damage)
             self.active = False
+
+class HealProjectile(Projectile):
+    def __init__(self, color, x, y, target_x, target_y, target_char, heal):
+        super().__init__(color, x, y, target_x, target_y, target_char)
+        self.start_x = x
+        self.start_y = y
+        self.heal = heal
+        self.current_frame = 0
+        self.arc = 150
+    
+    def update(self):
+        self.current_frame += 1
+        if self.current_frame >= self.frames:
+            self.target_char.take_heal(self.heal)
+            self.active = False
+        else:
+            progress = self.current_frame / self.frames
+            base_x = self.start_x + self.distance_x * progress
+            base_y = self.start_y + self.distance_y * progress
+            curve_y = math.sin(progress * math.pi) * self.arc
+            if self.distance_x == 0 and self.distance_y == 0:
+                max_x = math.sin(progress * math.pi) * (self.arc*0.5)
+                curve_x = math.sin((progress**2) * math.pi) * (self.arc*0.5)
+                self.x = base_x + (max_x + (max_x - curve_x))
+                self.y = base_y - curve_y
+            else:
+                self.x = base_x + curve_y
+                self.y = base_y - curve_y
 
 active_effects = []
 
@@ -113,7 +145,6 @@ class Character:
 
     def take_heal(self, amount):
         self.health += amount
-        self.ghost_health += amount
 
         # text animation
         text_x = random.randint(self.rect.left, self.rect.right - 30)
@@ -348,7 +379,7 @@ def damage_enemy(mouse_pos, active_bot, chosen_action, battle_log, scroll_index)
         if enemy.rect.collidepoint(mouse_pos) and enemy.ghost_health > 0:
             # damage the target enemy
             enemy.ghost_health -= active_bot.damage
-            active_effects.append(Projectile((0, 0, 255), active_bot.rect.centerx, active_bot.rect.centery, enemy.rect.centerx, enemy.rect.centery, enemy, active_bot.damage))
+            active_effects.append(DamageProjectile((0, 0, 255), active_bot.rect.centerx, active_bot.rect.centery, enemy.rect.centerx, enemy.rect.centery, enemy, active_bot.damage))
             
             # mark the action as used for the active bot
             if active_bot == gun_bot:
@@ -373,7 +404,9 @@ def heal_friendly(mouse_pos, active_bot, chosen_action, battle_log, scroll_index
     for bot in player_bots:
         if bot.rect.collidepoint(mouse_pos) and bot.ghost_health > 0:
             # heal the target bot
-            bot.take_heal(active_bot.heal)
+            bot.ghost_health += active_bot.heal
+            active_effects.append(HealProjectile((0, 255, 0), active_bot.rect.centerx, active_bot.rect.centery, bot.rect.centerx, bot.rect.centery, bot, active_bot.heal))
+            
             # mark the action as used for the active bot
             active_bot.heal_used = True
             active_bot.check_actions()
@@ -435,7 +468,7 @@ def enemy_attacks(battle_log):
             if bots_alive:
                 target = random.choice(bots_alive)
                 target.ghost_health -= enemy.damage
-                active_effects.append(Projectile((255, 0, 0), enemy.rect.x, enemy.rect.y, target.rect.centerx, target.rect.centery, target, enemy.damage))
+                active_effects.append(DamageProjectile((255, 0, 0), enemy.rect.x, enemy.rect.y, target.rect.centerx, target.rect.centery, target, enemy.damage))
                 battle_log.append(f"{enemy.name} attacks {target.name} for {enemy.damage} damage!")
 
 def enemy_turn(battle_state, battle_log):
@@ -589,9 +622,12 @@ def draw_effects(screen, combat_font):
         if isinstance(effect, FloatingText):
             text = combat_font.render(effect.text, True, effect.color)
             screen.blit(text, (effect.x, effect.y))
-        # draw projectile
-        elif isinstance(effect, Projectile):
+        # draw damage projectile
+        elif isinstance(effect, DamageProjectile):
             pygame.draw.rect(screen, effect.color, (effect.x, effect.y, 10, 5))
+        # draw heal projectile
+        elif isinstance(effect, HealProjectile):
+            pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5)
 
 def draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log, scroll_index):
     # background color
