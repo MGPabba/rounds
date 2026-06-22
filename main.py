@@ -39,12 +39,12 @@ class Projectile(Animation):
         self.target_char = target_char
         self.distance_x = target_x - x
         self.distance_y = target_y - y
-        self.frames = 100
 
 class DamageProjectile(Projectile):
     def __init__(self, color, x, y, target_x, target_y, target_char, damage):
         super().__init__(color, x, y, target_x, target_y, target_char)
         self.damage = damage
+        self.frames = 100
         self.speed_x = self.distance_x / self.frames
         self.speed_y = self.distance_y / self.frames
     
@@ -58,11 +58,12 @@ class DamageProjectile(Projectile):
 class HealProjectile(Projectile):
     def __init__(self, color, x, y, target_x, target_y, target_char, heal):
         super().__init__(color, x, y, target_x, target_y, target_char)
-        self.start_x = x
-        self.start_y = y
         self.heal = heal
+        self.frames = 80
         self.current_frame = 0
         self.arc = 150
+        self.start_x = x
+        self.start_y = y
     
     def update(self):
         self.current_frame += 1
@@ -162,6 +163,11 @@ class GunBot(Character):
     def __init__(self, name, health, damage, x, y, w, h, idle_images_path, hurt_image_path, dead_image_path, active_image_path, left_gun_chosen_image_path, right_gun_chosen_image_path):
         super().__init__(name, health, damage, x, y, w, h, idle_images_path, hurt_image_path, dead_image_path)
 
+        # colors
+        self.action_background_color = (50, 100, 255)
+        self.button_color = (100, 150, 255)
+        self.used_text_color = (150, 200, 255)
+
         #images
         self.active_image_path = active_image_path
         self.left_gun_chosen_image_path = left_gun_chosen_image_path
@@ -193,6 +199,11 @@ class HybridBot(Character):
     def __init__(self, name, health, damage, heal, x, y, w, h, idle_images_path, hurt_image_path, dead_image_path, active_image_path, hybrid_gun_chosen_image_path, heal_chosen_image_path):
         super().__init__(name, health, damage, x, y, w, h, idle_images_path, hurt_image_path, dead_image_path)
         self.heal = heal
+
+        # colors
+        self.action_background_color = (50, 200, 50)
+        self.button_color = (100, 230, 100)
+        self.used_text_color = (150, 250, 150)
 
         # images
         self.active_image_path = active_image_path
@@ -334,37 +345,59 @@ def scroll_math(mouse_pos, event, battle_log, scroll_index):
     
     return scroll_index
 
-def select_bot(mouse_pos, active_bot, battle_state):
+def select_bot(mouse_pos, active_bot, battle_state, chosen_action):
     for bot in player_bots:
         # bot is selected if it's clicked, alive, and hasn't acted yet
         if bot.rect.collidepoint(mouse_pos) and bot.ghost_health > 0 and not bot.acted:
-            active_bot = bot
+            # bot is deselected if clicked again
+            if active_bot == bot:
+                active_bot = None
+            else:
+                active_bot = bot
+            chosen_action = None
             battle_state = "Select Action"
-            return battle_state, active_bot
+            return battle_state, active_bot, chosen_action
     
-    return battle_state, active_bot
+    return battle_state, active_bot, chosen_action
 
 def select_action(mouse_pos, active_bot, battle_state, chosen_action):
     # action button rectangles
-    left_button_rect = pygame.Rect(70, 635, 100, 45)
-    right_button_rect = pygame.Rect(190, 635, 100, 45)
+    left_button_rect = pygame.Rect(70, 630, 150, 50)
+    right_button_rect = pygame.Rect(240, 630, 150, 50)
 
-    # action is chosen based on which button is clicked
+    # gun bot action is chosen based on which button is clicked and action is deselected if clicked again
     if active_bot == gun_bot:
         if left_button_rect.collidepoint(mouse_pos) and not active_bot.left_gun_used:
-            chosen_action = "Left Gun"
-            battle_state = "Damage Enemy"
+            if chosen_action == "Left Gun":
+                chosen_action = None
+                battle_state = "Select Action"
+            else:
+                chosen_action = "Left Gun"
+                battle_state = "Damage Enemy"
         elif right_button_rect.collidepoint(mouse_pos) and not active_bot.right_gun_used:
-            chosen_action = "Right Gun"
-            battle_state = "Damage Enemy"
+            if chosen_action == "Right Gun":
+                chosen_action = None
+                battle_state = "Select Action"
+            else:
+                chosen_action = "Right Gun"
+                battle_state = "Damage Enemy"
     
+    # hybrid bot action is chosen based on which button is clicked and action is deselected if clicked again
     elif active_bot == hybrid_bot:
         if left_button_rect.collidepoint(mouse_pos) and not active_bot.hybrid_gun_used:
-            chosen_action = "Hybrid Gun"
-            battle_state = "Damage Enemy"
+            if chosen_action == "Hybrid Gun":
+                chosen_action = None
+                battle_state = "Select Action"
+            else:
+                chosen_action = "Hybrid Gun"
+                battle_state = "Damage Enemy"
         elif right_button_rect.collidepoint(mouse_pos) and not active_bot.heal_used:
-            chosen_action = "Heal"
-            battle_state = "Heal Friendly"
+            if chosen_action == "Heal":
+                chosen_action = None
+                battle_state = "Select Action"
+            else:
+                chosen_action = "Heal"
+                battle_state = "Heal Friendly"
     
     return battle_state, chosen_action
 
@@ -374,7 +407,7 @@ def check_bot_turn(player_bots):
             return "Select Bot"
     return "Enemy Turn"
 
-def damage_enemy(mouse_pos, active_bot, chosen_action, battle_log, scroll_index):
+def damage_enemy(mouse_pos, battle_state, active_bot, chosen_action, battle_log, scroll_index):
     for enemy in enemy_goons:
         if enemy.rect.collidepoint(mouse_pos) and enemy.ghost_health > 0:
             # damage the target enemy
@@ -398,9 +431,9 @@ def damage_enemy(mouse_pos, active_bot, chosen_action, battle_log, scroll_index)
             chosen_action = None
 
             return check_bot_turn(player_bots), active_bot, chosen_action, scroll_index
-    return "Damage Enemy", active_bot, chosen_action, scroll_index
+    return battle_state, active_bot, chosen_action, scroll_index
 
-def heal_friendly(mouse_pos, active_bot, chosen_action, battle_log, scroll_index):
+def heal_friendly(mouse_pos, battle_state, active_bot, chosen_action, battle_log, scroll_index):
     for bot in player_bots:
         if bot.rect.collidepoint(mouse_pos) and bot.ghost_health > 0:
             # heal the target bot
@@ -418,7 +451,7 @@ def heal_friendly(mouse_pos, active_bot, chosen_action, battle_log, scroll_index
             chosen_action = None
 
             return check_bot_turn(player_bots), active_bot, chosen_action, scroll_index
-    return "Heal Friendly", active_bot, chosen_action, scroll_index
+    return battle_state, active_bot, chosen_action, scroll_index
 
 def player_turn(running, battle_state, active_bot, chosen_action, battle_log, scroll_index):
     for event in pygame.event.get():
@@ -437,17 +470,44 @@ def player_turn(running, battle_state, active_bot, chosen_action, battle_log, sc
             
             # handle player actions based on battle state and mouse clicks
             elif event.button == 1:
-                if battle_state == "Select Bot":
-                    battle_state, active_bot = select_bot(mouse_pos, active_bot, battle_state)
 
-                elif battle_state == "Select Action":
+                # if battle is over, dont allow any more actions
+                if battle_state in ["Victory!", "Defeat!"]:
+                    continue
+
+                # select bot
+                bot_selected = False
+                if battle_state != "Heal Friendly":
+                    old_battle_state = battle_state
+                    battle_state, active_bot, chosen_action = select_bot(mouse_pos, active_bot, battle_state, chosen_action)
+                    if battle_state != old_battle_state:
+                        bot_selected = True
+                
+                # if not changing bot, then other actions can be done
+                if not bot_selected:
+                    # select action
+                    action_selected = False
+                    old_chosen_action = chosen_action
                     battle_state, chosen_action = select_action(mouse_pos, active_bot, battle_state, chosen_action)
-                
-                elif battle_state == "Damage Enemy":
-                    battle_state, active_bot, chosen_action, scroll_index = damage_enemy(mouse_pos, active_bot, chosen_action, battle_log, scroll_index)
-                
-                elif battle_state == "Heal Friendly":
-                    battle_state, active_bot, chosen_action, scroll_index = heal_friendly(mouse_pos, active_bot, chosen_action, battle_log, scroll_index)
+                    if chosen_action != old_chosen_action:
+                        action_selected = True
+                    
+                    # if not changing action, then carry out the chosen action
+                    if not action_selected:
+                        if battle_state == "Damage Enemy":
+                            battle_state, active_bot, chosen_action, scroll_index = damage_enemy(mouse_pos, battle_state, active_bot, chosen_action, battle_log, scroll_index)
+                        
+                        elif battle_state == "Heal Friendly":
+                            battle_state, active_bot, chosen_action, scroll_index = heal_friendly(mouse_pos, battle_state, active_bot, chosen_action, battle_log, scroll_index)
+            
+            # right click to cancel action or bot
+            elif event.button == 3:
+                if battle_state in ["Damage Enemy", "Heal Friendly"]:
+                    chosen_action = None
+                    battle_state = "Select Action"
+                elif battle_state == "Select Action":
+                    active_bot = None
+                    battle_state = "Select Bot"
     
     return running, battle_state, active_bot, chosen_action, battle_log, scroll_index
 
@@ -524,6 +584,22 @@ def check_game_over(battle_state, battle_log):
 # DRAWING, ANIMATION, AND RENDERING
 # ------------------------------
 
+def dynamic_text(font_cache, text, max_width, max_height, color):
+    # default font size
+    font_size = 30
+
+    # decrease font size until it fits within the max width and height
+    while font_size > 10:
+        temp_font = font_cache[font_size]
+        text_width, text_height = temp_font.size(text)
+        if text_width <= max_width and text_height <= max_height:
+            return temp_font.render(text, True, color)
+        font_size -= 1
+
+    # use the smallest font if text is too long
+    smallest_font = font_cache[10]
+    return smallest_font.render(text, True, color)
+
 def draw_characters(screen, font, characters, active_bot, chosen_action):
     for char in characters:
         # dead state
@@ -560,6 +636,7 @@ def draw_characters(screen, font, characters, active_bot, chosen_action):
             else:
                 current_image.set_alpha(255)
         
+        # draw character image
         screen.blit(current_image, (char.rect.x + char.shake_x, char.rect.y))
 
         # draw name and health
@@ -568,39 +645,53 @@ def draw_characters(screen, font, characters, active_bot, chosen_action):
         screen.blit(name_text, (char.rect.x, char.rect.y - 40))
         screen.blit(health_text, (char.rect.x, char.rect.y - 20))
 
-def draw_action_button(screen, font, x, text, used, chosen):
+def draw_action_button(screen, font_cache, active_bot, x, y, text, used, chosen):
     # draw button background
-    pygame.draw.rect(screen, (60, 60, 60), (x, 635, 100, 45))
+    pygame.draw.rect(screen, active_bot.button_color, (x, y, 150, 50))
 
-    # highlight if it's the chosen action
+    # if it's the chosen action, highlight and change text
     if chosen:
-        pygame.draw.rect(screen, (0, 255, 0), (x, 635, 100, 45), 3)
+        text = f"Cancel {text}"
+        pygame.draw.rect(screen, (0, 255, 0), (x, y, 150, 50), 4)
+
+    # gray out if it's already used
+    if not used:
+        text_color = (255, 255, 255)
+    else:
+        text_color = active_bot.used_text_color
+    
+    # dynamically adjust font size to fit the button
+    button_text = dynamic_text(font_cache, text, 140, 40, text_color)
+
+    # center the text on the button
+    text_width, text_height = button_text.get_size()
+    text_x = x + (150 - text_width) // 2
+    text_y = y + (50 - text_height) // 2
 
     # draw button text
-    if not used:
-        color = (255, 255, 255)
-    else:
-        color = (100, 100, 100)
-    button_text = font.render(text, True, color)
-    screen.blit(button_text, (x + 10, 650))
+    screen.blit(button_text, (text_x, text_y))
 
-def draw_action_options(screen, font, active_bot, chosen_action):
+def draw_action_options(screen, font_cache, active_bot, chosen_action):
     # draw action background
-    pygame.draw.rect(screen, (40, 40, 40), (50, 615, 260, 85))
-    pygame.draw.rect(screen, (200, 200, 200), (50, 615, 260, 85), 2)
+    if active_bot:
+        color = active_bot.action_background_color
+    else:
+        color = (50, 50, 50)
+    pygame.draw.rect(screen, color, (50, 610, 360, 90))
+    pygame.draw.rect(screen, (255, 255, 255), (50, 610, 360, 90), 3)
 
     # draw action buttons based on active bot
     if active_bot == gun_bot:
-        draw_action_button(screen, font, 70, "Attack", active_bot.left_gun_used, chosen_action == "Left Gun")
-        draw_action_button(screen, font, 190, "Attack", active_bot.right_gun_used, chosen_action == "Right Gun")
+        draw_action_button(screen, font_cache, active_bot, 70, 630, "Left Gun", active_bot.left_gun_used, chosen_action == "Left Gun")
+        draw_action_button(screen, font_cache, active_bot, 240, 630, "Right Gun", active_bot.right_gun_used, chosen_action == "Right Gun")
     elif active_bot == hybrid_bot:
-        draw_action_button(screen, font, 70, "Attack", active_bot.hybrid_gun_used, chosen_action == "Hybrid Gun")
-        draw_action_button(screen, font, 190, "Heal", active_bot.heal_used, chosen_action == "Heal")
+        draw_action_button(screen, font_cache, active_bot, 70, 630, "Attack", active_bot.hybrid_gun_used, chosen_action == "Hybrid Gun")
+        draw_action_button(screen, font_cache, active_bot, 240, 630, "Heal", active_bot.heal_used, chosen_action == "Heal")
 
 def draw_battle_log(screen, font, battle_log, scroll_index):
     # draw battle log background
-    pygame.draw.rect(screen, (40, 40, 40), (360, 615, 790, 85))
-    pygame.draw.rect(screen, (200, 200, 200), (360, 615, 790, 85), 2)
+    pygame.draw.rect(screen, (40, 40, 40), (460, 615, 690, 85))
+    pygame.draw.rect(screen, (200, 200, 200), (460, 615, 690, 85), 2)
 
     # determine start and end lines based on scrolling
     if len(battle_log) <= 3:
@@ -613,7 +704,7 @@ def draw_battle_log(screen, font, battle_log, scroll_index):
     # draw log text
     for i, line in enumerate(lines_to_show):
         log_text = font.render(line, True, (255, 255, 255))
-        screen.blit(log_text, (370, 625 + i * 25))
+        screen.blit(log_text, (470, 625 + i * 25))
 
 def draw_effects(screen, combat_font):
     # draw animation based on its type
@@ -629,7 +720,7 @@ def draw_effects(screen, combat_font):
         elif isinstance(effect, HealProjectile):
             pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5)
 
-def draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log, scroll_index):
+def draw_screen(screen, font, combat_font, font_cache, active_bot, chosen_action, battle_log, scroll_index):
     # background color
     screen.fill((0, 0, 0))
 
@@ -637,7 +728,7 @@ def draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log
     draw_characters(screen, font, player_bots, active_bot, chosen_action)
     draw_characters(screen, font, enemy_goons, active_bot, chosen_action)
     
-    draw_action_options(screen, font, active_bot, chosen_action)
+    draw_action_options(screen, font_cache, active_bot, chosen_action)
 
     draw_battle_log(screen, font, battle_log, scroll_index)
     
@@ -683,6 +774,9 @@ async def main():
     # setup fonts
     font = pygame.font.SysFont(None, 24)
     combat_font = pygame.font.SysFont(None, 30)
+    font_cache = {}
+    for size in range(10, 31):
+        font_cache[size] = pygame.font.SysFont(None, size)
 
     # load character images
     for bot in player_bots:
@@ -714,7 +808,7 @@ async def main():
         battle_state = check_game_over(battle_state, battle_log)
 
         # drawing, animation, and rendering
-        draw_screen(screen, font, combat_font, active_bot, chosen_action, battle_log, scroll_index)
+        draw_screen(screen, font, combat_font, font_cache, active_bot, chosen_action, battle_log, scroll_index)
 
         # keeps the game from flickering
         pygame.display.flip()
