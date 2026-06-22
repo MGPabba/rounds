@@ -627,7 +627,7 @@ def draw_characters(screen, font, battle_state, active_bot, chosen_action):
                 pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
             elif char in player_bots and battle_state == "Heal Friendly":
                 pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
-            elif char in player_bots and not char.acted:
+            elif char in player_bots and battle_state not in ["Victory!", "Defeat!"] and not char.acted:
                 pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
 
         # draw name and health
@@ -819,7 +819,6 @@ async def main():
         await asyncio.sleep(0)
     
     pygame.quit()
-    # comment for testing purposes
 
 if __name__ == "__main__":
     asyncio.run(main())
