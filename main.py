@@ -384,6 +384,16 @@ def scroll_math(mouse_pos, event, lore_height, target_scroll_y):
     
     return target_scroll_y
 
+def inspect_enemy(mouse_pos, inspecting_character, target_scroll_y, scroll_y):
+    for enemy in enemy_goons:
+        # inspect enemy if it's clicked and alive when its not time to target enemy
+        if enemy.rect.collidepoint(mouse_pos) and enemy.ghost_health > 0:
+            inspecting_character = enemy
+            target_scroll_y = 0
+            scroll_y = 0
+            return inspecting_character, target_scroll_y, scroll_y
+    return inspecting_character, target_scroll_y, scroll_y
+
 def select_bot(mouse_pos, battle_state, inspecting_character, active_bot, chosen_action, target_scroll_y, scroll_y):
     for bot in player_bots:
         # bot is selected if it's clicked, alive, and hasn't acted yet
@@ -475,16 +485,6 @@ def execute_action(mouse_pos, characters, battle_state, inspecting_character, ac
 
             return check_bot_turn(player_bots), inspecting_character, active_bot, chosen_action
     return battle_state, inspecting_character, active_bot, chosen_action
-
-def inspect_enemy(mouse_pos, inspecting_character, target_scroll_y, scroll_y):
-    for enemy in enemy_goons:
-        # inspect enemy if it's clicked and alive when its not time to target enemy
-        if enemy.rect.collidepoint(mouse_pos) and enemy.ghost_health > 0:
-            inspecting_character = enemy
-            target_scroll_y = 0
-            scroll_y = 0
-            return inspecting_character, target_scroll_y, scroll_y
-    return inspecting_character, target_scroll_y, scroll_y
 
 def player_turn(running, battle_state, inspecting_character, active_bot, chosen_action, lore_height, target_scroll_y, scroll_y):
     for event in pygame.event.get():
@@ -589,10 +589,10 @@ def enemy_turn(battle_state):
 # GAME ENDING
 # ------------------------------
 
-def check_game_over(battle_state):
+def check_game_over(battle_state, target_scroll_y, scroll_y):
     # chceck if battle state is already victory or defeat
     if battle_state == "Victory!" or battle_state == "Defeat!":
-        return battle_state
+        return battle_state, target_scroll_y, scroll_y
 
     # player wins if all enemies are dead
     winning = True
@@ -601,7 +601,9 @@ def check_game_over(battle_state):
             winning = False
             break
     if winning:
-        return "Victory!"
+        target_scroll_y = 0
+        scroll_y = 0
+        return "Victory!", target_scroll_y, scroll_y
     
     # player loses if all bots are dead
     losing = True
@@ -610,9 +612,11 @@ def check_game_over(battle_state):
             losing = False
             break
     if losing:
-        return "Defeat!"
+        target_scroll_y = 0
+        scroll_y = 0
+        return "Defeat!", target_scroll_y, scroll_y
     
-    return battle_state
+    return battle_state, target_scroll_y, scroll_y
 
 
 # ------------------------------
@@ -752,7 +756,7 @@ def draw_action_options(screen, font_cache, active_bot, chosen_action):
                 x = 240
             draw_action_button(screen, font_cache, active_bot, x, 630, action["name"], action["used"], chosen_action == action["name"])
 
-def draw_lore_box(screen, font, inspecting_character, scroll_y):
+def draw_lore_box(screen, font, battle_state, inspecting_character, scroll_y):
     # draw lore box background
     if inspecting_character:
         color = inspecting_character.box_background_color
@@ -761,9 +765,20 @@ def draw_lore_box(screen, font, inspecting_character, scroll_y):
     pygame.draw.rect(screen, color, (460, 610, 690, 90))
     pygame.draw.rect(screen, (255, 255, 255), (460, 610, 690, 90), 3)
 
-    # lore text based on inspecting character
+    
     lore = []
-    if inspecting_character:
+    # lore text based on battle state
+    if battle_state == "Victory!":
+        lore.append("You have defeated all the enemies!")
+        lore.append("Victory!")
+        lore.append(":D")
+    elif battle_state == "Defeat!":
+        lore.append("The enemies have defeated all your bots!")
+        lore.append("Defeat!")
+        lore.append("D:")
+
+    # lore text based on inspecting character
+    elif inspecting_character:
         lore.append(f"Name: {inspecting_character.name}")
         lore.append(f"Description: {inspecting_character.description}")
         if inspecting_character in player_bots:
@@ -773,7 +788,7 @@ def draw_lore_box(screen, font, inspecting_character, scroll_y):
                 lore.append(f"{action['type']}: {action['power']}")
         elif inspecting_character in enemy_goons:
             lore.append(f"Damage: {inspecting_character.damage}")
-    
+
     # calculate lore height
     y_offset = 5
     line_spacing = 25
@@ -823,7 +838,7 @@ def draw_screen(screen, font, combat_font, font_cache, battle_state, inspecting_
     draw_action_options(screen, font_cache, active_bot, chosen_action)
 
     # draw lore box with scrolling
-    lore_height = draw_lore_box(screen, font, inspecting_character, scroll_y)
+    lore_height = draw_lore_box(screen, font, battle_state, inspecting_character, scroll_y)
     
     # draw effects damage or heal numbers or projectiles
     draw_effects(screen, combat_font)
@@ -900,7 +915,7 @@ async def main():
         battle_state = enemy_turn(battle_state)
 
         # check if game is over
-        battle_state = check_game_over(battle_state)
+        battle_state, target_scroll_y, scroll_y = check_game_over(battle_state, target_scroll_y, scroll_y)
 
         # drawing, animation, and rendering
         lore_height = draw_screen(screen, font, combat_font, font_cache, battle_state, inspecting_character, active_bot, chosen_action, scroll_y)
