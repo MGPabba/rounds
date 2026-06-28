@@ -53,12 +53,12 @@ class DamageProjectile(Projectile):
         self.speed_x = self.distance_x / self.frames
         self.speed_y = self.distance_y / self.frames
     
-    def update(self):
+    def update(self, active_effects):
         # move projectile towards target and damage when it reaches
         self.x += self.speed_x
         self.y += self.speed_y
         if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
-            self.target_char.take_damage(self.damage)
+            self.target_char.take_damage(active_effects, self.damage)
             self.active = False
 
 class HealProjectile(Projectile):
@@ -72,11 +72,11 @@ class HealProjectile(Projectile):
         self.start_x = x
         self.start_y = y
     
-    def update(self):
+    def update(self, active_effects):
         # move projectile in an arc towards target and heal when it reaches
         self.current_frame += 1
         if self.current_frame >= self.frames:
-            self.target_char.take_heal(self.heal)
+            self.target_char.take_heal(active_effects, self.heal)
             self.active = False
         else:
             progress = self.current_frame / self.frames
@@ -92,45 +92,34 @@ class HealProjectile(Projectile):
                 self.x = base_x + curve_y
                 self.y = base_y - curve_y
 
-active_effects = []
-
 
 # ------------------------------
 # CHARACTERS
 # ------------------------------
 
 class Character:
-    def __init__(self, name, health, x, y, box_background_color, description, hurt_image_path, dead_image_path):
+    def __init__(self, name, health, x, y, box_background_color, description):
         # basic character info
         self.name = name
-        self.health = health
-        self.ghost_health = health
+        self.real_health = health
+        self.visual_health = health
         self.rect = pygame.Rect(x, y, 100, 100)
         self.box_background_color = box_background_color
         self.description = description
-
-        # images
-        self.hurt_image_path = hurt_image_path
-        self.dead_image_path = dead_image_path
-        self.hurt_image = None
-        self.dead_image = None
 
         # animation
         self.animation_timer = 0
         self.animation_speed = 15
         self.hurt_timer = 0
-        self.shake_x = 0
+        self.shake_x = 0  
 
-    def load_images(self):
-        # load hurt and dead images
-        self.hurt_image = pygame.image.load(self.hurt_image_path).convert_alpha()
-        self.dead_image = pygame.image.load(self.dead_image_path).convert_alpha()
-
-    def take_damage(self, amount):
+    def take_damage(self, active_effects, amount):
         # reduce health and start hurt animation
-        self.health -= amount
-        if self.health < 0:
-            self.health = 0
+        self.visual_health -= amount
+        if self.visual_health < 0:
+            self.visual_health = 0
+        if self.real_health < 0:
+            self.real_health = 0
         self.hurt_timer = 30
 
         # text animation
@@ -138,9 +127,9 @@ class Character:
         text_y = self.rect.top + 10
         active_effects.append(FloatingText((255, 0, 0), text_x, text_y, f"-{amount}"))
 
-    def take_heal(self, amount):
+    def take_heal(self, active_effects, amount):
         # increase health
-        self.health += amount
+        self.visual_health += amount
 
         # text animation
         text_x = random.randint(self.rect.left, self.rect.right - 30)
@@ -156,30 +145,26 @@ class Character:
             self.shake_x = 0
 
 class Enemy(Character):
-    def __init__(self, name, health, damage, x, y, box_background_color, description, idle_images_path, hurt_image_path, dead_image_path, currency, slot_id):
-        super().__init__(name, health, x, y, box_background_color, description, hurt_image_path, dead_image_path)
+    def __init__(self, name, health, damage, min_gears, max_gears, slot_id, x, y, box_background_color, description, idle_image, hurt_image, dead_image):
+        super().__init__(name, health, x, y, box_background_color, description)
         # enemy specific info
         self.damage = damage
-        self.currency = currency
+        self.min_gears = min_gears
+        self.max_gears = max_gears
         self.slot_id = slot_id
-        self.dead = False
 
         # images
-        self.idle_image_path = idle_images_path
-        self.idle_image = None
+        self.idle_image = idle_image
+        self.hurt_image = hurt_image
+        self.dead_image = dead_image
 
         # animation
         self.float_direction = 2
         self.float_offset = random.choice([-4, -2, 0, 2, 4])
-    
-    def load_images(self):
-        super().load_images()
-        # load idle image
-        self.idle_image = pygame.image.load(self.idle_image_path).convert_alpha()
 
     def update_idle_animation(self):
         # move enemy up and down when alive and not hurt
-        if self.health > 0 and self.hurt_timer == 0:
+        if self.visual_health > 0 and self.hurt_timer == 0:
             self.animation_timer += 1
             if self.animation_timer >= self.animation_speed:
                 self.animation_timer = 0
@@ -189,15 +174,9 @@ class Enemy(Character):
                 elif self.float_offset <= -4:
                     self.float_direction = 2
 
-    def take_damage(self, amount):
-        super().take_damage(amount)
-        # check if enemy is dead
-        if self.health <= 0:
-            self.dead = True
-
 class Bot(Character):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, hurt_image_path, dead_image_path, active_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, hurt_image_path, dead_image_path)
+    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
+        super().__init__(name, health, x, y, box_background_color, description)
         # bot specific info
         self.acted = False
         self.current_frame = 0
@@ -205,8 +184,12 @@ class Bot(Character):
         # images
         self.idle_images_path = idle_images_path
         self.active_image_path = active_image_path
+        self.hurt_image_path = hurt_image_path
+        self.dead_image_path = dead_image_path
         self.idle_images = []
         self.active_image = None
+        self.hurt_image = None
+        self.dead_image = None
 
         # colors
         self.button_color = button_color
@@ -214,13 +197,14 @@ class Bot(Character):
         self.text_used_color = text_used_color
     
     def load_images(self):
-        super().load_images()
-        # load idle, active, and action images
+        # load all different bot images
         for path in self.idle_images_path:
             self.idle_images.append(pygame.image.load(path).convert_alpha())
         self.active_image = pygame.image.load(self.active_image_path).convert_alpha()
         self.actions[0]["image"] = pygame.image.load(self.actions[0]["image_path"]).convert_alpha()
         self.actions[1]["image"] = pygame.image.load(self.actions[1]["image_path"]).convert_alpha()
+        self.hurt_image = pygame.image.load(self.hurt_image_path).convert_alpha()
+        self.dead_image = pygame.image.load(self.dead_image_path).convert_alpha()
 
         # randomize starting idle frame and animation timer
         self.current_frame = random.randint(0, len(self.idle_images) - 1)
@@ -228,7 +212,7 @@ class Bot(Character):
 
     def update_idle_animation(self):
         # update idle animation when character is alive and doing nothing
-        if self.health > 0:
+        if self.visual_health > 0:
             self.animation_timer += 1
             if self.animation_timer >= self.animation_speed:
                 self.animation_timer = 0
@@ -246,8 +230,8 @@ class Bot(Character):
         self.actions[1]["used"] = False
 
 class GunBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, hurt_image_path, dead_image_path, active_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, hurt_image_path, dead_image_path, active_image_path, button_color, button_hover_color, text_used_color)
+    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
+        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
 
         self.actions = [
             {
@@ -256,7 +240,7 @@ class GunBot(Bot):
                 "power": 1,
                 "used": False,
                 "target_state": "Damage Enemy",
-                "image_path": "assets/gun_bot/gun_bot_left_gun.png",
+                "image_path": "assets/bots/gun_bot/gun_bot_left_gun.png",
                 "image": None,
                 "description": "A basic attack that deals damage to a single enemy.",
                 "scroll": 65
@@ -267,7 +251,7 @@ class GunBot(Bot):
                 "power": 1,
                 "used": False,
                 "target_state": "Damage Enemy",
-                "image_path": "assets/gun_bot/gun_bot_right_gun.png",
+                "image_path": "assets/bots/gun_bot/gun_bot_right_gun.png",
                 "image": None,
                 "description": "A basic attack that deals damage to a single enemy.",
                 "scroll": 155
@@ -275,8 +259,8 @@ class GunBot(Bot):
         ]
 
 class HybridBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, hurt_image_path, dead_image_path, active_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, hurt_image_path, dead_image_path, active_image_path, button_color, button_hover_color, text_used_color)
+    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
+        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
 
         self.actions = [
             {
@@ -285,7 +269,7 @@ class HybridBot(Bot):
                 "power": 1,
                 "used": False,
                 "target_state": "Damage Enemy",
-                "image_path": "assets/hybrid_bot/hybrid_bot_hybrid_gun.png",
+                "image_path": "assets/bots/hybrid_bot/hybrid_bot_hybrid_gun.png",
                 "image": None,
                 "description": "A basic attack that deals damage to a single enemy.",
                 "scroll": 65
@@ -296,7 +280,7 @@ class HybridBot(Bot):
                 "power": 2,
                 "used": False,
                 "target_state": "Heal Friendly",
-                "image_path": "assets/hybrid_bot/hybrid_bot_heal.png",
+                "image_path": "assets/bots/hybrid_bot/hybrid_bot_heal.png",
                 "image": None,
                 "description": "A basic healing ability that heals to a friendly bot.",
                 "scroll": 155
@@ -310,16 +294,16 @@ gun_bot = GunBot(
     (50, 100, 255), # box_background_color
     "A bot equipped with dual guns.", # description
     [
-        "assets/gun_bot/gun_bot_idle_1.png",
-        "assets/gun_bot/gun_bot_idle_2.png",
-        "assets/gun_bot/gun_bot_idle_3.png",
-        "assets/gun_bot/gun_bot_idle_4.png",
-        "assets/gun_bot/gun_bot_idle_3.png",
-        "assets/gun_bot/gun_bot_idle_2.png"
+        "assets/bots/gun_bot/gun_bot_idle_1.png",
+        "assets/bots/gun_bot/gun_bot_idle_2.png",
+        "assets/bots/gun_bot/gun_bot_idle_3.png",
+        "assets/bots/gun_bot/gun_bot_idle_4.png",
+        "assets/bots/gun_bot/gun_bot_idle_3.png",
+        "assets/bots/gun_bot/gun_bot_idle_2.png"
     ], # idle_images_path
-    "assets/gun_bot/gun_bot_hurt.png", # hurt_image_path
-    "assets/gun_bot/gun_bot_dead.png", # dead_image_path
-    "assets/gun_bot/gun_bot_active.png", # active_image_path
+    "assets/bots/gun_bot/gun_bot_active.png", # active_image_path
+    "assets/bots/gun_bot/gun_bot_hurt.png", # hurt_image_path
+    "assets/bots/gun_bot/gun_bot_dead.png", # dead_image_path
     (100, 150, 255), # button_color
     (150, 200, 255), # button_hover_color
     (150, 200, 255) # text_used_color
@@ -332,22 +316,20 @@ hybrid_bot = HybridBot(
     (50, 200, 50), # box_background_color
     "A versatile bot that can attack and heal.", # description
     [
-        "assets/hybrid_bot/hybrid_bot_idle_1.png",
-        "assets/hybrid_bot/hybrid_bot_idle_2.png",
-        "assets/hybrid_bot/hybrid_bot_idle_3.png",
-        "assets/hybrid_bot/hybrid_bot_idle_4.png",
-        "assets/hybrid_bot/hybrid_bot_idle_3.png",
-        "assets/hybrid_bot/hybrid_bot_idle_2.png"
+        "assets/bots/hybrid_bot/hybrid_bot_idle_1.png",
+        "assets/bots/hybrid_bot/hybrid_bot_idle_2.png",
+        "assets/bots/hybrid_bot/hybrid_bot_idle_3.png",
+        "assets/bots/hybrid_bot/hybrid_bot_idle_4.png",
+        "assets/bots/hybrid_bot/hybrid_bot_idle_3.png",
+        "assets/bots/hybrid_bot/hybrid_bot_idle_2.png"
     ], # idle_images_path
-    "assets/hybrid_bot/hybrid_bot_hurt.png", # hurt_image_path
-    "assets/hybrid_bot/hybrid_bot_dead.png", # dead_image_path
-    "assets/hybrid_bot/hybrid_bot_active.png", # active_image_path
+    "assets/bots/hybrid_bot/hybrid_bot_active.png", # active_image_path
+    "assets/bots/hybrid_bot/hybrid_bot_hurt.png", # hurt_image_path
+    "assets/bots/hybrid_bot/hybrid_bot_dead.png", # dead_image_path
     (100, 230, 100), # button_color
     (150, 250, 150), # button_hover_color
     (150, 250, 150) # text_used_color
 )
-
-player_bots = [gun_bot, hybrid_bot]
 
 # catalog of different enemy types
 enemy_catalog = {
@@ -355,16 +337,15 @@ enemy_catalog = {
         "name": "Basic Goon",
         "health": 5,
         "damage": 1,
+        "min_gears": 1,
+        "max_gears": 5,
         "box_background_color": (255, 75, 75),
         "description": "A simple enemy goon that deals damage to a single target.",
-        "idle_images_path": "assets/basic_goon/basic_goon_idle.png",
-        "hurt_image_path": "assets/basic_goon/basic_goon_hurt.png",
-        "dead_image_path": "assets/basic_goon/basic_goon_dead.png",
-        "currency": 5
+        "idle_image_path": "assets/enemies/basic_goon/basic_goon_idle.png",
+        "hurt_image_path": "assets/enemies/basic_goon/basic_goon_hurt.png",
+        "dead_image_path": "assets/enemies/basic_goon/basic_goon_dead.png"
     }
 }
-
-enemy_goons = []
 
 
 # ------------------------------
@@ -395,32 +376,37 @@ def scroll_math(mouse_pos, event, lore_height, target_scroll_y):
     
     return target_scroll_y
 
-def harvest_gears(mouse_pos, gears, enemy_slots):
+def harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots):
     for i in range(len(enemy_goons) - 1, -1, -1):
         # harvest gears from dead enemies if clicked and remove them from the game
         enemy = enemy_goons[i]
-        if enemy.rect.collidepoint(mouse_pos) and enemy.dead:
-            gears += enemy.currency
-            active_effects.append(FloatingText((100, 100, 100), enemy.rect.left, enemy.rect.centery, f"+{enemy.currency} gears"))
+        if enemy.rect.collidepoint(mouse_pos) and enemy.visual_health == 0:
+            enemy_gears = random.randint(enemy.min_gears, enemy.max_gears)
+            gears += enemy_gears
+            active_effects.append(FloatingText((100, 100, 100), enemy.rect.left, enemy.rect.centery, f"+{enemy_gears} gears"))
             enemy_slots[enemy.slot_id]["occupied"] = False
             enemy_goons.pop(i)
             return gears
     return gears
 
-def inspect_enemy(mouse_pos, inspecting_character, scroll_y, target_scroll_y):
+def inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y):
     for enemy in enemy_goons:
         # inspect enemy if it's clicked and alive when its not time to target enemy
-        if enemy.rect.collidepoint(mouse_pos) and enemy.ghost_health > 0:
-            inspecting_character = enemy
-            target_scroll_y = 0
-            scroll_y = 0
+        if enemy.rect.collidepoint(mouse_pos) and enemy.real_health > 0:
+            # enemy inspection is deselected if clicked again
+            if inspecting_character == enemy:
+                inspecting_character = None
+            else:
+                inspecting_character = enemy
+                target_scroll_y = 0
+                scroll_y = 0
             return inspecting_character, scroll_y, target_scroll_y
     return inspecting_character, scroll_y, target_scroll_y
 
-def select_bot(mouse_pos, battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y):
+def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
     for bot in player_bots:
         # bot is selected if it's clicked, alive, and hasn't acted yet
-        if bot.rect.collidepoint(mouse_pos) and bot.ghost_health > 0 and not bot.acted:
+        if bot.rect.collidepoint(mouse_pos) and bot.real_health > 0 and not bot.acted:
             # bot is deselected if clicked again
             if active_bot == bot:
                 inspecting_character = None
@@ -432,10 +418,10 @@ def select_bot(mouse_pos, battle_state, inspecting_character, active_bot, chosen
                 scroll_y = 0
             chosen_action = None
             battle_state = "Select Action"
-            return battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y
-    return battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y
+            return battle_state,  active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
+    return battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
 
-def select_action(mouse_pos, battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y):
+def select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
     # action button rectangles
     left_button_rect = pygame.Rect(70, 630, 150, 50)
     right_button_rect = pygame.Rect(240, 630, 150, 50)
@@ -472,17 +458,17 @@ def select_action(mouse_pos, battle_state, inspecting_character, active_bot, cho
                 scroll_y = active_bot.actions[1]["scroll"]
                 inspecting_character = active_bot
     
-    return battle_state, inspecting_character, chosen_action, scroll_y, target_scroll_y
+    return battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y
 
 def check_bot_turn(player_bots):
     for bot in player_bots:
-        if bot.ghost_health > 0 and not bot.acted:
+        if bot.real_health > 0 and not bot.acted:
             return "Select Bot"
     return "Enemy Turn"
 
-def execute_action(mouse_pos, characters, battle_state, inspecting_character, active_bot, chosen_action):
+def execute_action(mouse_pos, player_bots, characters, active_effects, battle_state, active_bot, chosen_action, inspecting_character,):
     for char in characters:
-        if char.rect.collidepoint(mouse_pos) and char.ghost_health > 0:
+        if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
             # determine the power of the chosen action and mark it as used
             power = 0
             for action in active_bot.actions:
@@ -493,10 +479,10 @@ def execute_action(mouse_pos, characters, battle_state, inspecting_character, ac
             
             # damage or heal the target character
             if battle_state == "Damage Enemy":
-                char.ghost_health -= power
+                char.real_health -= power
                 active_effects.append(DamageProjectile((0, 0, 255), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, power))
             elif battle_state == "Heal Friendly":
-                char.ghost_health += power
+                char.real_health += power
                 active_effects.append(HealProjectile((0, 255, 0), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, power))
             
             # check if active bot used both actions and reset for next action
@@ -505,13 +491,13 @@ def execute_action(mouse_pos, characters, battle_state, inspecting_character, ac
             active_bot = None
             chosen_action = None
 
-            return check_bot_turn(player_bots), inspecting_character, active_bot, chosen_action
-    return battle_state, inspecting_character, active_bot, chosen_action
+            return check_bot_turn(player_bots), active_bot, chosen_action, inspecting_character
+    return battle_state, active_bot, chosen_action, inspecting_character
 
-def player_turn(event, mouse_pos, battle_state, inspecting_character, active_bot, chosen_action, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
-    # if battle is over, dont allow any more actions
-    if battle_state == "Defeat!":
-        return battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y, gears
+def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
+    # if game is over, dont allow any more actions
+    if battle_state == "Game Over":
+        return battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
  
     # update target scroll based on mouse scroll
     if event.button in [4, 5]:
@@ -520,24 +506,24 @@ def player_turn(event, mouse_pos, battle_state, inspecting_character, active_bot
     # handle player actions based on battle state and mouse clicks
     elif event.button == 1:
         # harvest gears
-        gears = harvest_gears(mouse_pos, gears, enemy_slots)
+        gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
 
         # inspect enemy if not targeting enemy
         if battle_state != "Damage Enemy":
-            inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, inspecting_character, scroll_y, target_scroll_y)
+            inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y)
 
         # select bot if not healing friendly
         if battle_state != "Heal Friendly":
-            battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y = select_bot(mouse_pos, battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y)
+            battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
         
         # select actions if bot is selected
-        battle_state, inspecting_character, chosen_action, scroll_y, target_scroll_y = select_action(mouse_pos, battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y)
+        battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
             
         # carry out the chosen action
         if battle_state == "Damage Enemy":
-            battle_state, inspecting_character, active_bot, chosen_action = execute_action(mouse_pos, enemy_goons, battle_state, inspecting_character, active_bot, chosen_action)
+            battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
         elif battle_state == "Heal Friendly":
-            battle_state, inspecting_character, active_bot, chosen_action = execute_action(mouse_pos, player_bots, battle_state, inspecting_character, active_bot, chosen_action)
+            battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, player_bots, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
 
     # right click to cancel action or bot
     elif event.button == 3:
@@ -548,10 +534,12 @@ def player_turn(event, mouse_pos, battle_state, inspecting_character, active_bot
             inspecting_character = None
             active_bot = None
             battle_state = "Select Bot"
+        elif battle_state == "Select Bot":
+            inspecting_character = None
 
-    return battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y, gears
+    return battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
 
-def handle_input(running, game_state, battle_state, inspecting_character, active_bot, chosen_action, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
+def handle_input(running, player_bots, enemy_goons, active_effects, game_state, battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
     for event in pygame.event.get():
         # check for quit events
         running = game_quit(event)
@@ -572,27 +560,28 @@ def handle_input(running, game_state, battle_state, inspecting_character, active
             
             # handle battle input
             elif game_state == "Endless Mode":
-                battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y, gears = player_turn(event, mouse_pos, battle_state, inspecting_character, active_bot, chosen_action, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
+                battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears = player_turn(
+                    event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
 
-    return running, game_state, battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y, gears
+    return running, game_state, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
 
 
 # ------------------------------
 # ENEMY TURN
 # ------------------------------
 
-def enemy_attacks():
+def enemy_attacks(enemy_goons, player_bots, active_effects):
     # each alive enemy attacks a random alive bot
     for enemy in enemy_goons:
-        if enemy.ghost_health > 0:
+        if enemy.real_health > 0:
             bots_alive = []
             for bot in player_bots:
-                if bot.ghost_health > 0:
+                if bot.real_health > 0:
                     bots_alive.append(bot)
             
             if bots_alive:
                 target = random.choice(bots_alive)
-                target.ghost_health -= enemy.damage
+                target.real_health -= enemy.damage
                 active_effects.append(DamageProjectile((255, 0, 0), enemy.rect.x, enemy.rect.y, target.rect.centerx, target.rect.centery, target, enemy.damage))
 
 def spawn_enemy(x, y, slot_id):
@@ -606,28 +595,27 @@ def spawn_enemy(x, y, slot_id):
         stats["name"],
         stats["health"],
         stats["damage"],
+        stats["min_gears"],
+        stats["max_gears"],
+        slot_id,
         x + x_offset,
         y + y_offset,
         stats["box_background_color"],
         stats["description"],
-        stats["idle_images_path"],
-        stats["hurt_image_path"],
-        stats["dead_image_path"],
-        stats["currency"],
-        slot_id
+        stats["idle_image"],
+        stats["hurt_image"],
+        stats["dead_image"],
     )
-    new_enemy.load_images()
     return new_enemy
 
-def spawn_state(round, gears, max_enemies, enemy_slots):
+def spawn_state(enemy_goons, active_effects, gears, round, max_enemies, enemy_slots):
     # determine how many enemies to spawn based on the round
     spawns = 0
-    if round <= 5:
-        if round % 2 == 1:
-            spawns = 1
-    elif round <= 10:
+    if round == 3:
         spawns = 1
-    else:
+    elif round >= 5 and round <= 10:
+        spawns = 1
+    elif round > 10:
         spawns = 2
     
     # increase the max number of enemies every 5 rounds, up to a maximum of 9
@@ -639,9 +627,10 @@ def spawn_state(round, gears, max_enemies, enemy_slots):
         if len(enemy_goons) == max_enemies:
             for i in range(len(enemy_goons) - 1, -1, -1):
                 enemy = enemy_goons[i]
-                if enemy.dead:
-                    gears += enemy.currency
-                    active_effects.append(FloatingText((100, 100, 100), enemy.rect.left, enemy.rect.centery, f"+{enemy.currency} gears"))
+                if enemy.visual_health == 0:
+                    enemy_gears = random.randint(enemy.min_gears, enemy.max_gears)
+                    gears += enemy_gears
+                    active_effects.append(FloatingText((100, 100, 100), enemy.rect.left, enemy.rect.centery, f"+{enemy_gears} gears"))
                     enemy_slots[enemy.slot_id]["occupied"] = False
                     enemy_goons.pop(i)
                     break
@@ -658,14 +647,13 @@ def spawn_state(round, gears, max_enemies, enemy_slots):
                 new_enemy = spawn_enemy(slot["x"], slot["y"], slot_id)
                 enemy_goons.append(new_enemy)
                 slot["occupied"] = True
-                break
     
-    return max_enemies, gears
+    return gears, max_enemies
 
-def enemy_turn(battle_state, round, gears, max_enemies, enemy_slots):
+def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, round, max_enemies, enemy_slots):
     if battle_state == "Enemy Turn":
         # enemy attack logic
-        enemy_attacks()
+        enemy_attacks(enemy_goons, player_bots, active_effects)
         
         # resets for next turn
         for bot in player_bots:
@@ -674,18 +662,18 @@ def enemy_turn(battle_state, round, gears, max_enemies, enemy_slots):
         round += 1
 
         # spawn new enemies based on the round and max enemies
-        max_enemies, gears = spawn_state(round, gears, max_enemies, enemy_slots)
+        gears, max_enemies = spawn_state(enemy_goons, active_effects, gears, round, max_enemies, enemy_slots)
     
-    return battle_state, round, gears, max_enemies
+    return battle_state, gears, round, max_enemies
 
 
 # ------------------------------
 # GAME BEGINNING AND ENDING
 # ------------------------------
 
-def spawn_inital_enemies(enemy_slots):
-    # spawn two enemies at the start of the game in random empty slots
-    for i in range(2):
+def spawn_inital_enemies(enemy_goons, enemy_slots):
+    # spawn two basic goons at the start of the game in random empty slots
+    for _ in range(2):
         empty_slots = []
         for i, slot in enumerate(enemy_slots):
             if not slot["occupied"]:
@@ -696,32 +684,21 @@ def spawn_inital_enemies(enemy_slots):
         enemy_goons.append(new_enemy)
         slot["occupied"] = True
 
-def check_game_over(battle_state, scroll_y, target_scroll_y):
-    # chceck if battle state is already victory or defeat
-    if battle_state == "Victory!" or battle_state == "Defeat!":
+def check_game_over(player_bots, battle_state, scroll_y, target_scroll_y):
+    # check if battle state is already game over
+    if battle_state == "Game Over":
         return battle_state, scroll_y, target_scroll_y
-
-    # player wins if all enemies are dead
-    winning = True
-    for enemy in enemy_goons:
-        if enemy.ghost_health > 0:
-            winning = False
-            break
-    if winning:
-        target_scroll_y = 0
-        scroll_y = 0
-        return "Victory!", scroll_y, target_scroll_y
     
-    # player loses if all bots are dead
-    losing = True
+    # game ends when all bots are dead
+    game_end = True
     for bot in player_bots:
-        if bot.ghost_health > 0:
-            losing = False
+        if bot.real_health > 0:
+            game_end = False
             break
-    if losing:
+    if game_end:
         target_scroll_y = 0
         scroll_y = 0
-        return "Defeat!", scroll_y, target_scroll_y
+        return "Game Over", scroll_y, target_scroll_y
     
     return battle_state, scroll_y, target_scroll_y
 
@@ -730,32 +707,41 @@ def check_game_over(battle_state, scroll_y, target_scroll_y):
 # DRAWING, ANIMATION, AND RENDERING
 # ------------------------------
 
-def dynamic_text(font_cache, text, max_width, max_height, color):
-    # default font size
-    font_size = 30
+def update_animations(player_bots, enemy_goons, active_effects, scroll_y, target_scroll_y):
+    # update characters shake when they are hurt
+    for char in player_bots + enemy_goons:
+        char.hurt_animations()
 
-    # decrease font size until it fits within the max width and height
-    while font_size > 10:
-        temp_font = font_cache[font_size]
-        text_width, text_height = temp_font.size(text)
-        if text_width <= max_width and text_height <= max_height:
-            return temp_font.render(text, True, color)
-        font_size -= 1
+    # update idle animation frames
+    for char in player_bots + enemy_goons:
+        char.update_idle_animation()
 
-    # use the smallest font if text is too long
-    smallest_font = font_cache[10]
-    return smallest_font.render(text, True, color)
+    # update and remove effects
+    for effect in active_effects[:]:
+        if isinstance(effect, DamageProjectile) or isinstance(effect, HealProjectile):
+            effect.update(active_effects)
+        elif isinstance(effect, FloatingText):
+            effect.update()
+        if not effect.active:
+            active_effects.remove(effect)
+    
+    # update scrolling position for lore box
+    scroll_y += (target_scroll_y - scroll_y) * 0.2
+    if abs(target_scroll_y - scroll_y) < 0.1:
+        scroll_y = target_scroll_y
+    return scroll_y
 
-def draw_characters(screen, font, battle_state, inspecting_character, active_bot, chosen_action):
+def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state, active_bot, chosen_action, inspecting_character):
     for char in player_bots + enemy_goons:
         # dead state
-        if char.health <= 0:
+        if char.visual_health <= 0:
             current_image = char.dead_image
             current_image.set_alpha(50)
 
         # hurt state
         elif char.hurt_timer > 0:
             current_image = char.hurt_image
+            current_image.set_alpha(255)
 
         # action chosen state
         elif char == active_bot and chosen_action:
@@ -777,6 +763,7 @@ def draw_characters(screen, font, battle_state, inspecting_character, active_bot
                     current_image.set_alpha(255)
             elif char in enemy_goons:
                 current_image = char.idle_image
+                current_image.set_alpha(255)
 
         # move enemies up and down
         char_y = char.rect.y
@@ -788,17 +775,17 @@ def draw_characters(screen, font, battle_state, inspecting_character, active_bot
 
         # highlight character if hovering and valid target
         mouse_pos = pygame.mouse.get_pos()
-        if char.rect.collidepoint(mouse_pos) and char.ghost_health > 0:
+        if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
             if char in enemy_goons and battle_state == "Damage Enemy":
                 pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
             elif char in player_bots and battle_state == "Heal Friendly":
                 pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
-            elif char in player_bots and battle_state not in ["Victory!", "Defeat!"] and not char.acted:
+            elif char in player_bots and battle_state != "Game Over" and not char.acted:
                 pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
 
         # draw name and health
-        name_text = font.render(char.name, True, (255, 255, 255))
-        health_text = font.render(f"HP: {char.health}", True, (255, 255, 255))
+        name_text = regular_font.render(char.name, True, (255, 255, 255))
+        health_text = regular_font.render(f"HP: {char.visual_health}", True, (255, 255, 255))
         screen.blit(name_text, (char.rect.x, char.rect.y - 40))
         screen.blit(health_text, (char.rect.x, char.rect.y - 20))
 
@@ -811,6 +798,22 @@ def draw_characters(screen, font, battle_state, inspecting_character, active_bot
                 color = (255, 0, 0)
                 dot_offset = 0
             pygame.draw.circle(screen, color, (char.rect.x - 10, char.rect.y - 33 - dot_offset), 5)
+
+def dynamic_text(font_cache, text, max_width, max_height, color):
+    # default font size
+    font_size = 30
+
+    # decrease font size until it fits within the max width and height
+    while font_size > 10:
+        temp_font = font_cache[font_size]
+        text_width, text_height = temp_font.size(text)
+        if text_width <= max_width and text_height <= max_height:
+            return temp_font.render(text, True, color)
+        font_size -= 1
+
+    # use the smallest font if text is too long
+    smallest_font = font_cache[10]
+    return smallest_font.render(text, True, color)
 
 def draw_action_button(screen, font_cache, active_bot, x, y, text, used, chosen):
     # button rectangle
@@ -871,7 +874,7 @@ def draw_action_options(screen, font_cache, active_bot, chosen_action):
                 x = 240
             draw_action_button(screen, font_cache, active_bot, x, 630, action["name"], action["used"], chosen_action == action["name"])
 
-def draw_lore_box(screen, font, battle_state, inspecting_character, scroll_y):
+def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, round):
     # draw lore box background
     if inspecting_character:
         color = inspecting_character.box_background_color
@@ -883,14 +886,10 @@ def draw_lore_box(screen, font, battle_state, inspecting_character, scroll_y):
     
     lore = []
     # lore text based on battle state
-    if battle_state == "Victory!":
-        lore.append("You have defeated all the enemies!")
-        lore.append("Victory!")
-        lore.append(":D")
-    elif battle_state == "Defeat!":
+    if battle_state == "Game Over":
         lore.append("The enemies have defeated all your bots!")
-        lore.append("Defeat!")
-        lore.append("D:")
+        lore.append(f"You have survived for a total of {round} rounds.")
+        lore.append("Game Over!")
 
     # lore text based on inspecting character
     elif inspecting_character:
@@ -916,7 +915,7 @@ def draw_lore_box(screen, font, battle_state, inspecting_character, scroll_y):
     for line in lore:
         if line.startswith("Action:"):
             y_offset += 15
-        lore_text = font.render(line, True, (255, 255, 255))
+        lore_text = regular_font.render(line, True, (255, 255, 255))
         lore_canvas.blit(lore_text, (0, y_offset))
         y_offset += line_spacing
 
@@ -928,12 +927,12 @@ def draw_lore_box(screen, font, battle_state, inspecting_character, scroll_y):
     lore_height = y_offset
     return lore_height
 
-def draw_effects(screen, combat_font):
+def draw_effects(screen, floating_font, active_effects):
     # draw animation based on its type
     for effect in active_effects:
         # draw floating text
         if isinstance(effect, FloatingText):
-            text = combat_font.render(effect.text, True, effect.color)
+            text = floating_font.render(effect.text, True, effect.color)
             screen.blit(text, (effect.x, effect.y))
         # draw damage projectile
         elif isinstance(effect, DamageProjectile):
@@ -942,57 +941,41 @@ def draw_effects(screen, combat_font):
         elif isinstance(effect, HealProjectile):
             pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5)
 
-def draw_screen(screen, font, combat_font, font_cache, battle_state, inspecting_character, active_bot, chosen_action, scroll_y, round, gears):
+def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, gears, round):
     # background color
     screen.fill((0, 0, 0))
 
     # draw bots and goons with animations based on their states and actions
-    draw_characters(screen, font, battle_state, inspecting_character, active_bot, chosen_action)
-    
+    draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state, active_bot, chosen_action, inspecting_character)
+
     # draw action options based on active bot and chosen action
     draw_action_options(screen, font_cache, active_bot, chosen_action)
 
     # draw lore box with scrolling
-    lore_height = draw_lore_box(screen, font, battle_state, inspecting_character, scroll_y)
+    lore_height = draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, round)
     
     # draw effects damage or heal numbers or projectiles
-    draw_effects(screen, combat_font)
+    draw_effects(screen, floating_font, active_effects)
 
     # draw round and gears text for temporary debugging purposes
-    round_text = font.render(f"Round: {round}", True, (255, 255, 255))
-    gears_text = font.render(f"Gears: {gears}", True, (255, 255, 255))
+    round_text = regular_font.render(f"Round: {round}", True, (255, 255, 255))
+    gears_text = regular_font.render(f"Gears: {gears}", True, (255, 255, 255))
     screen.blit(round_text, (50, 50))
     screen.blit(gears_text, (50, 80))
 
     return lore_height
 
-def update_animations(scroll_y, target_scroll_y):
-    # update characters shake when they are hurt
-    for char in player_bots + enemy_goons:
-        char.hurt_animations()
 
-    # update idle animation frames
-    for char in player_bots + enemy_goons:
-        char.update_idle_animation()
+# ------------------------------
+# MAIN MENU
+# ------------------------------
 
-    # update and remove effects
-    for effect in active_effects[:]:
-        effect.update()
-        if not effect.active:
-            active_effects.remove(effect)
-    
-    # update scrolling position for lore box
-    scroll_y += (target_scroll_y - scroll_y) * 0.2
-    if abs(target_scroll_y - scroll_y) < 0.1:
-        scroll_y = target_scroll_y
-    return scroll_y
-
-def draw_main_menu(screen, title_font, font, font_cache):
+def draw_main_menu(screen, title_font, regular_font, font_cache):
     # draw main menu background
     screen.fill((10, 10, 25))
 
     # draw title text
-    welcome_text = font.render("Welcome to", True, (255, 255, 255))
+    welcome_text = regular_font.render("Welcome to", True, (255, 255, 255))
     welcome_rect = welcome_text.get_rect(center=(600, 160))
     screen.blit(welcome_text, welcome_rect)
     title_text = title_font.render("Rounds", True, (255, 255, 255))
@@ -1026,6 +1009,10 @@ def draw_main_menu(screen, title_font, font, font_cache):
     screen.blit(endless_text, endless_text_rect)
 
 
+# ------------------------------
+# MAIN
+# ------------------------------
+
 async def main():
     # screen settings
     screen = pygame.display.set_mode((1200, 750))
@@ -1036,15 +1023,11 @@ async def main():
 
     # setup fonts
     title_font = pygame.font.SysFont(None, 120)
-    font = pygame.font.SysFont(None, 24)
-    combat_font = pygame.font.SysFont(None, 30)
+    regular_font = pygame.font.SysFont(None, 24)
+    floating_font = pygame.font.SysFont(None, 30)
     font_cache = {}
     for size in range(10, 31):
         font_cache[size] = pygame.font.SysFont(None, size)
-
-    # load character images
-    for char in player_bots + enemy_goons:
-        char.load_images()
 
     # slots for enemies to spawn in
     enemy_slots = [
@@ -1059,47 +1042,68 @@ async def main():
         {"x": 1000, "y": 450, "occupied": False} # back, bottom
     ]
 
-    # initial game state
+    # inital list of characters and effects
+    player_bots = [gun_bot, hybrid_bot]
+    enemy_goons = []
+    active_effects = []
+
+    # inital game state variables
     game_state = "Main Menu"
     previous_game_state = "Main Menu"
     battle_state = "Select Bot"
-    inspecting_character = None
+
+    # inital variables for player turn
     active_bot = None
     chosen_action = None
+
+    # inital variables related to lore box
+    inspecting_character = None
     lore_height = 0
     scroll_y = 0.0
     target_scroll_y = 0.0
-    round = 1
+
+    # inital variables for game progression
     gears = 0
+    round = 1
     max_enemies = 3
     running = True
+
+    # load initial character images
+    for char in player_bots:
+        char.load_images()
+    for enemy, stats in enemy_catalog.items():
+        stats["idle_image"] = pygame.image.load(stats["idle_image_path"]).convert_alpha()
+        stats["hurt_image"] = pygame.image.load(stats["hurt_image_path"]).convert_alpha()
+        stats["dead_image"] = pygame.image.load(stats["dead_image_path"]).convert_alpha()
 
     while running:
 
         # handle input events based on game state and battle state
-        running, game_state, battle_state, inspecting_character, active_bot, chosen_action, scroll_y, target_scroll_y, gears = handle_input(running, game_state, battle_state, inspecting_character, active_bot, chosen_action, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
+        running, game_state, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears = handle_input(
+            running, player_bots, enemy_goons, active_effects, game_state, battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
+
+        if game_state == "Endless Mode" and previous_game_state != "Endless Mode":
+            # setup for the first round of endless mode
+            spawn_inital_enemies(enemy_goons, enemy_slots)
+            previous_game_state = "Endless Mode"
 
         if game_state == "Main Menu":
             # screen for main menu
-            draw_main_menu(screen, title_font, font, font_cache)
-
-        elif game_state == "Endless Mode" and previous_game_state != "Endless Mode":
-            # setup for the first round of endless mode
-            spawn_inital_enemies(enemy_slots)
-            previous_game_state = "Endless Mode"
+            draw_main_menu(screen, title_font, regular_font, font_cache)
 
         elif game_state == "Endless Mode":
             # enemy turn logic
-            battle_state, round, gears, max_enemies = enemy_turn(battle_state, round, gears, max_enemies, enemy_slots)
+            battle_state, gears, round, max_enemies = enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, round, max_enemies, enemy_slots)
 
             # check if game is over
-            battle_state, scroll_y, target_scroll_y = check_game_over(battle_state, scroll_y, target_scroll_y)
+            battle_state, scroll_y, target_scroll_y = check_game_over(player_bots, battle_state, scroll_y, target_scroll_y)
 
             # update animations
-            scroll_y = update_animations(scroll_y, target_scroll_y)
+            scroll_y = update_animations(player_bots, enemy_goons, active_effects, scroll_y, target_scroll_y)
 
             # drawing, animation, and rendering
-            lore_height = draw_screen(screen, font, combat_font, font_cache, battle_state, inspecting_character, active_bot, chosen_action, scroll_y, round, gears)
+            lore_height = draw_screen(
+                screen, regular_font, floating_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, gears, round)
 
         # keeps the game from flickering
         pygame.display.flip()
