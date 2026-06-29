@@ -362,7 +362,7 @@ def game_quit(event):
 
 def scroll_math(mouse_pos, event, lore_height, target_scroll_y):
     # lore rectangle
-    lore_rect = pygame.Rect(460, 610, 690, 90)
+    lore_rect = pygame.Rect(600, 620, 560, 90)
 
     # scroll through the lore box if mouse is scrolled over it
     if lore_rect.collidepoint(mouse_pos):
@@ -423,8 +423,8 @@ def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, 
 
 def select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
     # action button rectangles
-    left_button_rect = pygame.Rect(70, 630, 150, 50)
-    right_button_rect = pygame.Rect(240, 630, 150, 50)
+    left_button_rect = pygame.Rect(60, 640, 150, 50)
+    right_button_rect = pygame.Rect(230, 640, 150, 50)
 
     # bot action is chosen based on which button is clicked and action is deselected if clicked again
     if active_bot:
@@ -587,7 +587,7 @@ def enemy_attacks(enemy_goons, player_bots, active_effects):
 def spawn_enemy(x, y, slot_id):
     # randomize the enemy spawn position within a range
     x_offset = random.randint(0, 100)
-    y_offset = random.randint(0, 60)
+    y_offset = random.randint(40, 100)
 
     # create a new enemy
     stats = enemy_catalog["basic_goon"]
@@ -846,15 +846,11 @@ def draw_action_button(screen, font_cache, active_bot, x, y, text, used, chosen)
     button_text = dynamic_text(font_cache, text, 140, 40, text_color)
 
     # center the text on the button
-    text_rect = button_text.get_rect()
-    text_rect.center = button_rect.center
-    if chosen:
-        text_rect.y += 1
-    else:
-        text_rect.y += 2
+    button_text_rect = button_text.get_rect(center=button_rect.center)
+    button_text_rect.y += 1
 
     # draw button text
-    screen.blit(button_text, text_rect)
+    screen.blit(button_text, button_text_rect)
 
 def draw_action_options(screen, font_cache, active_bot, chosen_action):
     # draw action box background
@@ -862,17 +858,80 @@ def draw_action_options(screen, font_cache, active_bot, chosen_action):
         color = active_bot.box_background_color
     else:
         color = (50, 50, 50)
-    pygame.draw.rect(screen, color, (50, 610, 360, 90))
-    pygame.draw.rect(screen, (255, 255, 255), (50, 610, 360, 90), 3)
+    pygame.draw.rect(screen, color, (40, 620, 360, 90))
+    pygame.draw.rect(screen, (255, 255, 255), (40, 620, 360, 90), 3)
 
     # draw action buttons based on active bot
     if active_bot:
         for index, action in enumerate(active_bot.actions):
             if index == 0:
-                x = 70
+                x = 60
             else:
-                x = 240
-            draw_action_button(screen, font_cache, active_bot, x, 630, action["name"], action["used"], chosen_action == action["name"])
+                x = 230
+            draw_action_button(screen, font_cache, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
+
+def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, round):
+    # draw shop box background
+    if active_bot:
+        box_color = active_bot.box_background_color
+    else:
+        box_color = (50, 50, 50)
+    pygame.draw.rect(screen, box_color, (430, 620, 140, 90))
+    pygame.draw.rect(screen, (255, 255, 255), (430, 620, 140, 90), 3)
+
+    # draw shop button with hover effect
+    button_rect = pygame.Rect(450, 640, 100, 50)
+    mouse_pos = pygame.mouse.get_pos()
+    if active_bot:
+        if button_rect.collidepoint(mouse_pos):
+            button_color = active_bot.button_hover_color
+        else:
+            button_color = active_bot.button_color
+    else:
+        if button_rect.collidepoint(mouse_pos) and battle_state != "Game Over":
+            button_color = (200, 200, 200)
+        else:
+            button_color = (150, 150, 150)
+    pygame.draw.rect(screen, button_color, button_rect)
+
+    # draw shop text
+    shop_text = dynamic_text(font_cache, "Shop", 90, 40, (255, 255, 255))
+    shop_text_rect = shop_text.get_rect(center=(500, 665))
+    screen.blit(shop_text, shop_text_rect)
+
+    # draw info box background
+    pygame.draw.rect(screen, box_color, (430, 563, 140, 60))
+    pygame.draw.rect(screen, (255, 255, 255), (430, 563, 140, 60), 3)
+
+    # draw round and gears text
+    round_text = regular_font.render(f"Round: {round}", True, (255, 255, 255))
+    gears_text = regular_font.render(f"Gears: {gears}", True, (255, 255, 255))
+    round_text_rect = round_text.get_rect(center=(500, 583))
+    gears_text_rect = gears_text.get_rect(center=(500, 603))
+    screen.blit(round_text, round_text_rect)
+    screen.blit(gears_text, gears_text_rect)
+
+def wrap_text(text, regular_font, max_width):
+    # split the text into a list of words
+    words = text.split(' ')
+    lines = []
+    current_line = ""
+
+    for word in words:
+        # check if adding the next word to the current line exceeds the max width
+        test_line = f"{current_line} {word}".strip()
+        if regular_font.size(test_line)[0] <= max_width:
+            current_line = test_line
+        else:
+            # add the current line to list of lines if its over the max width
+            lines.append(current_line.strip())
+            current_line = word
+
+    # add the last line
+    if current_line:
+        lines.append(current_line.strip())
+
+    return lines
 
 def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, round):
     # draw lore box background
@@ -880,51 +939,70 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
         color = inspecting_character.box_background_color
     else:
         color = (50, 50, 50)
-    pygame.draw.rect(screen, color, (460, 610, 690, 90))
-    pygame.draw.rect(screen, (255, 255, 255), (460, 610, 690, 90), 3)
+    pygame.draw.rect(screen, color, (600, 620, 560, 90))
+    pygame.draw.rect(screen, (255, 255, 255), (600, 620, 560, 90), 3)
 
-    
     lore = []
     # lore text based on battle state
     if battle_state == "Game Over":
-        lore.append("The enemies have defeated all your bots!")
-        lore.append(f"You have survived for a total of {round} rounds.")
-        lore.append("Game Over!")
+        lore.append(("The enemies have defeated all your bots!", "header"))
+        lore.append((f"You have survived for a total of {round} rounds.", "header"))
+        lore.append(("Game Over!", "header"))
 
     # lore text based on inspecting character
     elif inspecting_character:
-        lore.append(f"Name: {inspecting_character.name}")
-        lore.append(f"Description: {inspecting_character.description}")
+        lore.append((f"Name: {inspecting_character.name}", "header"))
+        description_lines = wrap_text(f"Description: {inspecting_character.description}", regular_font, 540)
+        for i, line in enumerate(description_lines):
+            if i == len(description_lines) - 1:
+                lore.append((line, "header"))
+            else:
+                lore.append((line, "body"))
         if inspecting_character in player_bots:
             for action in inspecting_character.actions:
-                lore.append(f"Action: {action['name']}")
-                lore.append(f"Description: {action['description']}")
-                lore.append(f"{action['type']}: {action['power']}")
+                lore.append((f"Action: {action['name']}", "header"))
+                action_description_lines = wrap_text(f"Description: {action['description']}", regular_font, 540)
+                for i, line in enumerate(action_description_lines):
+                    if i == len(action_description_lines) - 1:
+                        lore.append((line, "header"))
+                    else:
+                        lore.append((line, "body"))
+                lore.append((f"{action['type']}: {action['power']}", "header"))
         elif inspecting_character in enemy_goons:
-            lore.append(f"Damage: {inspecting_character.damage}")
+            lore.append((f"Damage: {inspecting_character.damage}", "header"))
 
     # calculate lore height
-    y_offset = 5
-    line_spacing = 25
-    lore_height = len(lore) * line_spacing + 30
+    lore_height = 0
+    for line, type in lore:
+        if line.startswith("Action:"):
+            lore_height += 15
+        if type == "header":
+            lore_height += 25
+        elif type == "body":
+            lore_height += 20
 
     # create a surface for the lore text with see through background
-    lore_canvas = pygame.Surface((690, max(1, lore_height)), pygame.SRCALPHA)
+    lore_canvas = pygame.Surface((560, max(1, lore_height)), pygame.SRCALPHA)
 
     # draw lore text into the lore canvas
-    for line in lore:
+    y_offset = 5
+    for line, type in lore:
         if line.startswith("Action:"):
             y_offset += 15
         lore_text = regular_font.render(line, True, (255, 255, 255))
         lore_canvas.blit(lore_text, (0, y_offset))
-        y_offset += line_spacing
+        if type == "header":
+            y_offset += 25
+        elif type == "body":
+            y_offset += 20
 
     # draw the visible part of lore canvas onto the screen based on scroll position
-    visible_rect = pygame.Rect(0, int(scroll_y), 670, 80)
-    screen.blit(lore_canvas, (470, 615), visible_rect)
+    visible_rect = pygame.Rect(0, int(scroll_y), 540, 80)
+    screen.blit(lore_canvas, (610, 625), visible_rect)
     
     # update lore height for scrolling calculations
     lore_height = y_offset
+
     return lore_height
 
 def draw_effects(screen, floating_font, active_effects):
@@ -951,17 +1029,14 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     # draw action options based on active bot and chosen action
     draw_action_options(screen, font_cache, active_bot, chosen_action)
 
+    # draw shop box in the middle
+    draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, round)
+
     # draw lore box with scrolling
     lore_height = draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, round)
     
     # draw effects damage or heal numbers or projectiles
     draw_effects(screen, floating_font, active_effects)
-
-    # draw round and gears text for temporary debugging purposes
-    round_text = regular_font.render(f"Round: {round}", True, (255, 255, 255))
-    gears_text = regular_font.render(f"Gears: {gears}", True, (255, 255, 255))
-    screen.blit(round_text, (50, 50))
-    screen.blit(gears_text, (50, 80))
 
     return lore_height
 
@@ -976,11 +1051,11 @@ def draw_main_menu(screen, title_font, regular_font, font_cache):
 
     # draw title text
     welcome_text = regular_font.render("Welcome to", True, (255, 255, 255))
-    welcome_rect = welcome_text.get_rect(center=(600, 160))
-    screen.blit(welcome_text, welcome_rect)
+    welcome_text_rect = welcome_text.get_rect(center=(600, 160))
+    screen.blit(welcome_text, welcome_text_rect)
     title_text = title_font.render("Rounds", True, (255, 255, 255))
-    title_rect = title_text.get_rect(center=(600, 200))
-    screen.blit(title_text, title_rect)
+    title_text_rect = title_text.get_rect(center=(600, 200))
+    screen.blit(title_text, title_text_rect)
 
     # button rectangles
     story_button_rect = pygame.Rect(500, 335, 200, 80)
@@ -1031,15 +1106,15 @@ async def main():
 
     # slots for enemies to spawn in
     enemy_slots = [
-        {"x": 600, "y": 50, "occupied": False}, # front, top
-        {"x": 600, "y": 250, "occupied": False}, # front, middle
-        {"x": 600, "y": 450, "occupied": False}, # front, bottom
-        {"x": 800, "y": 50, "occupied": False}, # middle, top
-        {"x": 800, "y": 250, "occupied": False}, # middle, middle
-        {"x": 800, "y": 450, "occupied": False}, # middle, bottom
-        {"x": 1000, "y": 50, "occupied": False}, # back, top
-        {"x": 1000, "y": 250, "occupied": False}, # back, middle
-        {"x": 1000, "y": 450, "occupied": False} # back, bottom
+        {"x": 600, "y": 0, "occupied": False}, # front, top
+        {"x": 600, "y": 200, "occupied": False}, # front, middle
+        {"x": 600, "y": 400, "occupied": False}, # front, bottom
+        {"x": 800, "y": 0, "occupied": False}, # middle, top
+        {"x": 800, "y": 200, "occupied": False}, # middle, middle
+        {"x": 800, "y": 400, "occupied": False}, # middle, bottom
+        {"x": 1000, "y": 0, "occupied": False}, # back, top
+        {"x": 1000, "y": 200, "occupied": False}, # back, middle
+        {"x": 1000, "y": 400, "occupied": False} # back, bottom
     ]
 
     # inital list of characters and effects
