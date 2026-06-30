@@ -376,6 +376,19 @@ def scroll_math(mouse_pos, event, lore_height, target_scroll_y):
     
     return target_scroll_y
 
+def open_shop(mouse_pos, battle_state, previous_battle_state):
+    # shop button rectangle
+    shop_button_rect = pygame.Rect(450, 640, 100, 50)
+
+    # open shop if button is clicked and close shop if button is clicked again
+    if shop_button_rect.collidepoint(mouse_pos):
+        if battle_state == "Shop":
+            battle_state = previous_battle_state
+        else:
+            previous_battle_state = battle_state
+            battle_state = "Shop"
+    return battle_state, previous_battle_state
+
 def harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots):
     for i in range(len(enemy_goons) - 1, -1, -1):
         # harvest gears from dead enemies if clicked and remove them from the game
@@ -494,10 +507,10 @@ def execute_action(mouse_pos, player_bots, characters, active_effects, battle_st
             return check_bot_turn(player_bots), active_bot, chosen_action, inspecting_character
     return battle_state, active_bot, chosen_action, inspecting_character
 
-def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
+def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
     # if game is over, dont allow any more actions
     if battle_state == "Game Over":
-        return battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
+        return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
  
     # update target scroll based on mouse scroll
     if event.button in [4, 5]:
@@ -505,29 +518,35 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
     
     # handle player actions based on battle state and mouse clicks
     elif event.button == 1:
-        # harvest gears
-        gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
+        # open or close shop
+        battle_state, previous_battle_state = open_shop(mouse_pos, battle_state, previous_battle_state)
 
-        # inspect enemy if not targeting enemy
-        if battle_state != "Damage Enemy":
-            inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y)
+        if battle_state != "Shop":
+            # harvest gears
+            gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
 
-        # select bot if not healing friendly
-        if battle_state != "Heal Friendly":
-            battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
-        
-        # select actions if bot is selected
-        battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+            # inspect enemy if not targeting enemy
+            if battle_state != "Damage Enemy":
+                inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y)
+
+            # select bot if not healing friendly
+            if battle_state != "Heal Friendly":
+                battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
             
-        # carry out the chosen action
-        if battle_state == "Damage Enemy":
-            battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
-        elif battle_state == "Heal Friendly":
-            battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, player_bots, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
+            # select actions if bot is selected
+            battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+                
+            # carry out the chosen action
+            if battle_state == "Damage Enemy":
+                battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
+            elif battle_state == "Heal Friendly":
+                battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, player_bots, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
 
-    # right click to cancel action or bot
+    # right click to close shop or cancel action or bot
     elif event.button == 3:
-        if battle_state in ["Damage Enemy", "Heal Friendly"]:
+        if battle_state == "Shop":
+            battle_state = previous_battle_state
+        elif battle_state in ["Damage Enemy", "Heal Friendly"]:
             chosen_action = None
             battle_state = "Select Action"
         elif battle_state == "Select Action":
@@ -537,9 +556,9 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
         elif battle_state == "Select Bot":
             inspecting_character = None
 
-    return battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
+    return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
 
-def handle_input(running, player_bots, enemy_goons, active_effects, game_state, battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
+def handle_input(running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
     for event in pygame.event.get():
         # check for quit events
         running = game_quit(event)
@@ -560,10 +579,10 @@ def handle_input(running, player_bots, enemy_goons, active_effects, game_state, 
             
             # handle battle input
             elif game_state == "Endless Mode":
-                battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears = player_turn(
-                    event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
+                battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears = player_turn(
+                    event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
 
-    return running, game_state, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
+    return running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
 
 
 # ------------------------------
@@ -780,7 +799,7 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state
                 pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
             elif char in player_bots and battle_state == "Heal Friendly":
                 pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
-            elif char in player_bots and battle_state != "Game Over" and not char.acted:
+            elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted:
                 pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
 
         # draw name and health
@@ -815,16 +834,19 @@ def dynamic_text(font_cache, text, max_width, max_height, color):
     smallest_font = font_cache[10]
     return smallest_font.render(text, True, color)
 
-def draw_action_button(screen, font_cache, active_bot, x, y, text, used, chosen):
+def draw_action_button(screen, font_cache, battle_state, active_bot, x, y, text, used, chosen):
     # button rectangle
     button_rect = pygame.Rect(x, y, 150, 50)
     
     # change button color based on hover and chosen state
     mouse_pos = pygame.mouse.get_pos()
-    if chosen and button_rect.collidepoint(mouse_pos):
-        button_color = (255, 125, 125)
-    elif not used and button_rect.collidepoint(mouse_pos):
-        button_color = active_bot.button_hover_color
+    if battle_state != "Shop":
+        if chosen and button_rect.collidepoint(mouse_pos):
+            button_color = (255, 125, 125)
+        elif not used and button_rect.collidepoint(mouse_pos):
+            button_color = active_bot.button_hover_color
+        else:
+            button_color = active_bot.button_color
     else:
         button_color = active_bot.button_color
 
@@ -852,7 +874,7 @@ def draw_action_button(screen, font_cache, active_bot, x, y, text, used, chosen)
     # draw button text
     screen.blit(button_text, button_text_rect)
 
-def draw_action_options(screen, font_cache, active_bot, chosen_action):
+def draw_action_options(screen, font_cache, battle_state, active_bot, chosen_action):
     # draw action box background
     if active_bot:
         color = active_bot.box_background_color
@@ -868,7 +890,7 @@ def draw_action_options(screen, font_cache, active_bot, chosen_action):
                 x = 60
             else:
                 x = 230
-            draw_action_button(screen, font_cache, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
+            draw_action_button(screen, font_cache, battle_state, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
 
 def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, round):
     # draw shop box background
@@ -882,7 +904,9 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     # draw shop button with hover effect
     button_rect = pygame.Rect(450, 640, 100, 50)
     mouse_pos = pygame.mouse.get_pos()
-    if active_bot:
+    if button_rect.collidepoint(mouse_pos) and battle_state == "Shop":
+        button_color = (255, 125, 125)
+    elif active_bot:
         if button_rect.collidepoint(mouse_pos):
             button_color = active_bot.button_hover_color
         else:
@@ -895,7 +919,11 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     pygame.draw.rect(screen, button_color, button_rect)
 
     # draw shop text
-    shop_text = dynamic_text(font_cache, "Shop", 90, 40, (255, 255, 255))
+    if battle_state == "Shop":
+        text = "Close Shop"
+    else:
+        text = "Shop"
+    shop_text = dynamic_text(font_cache, text, 90, 40, (255, 255, 255))
     shop_text_rect = shop_text.get_rect(center=(500, 665))
     screen.blit(shop_text, shop_text_rect)
 
@@ -910,6 +938,16 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     gears_text_rect = gears_text.get_rect(center=(500, 603))
     screen.blit(round_text, round_text_rect)
     screen.blit(gears_text, gears_text_rect)
+
+def draw_shop_menu(screen, battle_state, active_bot):
+    if battle_state == "Shop":
+        # draw shop menu background
+        if active_bot:
+            box_color = active_bot.box_background_color
+        else:
+            box_color = (50, 50, 50)
+        pygame.draw.rect(screen, box_color, (80, 80, 1040, 486))
+        pygame.draw.rect(screen, (255, 255, 255), (80, 80, 1040, 486), 3)
 
 def wrap_text(text, regular_font, max_width):
     # split the text into a list of words
@@ -1027,10 +1065,13 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state, active_bot, chosen_action, inspecting_character)
 
     # draw action options based on active bot and chosen action
-    draw_action_options(screen, font_cache, active_bot, chosen_action)
+    draw_action_options(screen, font_cache, battle_state, active_bot, chosen_action)
 
     # draw shop box in the middle
     draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, round)
+
+    # draw shop meny if opened
+    draw_shop_menu(screen, battle_state, active_bot)
 
     # draw lore box with scrolling
     lore_height = draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, round)
@@ -1126,6 +1167,7 @@ async def main():
     game_state = "Main Menu"
     previous_game_state = "Main Menu"
     battle_state = "Select Bot"
+    previous_battle_state = "Select Bot"
 
     # inital variables for player turn
     active_bot = None
@@ -1154,8 +1196,8 @@ async def main():
     while running:
 
         # handle input events based on game state and battle state
-        running, game_state, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears = handle_input(
-            running, player_bots, enemy_goons, active_effects, game_state, battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
+        running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears = handle_input(
+            running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
 
         if game_state == "Endless Mode" and previous_game_state != "Endless Mode":
             # setup for the first round of endless mode
