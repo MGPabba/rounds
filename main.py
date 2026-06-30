@@ -627,18 +627,18 @@ def spawn_enemy(x, y, slot_id):
     )
     return new_enemy
 
-def spawn_state(enemy_goons, active_effects, gears, round, max_enemies, enemy_slots):
+def spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_slots):
     # determine how many enemies to spawn based on the round
     spawns = 0
-    if round == 3:
+    if rounds == 3:
         spawns = 1
-    elif round >= 5 and round <= 10:
+    elif rounds >= 5 and rounds <= 10:
         spawns = 1
-    elif round > 10:
+    elif rounds > 10:
         spawns = 2
     
     # increase the max number of enemies every 5 rounds, up to a maximum of 9
-    if max_enemies <= 9 and round % 5 == 0:
+    if max_enemies <= 9 and rounds % 5 == 0:
         max_enemies += 1
     
     for _ in range(spawns):
@@ -669,7 +669,7 @@ def spawn_state(enemy_goons, active_effects, gears, round, max_enemies, enemy_sl
     
     return gears, max_enemies
 
-def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, round, max_enemies, enemy_slots):
+def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, rounds, max_enemies, enemy_slots):
     if battle_state == "Enemy Turn":
         # enemy attack logic
         enemy_attacks(enemy_goons, player_bots, active_effects)
@@ -678,12 +678,12 @@ def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, ro
         for bot in player_bots:
             bot.reset_actions()
         battle_state = "Select Bot"
-        round += 1
+        rounds += 1
 
         # spawn new enemies based on the round and max enemies
-        gears, max_enemies = spawn_state(enemy_goons, active_effects, gears, round, max_enemies, enemy_slots)
+        gears, max_enemies = spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_slots)
     
-    return battle_state, gears, round, max_enemies
+    return battle_state, gears, rounds, max_enemies
 
 
 # ------------------------------
@@ -892,7 +892,7 @@ def draw_action_options(screen, font_cache, battle_state, active_bot, chosen_act
                 x = 230
             draw_action_button(screen, font_cache, battle_state, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
 
-def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, round):
+def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds):
     # draw shop box background
     if active_bot:
         box_color = active_bot.box_background_color
@@ -932,7 +932,7 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     pygame.draw.rect(screen, (255, 255, 255), (430, 563, 140, 60), 3)
 
     # draw round and gears text
-    round_text = regular_font.render(f"Round: {round}", True, (255, 255, 255))
+    round_text = regular_font.render(f"Round: {rounds}", True, (255, 255, 255))
     gears_text = regular_font.render(f"Gears: {gears}", True, (255, 255, 255))
     round_text_rect = round_text.get_rect(center=(500, 583))
     gears_text_rect = gears_text.get_rect(center=(500, 603))
@@ -971,7 +971,7 @@ def wrap_text(text, regular_font, max_width):
 
     return lines
 
-def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, round):
+def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, rounds):
     # draw lore box background
     if inspecting_character:
         color = inspecting_character.box_background_color
@@ -984,7 +984,7 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
     # lore text based on battle state
     if battle_state == "Game Over":
         lore.append(("The enemies have defeated all your bots!", "header"))
-        lore.append((f"You have survived for a total of {round} rounds.", "header"))
+        lore.append((f"You have survived for a total of {rounds} rounds.", "header"))
         lore.append(("Game Over!", "header"))
 
     # lore text based on inspecting character
@@ -1057,7 +1057,7 @@ def draw_effects(screen, floating_font, active_effects):
         elif isinstance(effect, HealProjectile):
             pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5)
 
-def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, gears, round):
+def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, gears, rounds):
     # background color
     screen.fill((0, 0, 0))
 
@@ -1068,13 +1068,13 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     draw_action_options(screen, font_cache, battle_state, active_bot, chosen_action)
 
     # draw shop box in the middle
-    draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, round)
+    draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds)
 
     # draw shop meny if opened
     draw_shop_menu(screen, battle_state, active_bot)
 
     # draw lore box with scrolling
-    lore_height = draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, round)
+    lore_height = draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, rounds)
     
     # draw effects damage or heal numbers or projectiles
     draw_effects(screen, floating_font, active_effects)
@@ -1181,7 +1181,7 @@ async def main():
 
     # inital variables for game progression
     gears = 0
-    round = 1
+    rounds = 1
     max_enemies = 3
     running = True
 
@@ -1210,7 +1210,7 @@ async def main():
 
         elif game_state == "Endless Mode":
             # enemy turn logic
-            battle_state, gears, round, max_enemies = enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, round, max_enemies, enemy_slots)
+            battle_state, gears, rounds, max_enemies = enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, rounds, max_enemies, enemy_slots)
 
             # check if game is over
             battle_state, scroll_y, target_scroll_y = check_game_over(player_bots, battle_state, scroll_y, target_scroll_y)
@@ -1220,7 +1220,7 @@ async def main():
 
             # drawing, animation, and rendering
             lore_height = draw_screen(
-                screen, regular_font, floating_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, gears, round)
+                screen, regular_font, floating_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, gears, rounds)
 
         # keeps the game from flickering
         pygame.display.flip()
