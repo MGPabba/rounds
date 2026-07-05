@@ -277,7 +277,7 @@ class HybridBot(Bot):
             {
                 "name": "Heal",
                 "type": "Heal",
-                "power": 2,
+                "power": 1,
                 "used": False,
                 "target_state": "Heal Friendly",
                 "image_path": "assets/bots/hybrid_bot/hybrid_bot_heal.png",
@@ -939,15 +939,92 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     screen.blit(round_text, round_text_rect)
     screen.blit(gears_text, gears_text_rect)
 
-def draw_shop_menu(screen, battle_state, active_bot):
+def draw_shop_menu(screen, font_cache, battle_state):
     if battle_state == "Shop":
-        # draw shop menu background
-        if active_bot:
-            box_color = active_bot.box_background_color
-        else:
-            box_color = (50, 50, 50)
-        pygame.draw.rect(screen, box_color, (80, 80, 1040, 486))
-        pygame.draw.rect(screen, (255, 255, 255), (80, 80, 1040, 486), 3)
+        mouse_pos = pygame.mouse.get_pos()
+        upgrade_button_text = dynamic_text(font_cache, "Upgrade", 140, 40, (255, 255, 255))
+        
+        # dictionary of shop upgrades for each bot
+        shop_items = [
+            {
+                "bot": gun_bot,
+                "name": "Gun Bot",
+                "upgrades": [
+                    {"action": "Left Gun", "buff": "+1 damage", "cost": "5 gears"},
+                    {"action": "Right Gun", "buff": "+1 damage", "cost": "5 gears"}
+                ]
+            },
+            {
+                "bot": hybrid_bot,
+                "name": "Hybrid Bot",
+                "upgrades": [
+                    {"action": "Attack", "buff": "+1 damage", "cost": "5 gears"},
+                    {"action": "Heal", "buff": "+1 heal", "cost": "5 gears"}
+                ]
+            }
+        ]
+
+        # the center x-coordinate for each column
+        col_x_center_1 = 175
+        col_x_center_2 = 365
+        col_x_center_3 = 555
+        col_x_center_4 = 745
+
+        # draw each shop row and column with the bots upgrades
+        for i, item in enumerate(shop_items):
+            # draw the background box for the bots upgrades
+            box_y = 80 + (i * 230)
+            pygame.draw.rect(screen, item["bot"].box_background_color, (80, box_y, 760, 230))
+
+            # draw the header for each column
+            header_y = box_y + 27
+            heading_name = dynamic_text(font_cache, item["name"], 180, 40, (255, 255, 255))
+            screen.blit(heading_name, heading_name.get_rect(center=(col_x_center_1, header_y)))
+            heading_buff = dynamic_text(font_cache, "Buff", 180, 40, (255, 255, 255))
+            screen.blit(heading_buff, heading_buff.get_rect(center=(col_x_center_2, header_y)))
+            heading_cost = dynamic_text(font_cache, "Cost", 180, 40, (255, 255, 255))
+            screen.blit(heading_cost, heading_cost.get_rect(center=(col_x_center_3, header_y)))
+            heading_upgrade = dynamic_text(font_cache, "Upgrade", 180, 40, (255, 255, 255))
+            screen.blit(heading_upgrade, heading_upgrade.get_rect(center=(col_x_center_4, header_y)))
+
+            # draw each upgrade row for the bot
+            for j, upgrade in enumerate(item["upgrades"]):
+                row_y = box_y + 95 + (j * 90)
+                button_y = box_y + 70 + (j * 90)
+
+                action = dynamic_text(font_cache, upgrade["action"], 180, 40, (255, 255, 255))
+                screen.blit(action, action.get_rect(center=(col_x_center_1, row_y)))
+
+                buff = dynamic_text(font_cache, upgrade["buff"], 180, 40, (255, 255, 255))
+                screen.blit(buff, buff.get_rect(center=(col_x_center_2, row_y)))
+
+                cost = dynamic_text(font_cache, upgrade["cost"], 180, 40, (255, 255, 255))
+                screen.blit(cost, cost.get_rect(center=(col_x_center_3, row_y)))
+
+                button_rect = pygame.Rect(670, button_y, 150, 50)
+                if button_rect.collidepoint(mouse_pos):
+                    button_color = item["bot"].button_hover_color
+                else:
+                    button_color = item["bot"].button_color
+                pygame.draw.rect(screen, button_color, button_rect)
+                screen.blit(upgrade_button_text, upgrade_button_text.get_rect(center=(col_x_center_4, row_y)))
+
+        # shop menu outline
+        pygame.draw.rect(screen, (255, 255, 255), (80, 80, 760, 460), 3)
+
+        # gun bot row lines
+        pygame.draw.line(screen, (255, 255, 255), (80, 130), (839, 130), 2)
+        pygame.draw.line(screen, (255, 255, 255), (80, 220), (839, 220), 2)
+        pygame.draw.line(screen, (255, 255, 255), (80, 310), (839, 310), 3)
+
+        # hybrid bot row lines
+        pygame.draw.line(screen, (255, 255, 255), (80, 360), (839, 360), 2)
+        pygame.draw.line(screen, (255, 255, 255), (80, 450), (839, 450), 2)
+
+        # columns lines
+        pygame.draw.line(screen, (255, 255, 255), (270, 80), (270, 539), 3)
+        pygame.draw.line(screen, (255, 255, 255), (460, 80), (460, 539), 3)
+        pygame.draw.line(screen, (255, 255, 255), (650, 80), (650, 539), 3)
 
 def wrap_text(text, regular_font, max_width):
     # split the text into a list of words
@@ -1071,7 +1148,7 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds)
 
     # draw shop meny if opened
-    draw_shop_menu(screen, battle_state, active_bot)
+    draw_shop_menu(screen, font_cache, battle_state)
 
     # draw lore box with scrolling
     lore_height = draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, rounds)
