@@ -389,6 +389,29 @@ def open_shop(mouse_pos, battle_state, previous_battle_state):
             battle_state = "Shop"
     return battle_state, previous_battle_state
 
+def shop_upgrade(mouse_pos, gears):
+    # upgrade button rectangles
+    left_gun_upgrade_rect = pygame.Rect(670, 150, 150, 50)
+    right_gun_upgrade_rect = pygame.Rect(670, 240, 150, 50)
+    attack_upgrade_rect = pygame.Rect(670, 380, 150, 50)
+    heal_upgrade_rect = pygame.Rect(670, 470, 150, 50)
+
+    # upgrade bot action if upgrade button is clicked and player has enough gears
+    if left_gun_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
+        gun_bot.actions[0]["power"] += 1
+        gears -= 5
+    elif right_gun_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
+        gun_bot.actions[1]["power"] += 1
+        gears -= 5
+    elif attack_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
+        hybrid_bot.actions[0]["power"] += 1
+        gears -= 5
+    elif heal_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
+        hybrid_bot.actions[1]["power"] += 1
+        gears -= 5
+    
+    return gears
+
 def harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots):
     for i in range(len(enemy_goons) - 1, -1, -1):
         # harvest gears from dead enemies if clicked and remove them from the game
@@ -473,13 +496,21 @@ def select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting
     
     return battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y
 
-def check_bot_turn(player_bots):
+def check_bot_turn(player_bots, enemy_goons):
+    no_enemies_alive = True
+    for enemy in enemy_goons:
+        if enemy.real_health > 0:
+            no_enemies_alive = False
+            break
+    if no_enemies_alive:
+        return "Enemy Turn"
+
     for bot in player_bots:
         if bot.real_health > 0 and not bot.acted:
             return "Select Bot"
     return "Enemy Turn"
 
-def execute_action(mouse_pos, player_bots, characters, active_effects, battle_state, active_bot, chosen_action, inspecting_character,):
+def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effects, battle_state, active_bot, chosen_action, inspecting_character,):
     for char in characters:
         if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
             # determine the power of the chosen action and mark it as used
@@ -504,7 +535,7 @@ def execute_action(mouse_pos, player_bots, characters, active_effects, battle_st
             active_bot = None
             chosen_action = None
 
-            return check_bot_turn(player_bots), active_bot, chosen_action, inspecting_character
+            return check_bot_turn(player_bots, enemy_goons), active_bot, chosen_action, inspecting_character
     return battle_state, active_bot, chosen_action, inspecting_character
 
 def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
@@ -521,7 +552,11 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
         # open or close shop
         battle_state, previous_battle_state = open_shop(mouse_pos, battle_state, previous_battle_state)
 
-        if battle_state != "Shop":
+        # upgrade bot actions if shop is open
+        if battle_state == "Shop":
+            gears = shop_upgrade(mouse_pos, gears)
+
+        else:
             # harvest gears
             gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
 
@@ -538,9 +573,9 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
                 
             # carry out the chosen action
             if battle_state == "Damage Enemy":
-                battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
+                battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
             elif battle_state == "Heal Friendly":
-                battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, player_bots, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
+                battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, player_bots, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
 
     # right click to close shop or cancel action or bot
     elif event.button == 3:
@@ -630,11 +665,9 @@ def spawn_enemy(x, y, slot_id):
 def spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_slots):
     # determine how many enemies to spawn based on the round
     spawns = 0
-    if rounds == 3:
+    if rounds <= 10:
         spawns = 1
-    elif rounds >= 5 and rounds <= 10:
-        spawns = 1
-    elif rounds > 10:
+    else:
         spawns = 2
     
     # increase the max number of enemies every 5 rounds, up to a maximum of 9
@@ -939,10 +972,9 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     screen.blit(round_text, round_text_rect)
     screen.blit(gears_text, gears_text_rect)
 
-def draw_shop_menu(screen, font_cache, battle_state):
+def draw_shop_menu(screen, font_cache, battle_state, gears):
     if battle_state == "Shop":
         mouse_pos = pygame.mouse.get_pos()
-        upgrade_button_text = dynamic_text(font_cache, "Upgrade", 140, 40, (255, 255, 255))
         
         # dictionary of shop upgrades for each bot
         shop_items = [
@@ -989,25 +1021,33 @@ def draw_shop_menu(screen, font_cache, battle_state):
 
             # draw each upgrade row for the bot
             for j, upgrade in enumerate(item["upgrades"]):
+                # calculate the y-coordinate center for each row and button
                 row_y = box_y + 95 + (j * 90)
                 button_y = box_y + 70 + (j * 90)
 
+                # draw the action, buff, and cost text for each upgrade
                 action = dynamic_text(font_cache, upgrade["action"], 180, 40, (255, 255, 255))
                 screen.blit(action, action.get_rect(center=(col_x_center_1, row_y)))
-
                 buff = dynamic_text(font_cache, upgrade["buff"], 180, 40, (255, 255, 255))
                 screen.blit(buff, buff.get_rect(center=(col_x_center_2, row_y)))
-
                 cost = dynamic_text(font_cache, upgrade["cost"], 180, 40, (255, 255, 255))
                 screen.blit(cost, cost.get_rect(center=(col_x_center_3, row_y)))
 
+                # draw the upgrade button with color change based on hover and if enough gears
                 button_rect = pygame.Rect(670, button_y, 150, 50)
-                if button_rect.collidepoint(mouse_pos):
+                if button_rect.collidepoint(mouse_pos) and gears >= int(upgrade["cost"].split()[0]):
                     button_color = item["bot"].button_hover_color
                 else:
                     button_color = item["bot"].button_color
                 pygame.draw.rect(screen, button_color, button_rect)
-                screen.blit(upgrade_button_text, upgrade_button_text.get_rect(center=(col_x_center_4, row_y)))
+
+                # draw the upgrade button text with color change based on if enough gears
+                if gears >= int(upgrade["cost"].split()[0]):
+                    text_color = (255, 255, 255)
+                else:
+                    text_color = item["bot"].text_used_color
+                button_text = dynamic_text(font_cache, "Upgrade", 140, 40, text_color)
+                screen.blit(button_text, button_text.get_rect(center=(col_x_center_4, row_y)))
 
         # shop menu outline
         pygame.draw.rect(screen, (255, 255, 255), (80, 80, 760, 460), 3)
@@ -1148,7 +1188,7 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds)
 
     # draw shop meny if opened
-    draw_shop_menu(screen, font_cache, battle_state)
+    draw_shop_menu(screen, font_cache, battle_state, gears)
 
     # draw lore box with scrolling
     lore_height = draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, rounds)
