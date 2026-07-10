@@ -457,14 +457,14 @@ def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, 
             return battle_state,  active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
     return battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
 
-def select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
+def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
     # action button rectangles
     left_button_rect = pygame.Rect(60, 640, 150, 50)
     right_button_rect = pygame.Rect(230, 640, 150, 50)
 
-    # bot action is chosen based on which button is clicked and action is deselected if clicked again
+    # bot action is chosen based on which button is clicked or pressed and action is deselected if clicked or pressed again
     if active_bot:
-        if left_button_rect.collidepoint(mouse_pos) and not active_bot.actions[0]["used"]:
+        if (mouse_pos and (left_button_rect.collidepoint(mouse_pos)) or (event and event.key == pygame.K_1)) and not active_bot.actions[0]["used"]:
             if chosen_action == active_bot.actions[0]["name"]:
                 chosen_action = None
                 battle_state = "Select Action"
@@ -479,7 +479,7 @@ def select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting
                 scroll_y = active_bot.actions[0]["scroll"]
                 inspecting_character = active_bot
 
-        elif right_button_rect.collidepoint(mouse_pos) and not active_bot.actions[1]["used"]:
+        elif (mouse_pos and (right_button_rect.collidepoint(mouse_pos)) or (event and event.key == pygame.K_2)) and not active_bot.actions[1]["used"]:
             if chosen_action == active_bot.actions[1]["name"]:
                 chosen_action = None
                 battle_state = "Select Action"
@@ -497,6 +497,7 @@ def select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting
     return battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y
 
 def check_bot_turn(player_bots, enemy_goons):
+    # check if all enemies are dead, change to enemy turn if so to prevent soft lock
     no_enemies_alive = True
     for enemy in enemy_goons:
         if enemy.real_health > 0:
@@ -505,6 +506,7 @@ def check_bot_turn(player_bots, enemy_goons):
     if no_enemies_alive:
         return "Enemy Turn"
 
+    # check if all bots finished their actions, change to enemy turn if so
     for bot in player_bots:
         if bot.real_health > 0 and not bot.acted:
             return "Select Bot"
@@ -568,9 +570,9 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
             if battle_state != "Heal Friendly":
                 battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
             
-            # select actions if bot is selected
-            battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(mouse_pos, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
-                
+            # select action if bot is selected
+            battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(mouse_pos, None, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+            
             # carry out the chosen action
             if battle_state == "Damage Enemy":
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
@@ -616,6 +618,10 @@ def handle_input(running, player_bots, enemy_goons, active_effects, game_state, 
             elif game_state == "Endless Mode":
                 battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears = player_turn(
                     event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
+        
+        elif event.type == pygame.KEYDOWN:
+            # select action if bot is selected based on key press
+            battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(None, event, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
 
     return running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
 
