@@ -44,22 +44,28 @@ class Projectile(Animation):
         self.distance_x = target_x - x
         self.distance_y = target_y - y
 
-class DamageProjectile(Projectile):
-    def __init__(self, color, x, y, target_x, target_y, target_char, damage):
+class LinearProjectile(Projectile):
+    def __init__(self, color, x, y, target_x, target_y, target_char, projectile_type, number):
         super().__init__(color, x, y, target_x, target_y, target_char)
-        # damage projectile specific info
-        self.damage = damage
+        # linear projectile specific info
+        self.projectile_type = projectile_type
+        self.number = number
         self.frames = 100
         self.speed_x = self.distance_x / self.frames
         self.speed_y = self.distance_y / self.frames
     
     def update(self, active_effects):
-        # move projectile towards target and damage when it reaches
+        # move projectile towards target and apply effect when it reaches
         self.x += self.speed_x
         self.y += self.speed_y
         if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
-            self.target_char.take_damage(active_effects, self.damage)
             self.active = False
+            if self.projectile_type == "Damage":
+                self.target_char.take_damage(active_effects, self.number)
+            elif self.projectile_type == "Fire":
+                self.target_char.apply_fire(active_effects, self.number)
+            elif self.projectile_type == "Ice":
+                self.target_char.apply_ice(active_effects, self.number)
 
 class HealProjectile(Projectile):
     def __init__(self, color, x, y, target_x, target_y, target_char, heal):
@@ -107,6 +113,11 @@ class Character:
         self.box_background_color = box_background_color
         self.description = description
 
+        # status effects
+        self.fire_rounds = 0
+        self.ice_hits = 0
+        self.frozen = False
+
         # animation
         self.animation_timer = 0
         self.animation_speed = 15
@@ -124,8 +135,7 @@ class Character:
 
         # text animation
         text_x = random.randint(self.rect.left, self.rect.right - 30)
-        text_y = self.rect.top + 10
-        active_effects.append(FloatingText((255, 0, 0), text_x, text_y, f"-{amount}"))
+        active_effects.append(FloatingText((255, 0, 0), text_x, self.rect.top + 10, f"-{amount}"))
 
     def take_heal(self, active_effects, amount):
         # increase health
@@ -133,8 +143,30 @@ class Character:
 
         # text animation
         text_x = random.randint(self.rect.left, self.rect.right - 30)
-        text_y = self.rect.top + 10
-        active_effects.append(FloatingText((0, 255, 0), text_x, text_y, f"+{amount}"))
+        active_effects.append(FloatingText((0, 255, 0), text_x, self.rect.top + 10, f"+{amount}"))
+
+    def apply_fire(self, active_effects, fire_rounds_amount):
+        # add fire rounds
+        self.fire_rounds += fire_rounds_amount
+
+        # text animation
+        text = f"+{fire_rounds_amount} fire"
+        text_width = len(text) * 10
+        text_x = random.randint(self.rect.left, self.rect.right - text_width)
+        active_effects.append(FloatingText((255, 100, 0), text_x, self.rect.top + 10, text))
+    
+    def apply_ice(self, active_effects, ice_hits_needed):
+        # add ice hits, freeze if enough hits, and display text animation
+        self.ice_hits += 1
+        if self.ice_hits == ice_hits_needed:
+            self.frozen = True
+            self.ice_hits = 0
+            text = "Frozen!"
+        else:
+            text = "+1 ice"
+        text_width = len(text) * 10
+        text_x = random.randint(self.rect.left, self.rect.right - text_width)
+        active_effects.append(FloatingText((0, 255, 255), text_x, self.rect.top + 10, text))
 
     def hurt_animations(self):
         # shake character when hurt
@@ -287,6 +319,35 @@ class HybridBot(Bot):
             }
         ]
 
+class ElementalBot(Bot):
+    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
+        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+
+        self.actions = [
+            {
+                "name": "Fire",
+                "type": "Damage",
+                "power": 1,
+                "fire_rounds_amount": 3,
+                "used": False,
+                "target_state": "Damage Enemy",
+                "image_path": "assets/bots/elemental_bot/elemental_bot_fire.png",
+                "image": None,
+                "description": "Shoots a fire projectile at an enemy. Sets the enemy on fire, dealing damage over time. The fire does damage at the end of the round.",
+                "scroll": 65
+            },
+            {
+                "name": "Ice",
+                "ice_hits_needed": 3,
+                "used": False,
+                "target_state": "Damage Enemy",
+                "image_path": "assets/bots/elemental_bot/elemental_bot_ice.png",
+                "image": None,
+                "description": "Shoots an ice projectile at an enemy. After the enemy has been hit multiple times, it will be frozen and cannot attack for a round.",
+                "scroll": 220
+            }
+        ]
+
 gun_bot = GunBot(
     "Gun Bot", # name
     10, # health
@@ -329,6 +390,30 @@ hybrid_bot = HybridBot(
     (100, 230, 100), # button_color
     (150, 250, 150), # button_hover_color
     (150, 250, 150) # text_used_color
+)
+
+elemental_bot = ElementalBot(
+    "Elemental Bot", # name
+    10, # health
+    150, 450, # x, y
+    (150, 0, 150), # box_background_color
+    "A bot that can manipulate the elements.", # description
+    [
+        "assets/bots/elemental_bot/elemental_bot_idle_1.png",
+        "assets/bots/elemental_bot/elemental_bot_idle_2.png",
+        "assets/bots/elemental_bot/elemental_bot_idle_3.png",
+        "assets/bots/elemental_bot/elemental_bot_idle_4.png",
+        "assets/bots/elemental_bot/elemental_bot_idle_5.png",
+        "assets/bots/elemental_bot/elemental_bot_idle_4.png",
+        "assets/bots/elemental_bot/elemental_bot_idle_3.png",
+        "assets/bots/elemental_bot/elemental_bot_idle_2.png"
+    ], # idle_images_path
+    "assets/bots/elemental_bot/elemental_bot_active.png", # active_image_path
+    "assets/bots/elemental_bot/elemental_bot_hurt.png", # hurt_image_path
+    "assets/bots/elemental_bot/elemental_bot_dead.png", # dead_image_path
+    (200, 50, 200), # button_color
+    (250, 100, 250), # button_hover_color
+    (225, 100, 225) # text_used_color
 )
 
 # catalog of different enemy types
@@ -519,14 +604,21 @@ def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effec
             power = 0
             for action in active_bot.actions:
                 if action["name"] == chosen_action:
-                    power = action["power"]
+                    if action["name"] != "Ice":
+                        power = action["power"]
                     action["used"] = True
                     break
             
-            # damage or heal the target character
+            # damage or heal or apply effect to the target character
             if battle_state == "Damage Enemy":
-                char.real_health -= power
-                active_effects.append(DamageProjectile((0, 0, 255), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, power))
+                if active_bot.name == "Elemental Bot":
+                    if chosen_action == "Fire":
+                        active_effects.append(LinearProjectile((255, 0, 0), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, "Fire", active_bot.actions[0]["fire_rounds_amount"]))
+                    elif chosen_action == "Ice":
+                        active_effects.append(LinearProjectile((0, 255, 255), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, "Ice", active_bot.actions[1]["ice_hits_needed"]))
+                else:
+                    char.real_health -= power
+                    active_effects.append(LinearProjectile((0, 0, 255), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, "Damage", power))
             elif battle_state == "Heal Friendly":
                 char.real_health += power
                 active_effects.append(HealProjectile((0, 255, 0), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, power))
@@ -631,18 +723,42 @@ def handle_input(running, player_bots, enemy_goons, active_effects, game_state, 
 # ------------------------------
 
 def enemy_attacks(enemy_goons, player_bots, active_effects):
-    # each alive enemy attacks a random alive bot
     for enemy in enemy_goons:
         if enemy.real_health > 0:
+            # skip the enemy turn if frozen
+            if enemy.frozen:
+                enemy.frozen = False
+                enemy.ice_hits = 0
+                continue
+            
+            # attack a random alive bot
             bots_alive = []
             for bot in player_bots:
                 if bot.real_health > 0:
                     bots_alive.append(bot)
-            
             if bots_alive:
                 target = random.choice(bots_alive)
                 target.real_health -= enemy.damage
-                active_effects.append(DamageProjectile((255, 0, 0), enemy.rect.x, enemy.rect.y, target.rect.centerx, target.rect.centery, target, enemy.damage))
+                active_effects.append(LinearProjectile((255, 0, 0), enemy.rect.x, enemy.rect.y, target.rect.centerx, target.rect.centery, target, "Damage", enemy.damage))
+
+def round_end(player_bots, enemy_goons, active_effects, battle_state, rounds):
+    # does fire damage to characters on fire
+    for char in player_bots + enemy_goons:
+        if char.real_health > 0 and char.fire_rounds > 0:
+            char.fire_rounds -= 1
+            if char in player_bots:
+                char.take_damage(active_effects, 1)
+                char.real_health -= 1
+            elif char in enemy_goons:
+                char.real_health -= elemental_bot.actions[0]["power"]
+                char.take_damage(active_effects, elemental_bot.actions[0]["power"])
+    
+    # resets for next turn
+    for bot in player_bots:
+        bot.reset_actions()
+    battle_state = "Select Bot"
+    rounds += 1
+    return battle_state, rounds
 
 def spawn_enemy(x, y, slot_id):
     # randomize the enemy spawn position within a range
@@ -713,11 +829,8 @@ def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, ro
         # enemy attack logic
         enemy_attacks(enemy_goons, player_bots, active_effects)
         
-        # resets for next turn
-        for bot in player_bots:
-            bot.reset_actions()
-        battle_state = "Select Bot"
-        rounds += 1
+        # end of round logic
+        battle_state, rounds = round_end(player_bots, enemy_goons, active_effects, battle_state, rounds)
 
         # spawn new enemies based on the round and max enemies
         gears, max_enemies = spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_slots)
@@ -776,10 +889,10 @@ def update_animations(player_bots, enemy_goons, active_effects, scroll_y, target
 
     # update and remove effects
     for effect in active_effects[:]:
-        if isinstance(effect, DamageProjectile) or isinstance(effect, HealProjectile):
-            effect.update(active_effects)
-        elif isinstance(effect, FloatingText):
+        if isinstance(effect, FloatingText):
             effect.update()
+        else:
+            effect.update(active_effects)
         if not effect.active:
             active_effects.remove(effect)
     
@@ -825,11 +938,40 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state
 
         # move enemies up and down
         char_y = char.rect.y
-        if char in enemy_goons:
+        if char in enemy_goons and not char.frozen:
             char_y += char.float_offset
 
         # draw character image
         screen.blit(current_image, (char.rect.x + char.shake_x, char_y))
+
+        # draw overlay on character if frozen or on fire
+        if char.visual_health > 0:
+            if char.frozen:
+                overlay = pygame.Surface((100, 100), pygame.SRCALPHA)
+                overlay.fill((0, 255, 255, 100))
+                screen.blit(overlay, char.rect)
+            elif char.fire_rounds > 0:
+                overlay = pygame.Surface((100, 100), pygame.SRCALPHA)
+                overlay.fill((255, 0, 0, 100))
+                screen.blit(overlay, char.rect)
+
+        # draw number of fire rounds at bottom left of character
+        if char.visual_health > 0 and char.fire_rounds > 0:
+            fire_text = regular_font.render(f"{char.fire_rounds}", True, (255, 0, 0))
+            screen.blit(fire_text, (char.rect.x + 2, char.rect.bottom - 16))
+        
+        # draw boxes for number of ice hits and how many needed
+        if char.visual_health > 0 and char.ice_hits > 0:
+            for i in range(elemental_bot.actions[1]["ice_hits_needed"]):
+                if elemental_bot.actions[1]["ice_hits_needed"] == 3:
+                    box_x_offset = 28
+                elif elemental_bot.actions[1]["ice_hits_needed"] == 2:
+                    box_x_offset = 19
+                box_rect = pygame.Rect(char.rect.right - box_x_offset + (i * 9), char.rect.y - 11, 10, 10)
+                if i < char.ice_hits:
+                    pygame.draw.rect(screen, (0, 255, 255), box_rect)
+                else:
+                    pygame.draw.rect(screen, (0, 255, 255), box_rect, 1)
 
         # highlight character if hovering and valid target
         mouse_pos = pygame.mouse.get_pos()
@@ -1128,7 +1270,13 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
                         lore.append((line, "header"))
                     else:
                         lore.append((line, "body"))
-                lore.append((f"{action['type']}: {action['power']}", "header"))
+                if inspecting_character == elemental_bot:
+                    if action['name'] == "Fire":
+                        lore.append((f"Fire Rounds: {action['fire_rounds_amount']}", "header"))
+                    elif action['name'] == "Ice":
+                        lore.append((f"Ice Hits Needed: {action['ice_hits_needed']}", "header"))
+                if "type" in action and "power" in action:
+                    lore.append((f"{action['type']}: {action['power']}", "header"))
         elif inspecting_character in enemy_goons:
             lore.append((f"Damage: {inspecting_character.damage}", "header"))
 
@@ -1173,10 +1321,12 @@ def draw_effects(screen, floating_font, active_effects):
         if isinstance(effect, FloatingText):
             text = floating_font.render(effect.text, True, effect.color)
             screen.blit(text, (effect.x, effect.y))
-        # draw damage projectile
-        elif isinstance(effect, DamageProjectile):
-            pygame.draw.rect(screen, effect.color, (effect.x, effect.y, 10, 5))
-        # draw heal projectile
+        # draw projectile
+        elif isinstance(effect, LinearProjectile):
+            if effect.projectile_type == "Damage":
+                pygame.draw.rect(screen, effect.color, (effect.x, effect.y, 10, 5))
+            else:
+                pygame.draw.ellipse(screen, effect.color, (int(effect.x), int(effect.y), 10, 5))
         elif isinstance(effect, HealProjectile):
             pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5)
 
@@ -1282,7 +1432,7 @@ async def main():
     ]
 
     # inital list of characters and effects
-    player_bots = [gun_bot, hybrid_bot]
+    player_bots = [gun_bot, hybrid_bot, elemental_bot]
     enemy_goons = []
     active_effects = []
 
