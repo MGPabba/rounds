@@ -67,22 +67,26 @@ class LinearProjectile(Projectile):
             elif self.projectile_type == "Ice":
                 self.target_char.apply_ice(active_effects, self.number)
 
-class HealProjectile(Projectile):
-    def __init__(self, color, x, y, target_x, target_y, target_char, heal):
+class ArcProjectile(Projectile):
+    def __init__(self, color, x, y, target_x, target_y, target_char, amount):
         super().__init__(color, x, y, target_x, target_y, target_char)
-        # heal projectile specific info
-        self.heal = heal
+        # arc projectile specific info
+        self.amount = amount
         self.frames = 80
         self.current_frame = 0
         self.arc = 150
         self.start_x = x
         self.start_y = y
+
+class HealProjectile(ArcProjectile):
+    def __init__(self, color, x, y, target_x, target_y, target_char, amount):
+        super().__init__(color, x, y, target_x, target_y, target_char, amount)
     
     def update(self, active_effects):
         # move projectile in an arc towards target and heal when it reaches
         self.current_frame += 1
         if self.current_frame >= self.frames:
-            self.target_char.take_heal(active_effects, self.heal)
+            self.target_char.take_heal(active_effects, self.amount)
             self.active = False
         else:
             progress = self.current_frame / self.frames
@@ -98,6 +102,40 @@ class HealProjectile(Projectile):
                 self.x = base_x + curve_y
                 self.y = base_y - curve_y
 
+class BounceProjectile(ArcProjectile):
+    def __init__(self, color, x, y, target_x, target_y, target_char, amount, bounce_amount, enemies_hit):
+        super().__init__(color, x, y, target_x, target_y, target_char, amount)
+        # bounce projectile specific info
+        self.bounce_amount = bounce_amount
+        self.enemies_hit = enemies_hit
+    
+    def update(self, enemy_goons, active_effects):
+        # move projectile in an arc towards target and deal damage when it reaches and bounce again if valid
+        self.current_frame += 1
+        if self.current_frame >= self.frames:
+            self.target_char.take_damage(active_effects, self.amount)
+            self.active = False
+            self.enemies_hit.append(self.target_char)
+            if self.bounce_amount > 0:
+                valid_targets = []
+                for enemy in enemy_goons:
+                    if enemy.real_health > 0 and enemy not in self.enemies_hit:
+                        valid_targets.append(enemy)
+                if valid_targets:
+                    next_target = random.choice(valid_targets)
+                    next_target.real_health -= self.amount
+                    active_effects.append(BounceProjectile(self.color, self.target_char.rect.centerx, self.target_char.rect.centery, next_target.rect.centerx, next_target.rect.centery, next_target, self.amount, self.bounce_amount - 1, self.enemies_hit))
+        else:
+            progress = self.current_frame / self.frames
+            base_x = self.start_x + self.distance_x * progress
+            base_y = self.start_y + self.distance_y * progress
+            curve_y = math.sin(progress * math.pi) * self.arc
+            if len(self.enemies_hit) == 0:
+                self.x = base_x + curve_y
+                self.y = base_y - curve_y
+            else:
+                self.x = base_x - curve_y
+                self.y = base_y - curve_y
 
 # ------------------------------
 # CHARACTERS
@@ -290,31 +328,32 @@ class GunBot(Bot):
             }
         ]
 
-class HybridBot(Bot):
+class RicoBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
 
         self.actions = [
-            {
-                "name": "Attack",
-                "type": "Damage",
-                "power": 1,
-                "used": False,
-                "target_state": "Damage Enemy",
-                "image_path": "assets/bots/hybrid_bot/hybrid_bot_hybrid_gun.png",
-                "image": None,
-                "description": "A basic attack that deals damage to a single enemy.",
-                "scroll": 65
-            },
             {
                 "name": "Heal",
                 "type": "Heal",
                 "power": 1,
                 "used": False,
                 "target_state": "Heal Friendly",
-                "image_path": "assets/bots/hybrid_bot/hybrid_bot_heal.png",
+                "image_path": "assets/bots/rico_bot/rico_bot_heal.png",
                 "image": None,
-                "description": "A basic healing ability that heals to a friendly bot.",
+                "description": "Shoots a healing ball that heals a friendly bot.",
+                "scroll": 65
+            },
+            {
+                "name": "Bounce",
+                "type": "Damage",
+                "power": 1,
+                "bounce_amount": 1,
+                "used": False,
+                "target_state": "Damage Enemy",
+                "image_path": "assets/bots/rico_bot/rico_bot_bounce.png",
+                "image": None,
+                "description": "Shoots a bouncy ball that bounces between enemies dealing damage.",
                 "scroll": 155
             }
         ]
@@ -370,23 +409,25 @@ gun_bot = GunBot(
     (150, 200, 255) # text_used_color
 )
 
-hybrid_bot = HybridBot(
-    "Hybrid Bot", # name
+rico_bot = RicoBot(
+    "Rico Bot", # name
     10, # health
     150, 300, # x, y
     (50, 200, 50), # box_background_color
-    "A versatile bot that can attack and heal.", # description
+    "A bot that just loves balls.", # description
     [
-        "assets/bots/hybrid_bot/hybrid_bot_idle_1.png",
-        "assets/bots/hybrid_bot/hybrid_bot_idle_2.png",
-        "assets/bots/hybrid_bot/hybrid_bot_idle_3.png",
-        "assets/bots/hybrid_bot/hybrid_bot_idle_4.png",
-        "assets/bots/hybrid_bot/hybrid_bot_idle_3.png",
-        "assets/bots/hybrid_bot/hybrid_bot_idle_2.png"
+        "assets/bots/rico_bot/rico_bot_idle_1.png",
+        "assets/bots/rico_bot/rico_bot_idle_2.png",
+        "assets/bots/rico_bot/rico_bot_idle_3.png",
+        "assets/bots/rico_bot/rico_bot_idle_4.png",
+        "assets/bots/rico_bot/rico_bot_idle_5.png",
+        "assets/bots/rico_bot/rico_bot_idle_4.png",
+        "assets/bots/rico_bot/rico_bot_idle_3.png",
+        "assets/bots/rico_bot/rico_bot_idle_2.png"
     ], # idle_images_path
-    "assets/bots/hybrid_bot/hybrid_bot_active.png", # active_image_path
-    "assets/bots/hybrid_bot/hybrid_bot_hurt.png", # hurt_image_path
-    "assets/bots/hybrid_bot/hybrid_bot_dead.png", # dead_image_path
+    "assets/bots/rico_bot/rico_bot_active.png", # active_image_path
+    "assets/bots/rico_bot/rico_bot_hurt.png", # hurt_image_path
+    "assets/bots/rico_bot/rico_bot_dead.png", # dead_image_path
     (100, 230, 100), # button_color
     (150, 250, 150), # button_hover_color
     (150, 250, 150) # text_used_color
@@ -489,10 +530,10 @@ def shop_upgrade(mouse_pos, gears):
         gun_bot.actions[1]["power"] += 1
         gears -= 5
     elif attack_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        hybrid_bot.actions[0]["power"] += 1
+        rico_bot.actions[0]["power"] += 1
         gears -= 5
     elif heal_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        hybrid_bot.actions[1]["power"] += 1
+        rico_bot.actions[1]["power"] += 1
         gears -= 5
     
     return gears
@@ -616,6 +657,9 @@ def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effec
                         active_effects.append(LinearProjectile((255, 0, 0), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, "Fire", active_bot.actions[0]["fire_rounds_amount"]))
                     elif chosen_action == "Ice":
                         active_effects.append(LinearProjectile((0, 255, 255), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, "Ice", active_bot.actions[1]["ice_hits_needed"]))
+                elif active_bot.name == "Rico Bot" and chosen_action == "Bounce":
+                    char.real_health -= power
+                    active_effects.append(BounceProjectile((0, 255, 0), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, power, active_bot.actions[1]["bounce_amount"], []))
                 else:
                     char.real_health -= power
                     active_effects.append(LinearProjectile((0, 0, 255), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, "Damage", power))
@@ -891,6 +935,8 @@ def update_animations(player_bots, enemy_goons, active_effects, scroll_y, target
     for effect in active_effects[:]:
         if isinstance(effect, FloatingText):
             effect.update()
+        elif isinstance(effect, BounceProjectile):
+            effect.update(enemy_goons, active_effects)
         else:
             effect.update(active_effects)
         if not effect.active:
@@ -1135,8 +1181,8 @@ def draw_shop_menu(screen, font_cache, battle_state, gears):
                 ]
             },
             {
-                "bot": hybrid_bot,
-                "name": "Hybrid Bot",
+                "bot": rico_bot,
+                "name": "Rico Bot",
                 "upgrades": [
                     {"action": "Attack", "buff": "+1 damage", "cost": "5 gears"},
                     {"action": "Heal", "buff": "+1 heal", "cost": "5 gears"}
@@ -1205,7 +1251,7 @@ def draw_shop_menu(screen, font_cache, battle_state, gears):
         pygame.draw.line(screen, (255, 255, 255), (80, 220), (839, 220), 2)
         pygame.draw.line(screen, (255, 255, 255), (80, 310), (839, 310), 3)
 
-        # hybrid bot row lines
+        # rico bot row lines
         pygame.draw.line(screen, (255, 255, 255), (80, 360), (839, 360), 2)
         pygame.draw.line(screen, (255, 255, 255), (80, 450), (839, 450), 2)
 
@@ -1275,6 +1321,9 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
                         lore.append((f"Fire Rounds: {action['fire_rounds_amount']}", "header"))
                     elif action['name'] == "Ice":
                         lore.append((f"Ice Hits Needed: {action['ice_hits_needed']}", "header"))
+                elif inspecting_character == rico_bot:
+                    if action['name'] == "Bounce":
+                        lore.append((f"Bounces: {action['bounce_amount'] + 1}", "header"))
                 if "type" in action and "power" in action:
                     lore.append((f"{action['type']}: {action['power']}", "header"))
         elif inspecting_character in enemy_goons:
@@ -1327,7 +1376,7 @@ def draw_effects(screen, floating_font, active_effects):
                 pygame.draw.rect(screen, effect.color, (effect.x, effect.y, 10, 5))
             else:
                 pygame.draw.ellipse(screen, effect.color, (int(effect.x), int(effect.y), 10, 5))
-        elif isinstance(effect, HealProjectile):
+        else:
             pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5)
 
 def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, gears, rounds):
@@ -1343,7 +1392,7 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     # draw shop box in the middle
     draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds)
 
-    # draw shop meny if opened
+    # draw shop menu if opened
     draw_shop_menu(screen, font_cache, battle_state, gears)
 
     # draw lore box with scrolling
@@ -1432,7 +1481,7 @@ async def main():
     ]
 
     # inital list of characters and effects
-    player_bots = [gun_bot, hybrid_bot, elemental_bot]
+    player_bots = [gun_bot, rico_bot, elemental_bot]
     enemy_goons = []
     active_effects = []
 
