@@ -1,7 +1,7 @@
 import asyncio
-import random
 import pygame
 import math
+import random
 
 # initialize pygame and font module
 pygame.init()
@@ -12,20 +12,15 @@ pygame.font.init()
 # ANIMATIONS
 # ------------------------------
 
-class Animation:
-    def __init__(self, color, x, y):
-        # basic animation info
+class FloatingText:
+    def __init__(self, color, x, y, text):
+        # floating text specific info
         self.color = color
         self.x = x
         self.y = y
-        self.active = True
-
-class FloatingText(Animation):
-    def __init__(self, color, x, y, text):
-        super().__init__(color, x, y)
-        # floating text specific info
         self.text = text
         self.timer = 120
+        self.active = True
     
     def update(self):
         # move text up and decrease timer, disappear when timer runs out
@@ -34,84 +29,107 @@ class FloatingText(Animation):
         if self.timer <= 0:
             self.active = False
 
-class Projectile(Animation):
-    def __init__(self, color, x, y, target_x, target_y, target_char):
-        super().__init__(color, x, y)
-        # projectile specific info
-        self.target_x = target_x
-        self.target_y = target_y
+class Projectile:
+    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+        # basic projectile info
+        self.color = color
+        self.source_char = source_char
         self.target_char = target_char
-        self.distance_x = target_x - x
-        self.distance_y = target_y - y
+        self.projectile_offset = projectile_offset
+        self.amount = amount
+        self.active = True
+
+        # calculate all of the projectile's movement info
+        self.source_x = source_char.rect.centerx + projectile_offset[0]
+        self.source_y = source_char.rect.centery + projectile_offset[1]
+        self.target_x = target_char.rect.centerx
+        self.target_y = target_char.rect.centery
+        self.x = self.source_x
+        self.y = self.source_y
+        self.distance_x = self.target_x - self.source_x
+        self.distance_y = self.target_y - self.source_y
 
 class LinearProjectile(Projectile):
-    def __init__(self, color, x, y, target_x, target_y, target_char, projectile_type, number):
-        super().__init__(color, x, y, target_x, target_y, target_char)
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, projectile_type):
+        super().__init__(color, source_char, target_char, projectile_offset, amount)
         # linear projectile specific info
         self.projectile_type = projectile_type
-        self.number = number
-        self.frames = 100
+        self.speed = 10
+        self.distance = math.sqrt(self.distance_x ** 2 + self.distance_y ** 2)
+        self.frames = self.distance / self.speed
         self.speed_x = self.distance_x / self.frames
         self.speed_y = self.distance_y / self.frames
     
     def update(self, active_effects):
-        # move projectile towards target and apply effect when it reaches
+        # move projectile towards target
         self.x += self.speed_x
         self.y += self.speed_y
+
+        # damage or apply effect when projectile reaches
         if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
             self.active = False
             if self.projectile_type == "Damage":
-                self.target_char.take_damage(active_effects, self.number)
+                self.target_char.take_damage(active_effects, self.amount)
             elif self.projectile_type == "Fire":
-                self.target_char.apply_fire(active_effects, self.number)
+                self.target_char.apply_fire(active_effects, self.amount)
             elif self.projectile_type == "Ice":
-                self.target_char.apply_ice(active_effects, self.number)
+                self.target_char.apply_ice(active_effects, self.amount)
 
 class ArcProjectile(Projectile):
-    def __init__(self, color, x, y, target_x, target_y, target_char, amount):
-        super().__init__(color, x, y, target_x, target_y, target_char)
+    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+        super().__init__(color, source_char, target_char, projectile_offset, amount)
         # arc projectile specific info
-        self.amount = amount
         self.frames = 80
         self.current_frame = 0
         self.arc = 150
-        self.start_x = x
-        self.start_y = y
+    
+    def update(self):
+        # move projectile in an arc towards target
+        self.current_frame += 1
+        self.progress = self.current_frame / self.frames
+        self.base_x = self.source_x + self.distance_x * self.progress
+        self.base_y = self.source_y + self.distance_y * self.progress
+        self.curve_y = math.sin(self.progress * math.pi) * self.arc
 
 class HealProjectile(ArcProjectile):
-    def __init__(self, color, x, y, target_x, target_y, target_char, amount):
-        super().__init__(color, x, y, target_x, target_y, target_char, amount)
-    
+    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+        super().__init__(color, source_char, target_char, projectile_offset, amount)
+
     def update(self, active_effects):
-        # move projectile in an arc towards target and heal when it reaches
-        self.current_frame += 1
-        if self.current_frame >= self.frames:
-            self.target_char.take_heal(active_effects, self.amount)
-            self.active = False
+        # move projectile in an arc towards target
+        super().update()
+        if self.target_char.name == "Rico Bot":
+            max_x = math.sin(self.progress * math.pi) * (self.arc*0.5)
+            curve_x = math.sin((self.progress**2) * math.pi) * (self.arc*0.5)
+            self.x = self.base_x + (max_x + (max_x - curve_x))
+            self.y = self.base_y - self.curve_y
         else:
-            progress = self.current_frame / self.frames
-            base_x = self.start_x + self.distance_x * progress
-            base_y = self.start_y + self.distance_y * progress
-            curve_y = math.sin(progress * math.pi) * self.arc
-            if self.distance_x == 0 and self.distance_y == 0:
-                max_x = math.sin(progress * math.pi) * (self.arc*0.5)
-                curve_x = math.sin((progress**2) * math.pi) * (self.arc*0.5)
-                self.x = base_x + (max_x + (max_x - curve_x))
-                self.y = base_y - curve_y
-            else:
-                self.x = base_x + curve_y
-                self.y = base_y - curve_y
+            self.x = self.base_x + self.curve_y
+            self.y = self.base_y - self.curve_y
+
+        # heal when projectile reaches
+        if self.current_frame >= self.frames:
+            self.active = False
+            self.target_char.take_heal(active_effects, self.amount)
 
 class BounceProjectile(ArcProjectile):
-    def __init__(self, color, x, y, target_x, target_y, target_char, amount, bounce_amount, enemies_hit):
-        super().__init__(color, x, y, target_x, target_y, target_char, amount)
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, bounce_amount, enemies_hit):
+        super().__init__(color, source_char, target_char, projectile_offset, amount)
         # bounce projectile specific info
         self.bounce_amount = bounce_amount
         self.enemies_hit = enemies_hit
     
     def update(self, enemy_goons, active_effects):
-        # move projectile in an arc towards target and deal damage when it reaches and bounce again if valid
-        self.current_frame += 1
+        # move projectile in an arc towards target
+        super().update()
+        if len(self.enemies_hit) == 0:
+            self.x = self.base_x + self.curve_y
+            self.y = self.base_y - self.curve_y
+        else:
+            self.x = self.base_x - self.curve_y
+            self.y = self.base_y - self.curve_y
+        
+        # damage when projectile reaches and bounce again if valid
         if self.current_frame >= self.frames:
             self.target_char.take_damage(active_effects, self.amount)
             self.active = False
@@ -124,18 +142,7 @@ class BounceProjectile(ArcProjectile):
                 if valid_targets:
                     next_target = random.choice(valid_targets)
                     next_target.real_health -= self.amount
-                    active_effects.append(BounceProjectile(self.color, self.target_char.rect.centerx, self.target_char.rect.centery, next_target.rect.centerx, next_target.rect.centery, next_target, self.amount, self.bounce_amount - 1, self.enemies_hit))
-        else:
-            progress = self.current_frame / self.frames
-            base_x = self.start_x + self.distance_x * progress
-            base_y = self.start_y + self.distance_y * progress
-            curve_y = math.sin(progress * math.pi) * self.arc
-            if len(self.enemies_hit) == 0:
-                self.x = base_x + curve_y
-                self.y = base_y - curve_y
-            else:
-                self.x = base_x - curve_y
-                self.y = base_y - curve_y
+                    active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), self.amount, self.bounce_amount - 1, self.enemies_hit))
 
 # ------------------------------
 # CHARACTERS
@@ -313,7 +320,8 @@ class GunBot(Bot):
                 "image_path": "assets/bots/gun_bot/gun_bot_left_gun.png",
                 "image": None,
                 "description": "A basic attack that deals damage to a single enemy.",
-                "scroll": 65
+                "scroll": 65,
+                "projectile_offset": (-25, -49)
             },
             {
                 "name": "Right Gun",
@@ -324,9 +332,19 @@ class GunBot(Bot):
                 "image_path": "assets/bots/gun_bot/gun_bot_right_gun.png",
                 "image": None,
                 "description": "A basic attack that deals damage to a single enemy.",
-                "scroll": 155
+                "scroll": 155,
+                "projectile_offset": (32, -18)
             }
         ]
+    
+    def perform_action(self, active_effects, action_name, target_char):
+        if action_name == "Left Gun":
+            target_char.real_health -= self.actions[0]["power"]
+            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["power"], "Damage"))
+        elif action_name == "Right Gun":
+            target_char.real_health -= self.actions[1]["power"]
+            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["power"], "Damage"))
+
 
 class RicoBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
@@ -342,7 +360,8 @@ class RicoBot(Bot):
                 "image_path": "assets/bots/rico_bot/rico_bot_heal.png",
                 "image": None,
                 "description": "Shoots a healing ball that heals a friendly bot.",
-                "scroll": 65
+                "scroll": 65,
+                "projectile_offset": (37, -21)
             },
             {
                 "name": "Bounce",
@@ -354,9 +373,18 @@ class RicoBot(Bot):
                 "image_path": "assets/bots/rico_bot/rico_bot_bounce.png",
                 "image": None,
                 "description": "Shoots a bouncy ball that bounces between enemies dealing damage.",
-                "scroll": 155
+                "scroll": 155,
+                "projectile_offset": (35, -20)
             }
         ]
+    
+    def perform_action(self, active_effects, action_name, target_char):
+        if action_name == "Heal":
+            target_char.real_health += self.actions[0]["power"]
+            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["power"]))
+        elif action_name == "Bounce":
+            target_char.real_health -= self.actions[1]["power"]
+            active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["power"], self.actions[1]["bounce_amount"], []))
 
 class ElementalBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
@@ -373,7 +401,8 @@ class ElementalBot(Bot):
                 "image_path": "assets/bots/elemental_bot/elemental_bot_fire.png",
                 "image": None,
                 "description": "Shoots a fire projectile at an enemy. Sets the enemy on fire, dealing damage over time. The fire does damage at the end of the round.",
-                "scroll": 65
+                "scroll": 65,
+                "projectile_offset": (-22, 11)
             },
             {
                 "name": "Ice",
@@ -383,9 +412,16 @@ class ElementalBot(Bot):
                 "image_path": "assets/bots/elemental_bot/elemental_bot_ice.png",
                 "image": None,
                 "description": "Shoots an ice projectile at an enemy. After the enemy has been hit multiple times, it will be frozen and cannot attack for a round.",
-                "scroll": 220
+                "scroll": 220,
+                "projectile_offset": (10, 13)
             }
         ]
+    
+    def perform_action(self, active_effects, action_name, target_char):
+        if action_name == "Fire":
+            active_effects.append(LinearProjectile((255, 0, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["fire_rounds_amount"], "Fire"))
+        elif action_name == "Ice":
+            active_effects.append(LinearProjectile((0, 255, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["ice_hits_needed"], "Ice"))
 
 gun_bot = GunBot(
     "Gun Bot", # name
@@ -641,31 +677,14 @@ def check_bot_turn(player_bots, enemy_goons):
 def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effects, battle_state, active_bot, chosen_action, inspecting_character,):
     for char in characters:
         if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
-            # determine the power of the chosen action and mark it as used
-            power = 0
+            # mark chosen action as used
             for action in active_bot.actions:
                 if action["name"] == chosen_action:
-                    if action["name"] != "Ice":
-                        power = action["power"]
                     action["used"] = True
                     break
             
-            # damage or heal or apply effect to the target character
-            if battle_state == "Damage Enemy":
-                if active_bot.name == "Elemental Bot":
-                    if chosen_action == "Fire":
-                        active_effects.append(LinearProjectile((255, 0, 0), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, "Fire", active_bot.actions[0]["fire_rounds_amount"]))
-                    elif chosen_action == "Ice":
-                        active_effects.append(LinearProjectile((0, 255, 255), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, "Ice", active_bot.actions[1]["ice_hits_needed"]))
-                elif active_bot.name == "Rico Bot" and chosen_action == "Bounce":
-                    char.real_health -= power
-                    active_effects.append(BounceProjectile((0, 255, 0), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, power, active_bot.actions[1]["bounce_amount"], []))
-                else:
-                    char.real_health -= power
-                    active_effects.append(LinearProjectile((0, 0, 255), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, "Damage", power))
-            elif battle_state == "Heal Friendly":
-                char.real_health += power
-                active_effects.append(HealProjectile((0, 255, 0), active_bot.rect.centerx, active_bot.rect.centery, char.rect.centerx, char.rect.centery, char, power))
+            # perform the action chosen on the target character
+            active_bot.perform_action(active_effects, chosen_action, char)
             
             # check if active bot used both actions and reset for next action
             active_bot.check_actions()
@@ -783,7 +802,7 @@ def enemy_attacks(enemy_goons, player_bots, active_effects):
             if bots_alive:
                 target = random.choice(bots_alive)
                 target.real_health -= enemy.damage
-                active_effects.append(LinearProjectile((255, 0, 0), enemy.rect.x, enemy.rect.y, target.rect.centerx, target.rect.centery, target, "Damage", enemy.damage))
+                active_effects.append(LinearProjectile((255, 0, 0), enemy, target, (-50, -50), enemy.damage, "Damage"))
 
 def round_end(player_bots, enemy_goons, active_effects, battle_state, rounds):
     # does fire damage to characters on fire
