@@ -14,7 +14,7 @@ pygame.font.init()
 
 class FloatingText:
     def __init__(self, color, x, y, text):
-        # floating text specific info
+        # floating text info
         self.color = color
         self.x = x
         self.y = y
@@ -310,6 +310,7 @@ class GunBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
 
+        # action dictionary
         self.actions = [
             {
                 "name": "Left Gun",
@@ -337,7 +338,8 @@ class GunBot(Bot):
             }
         ]
     
-    def perform_action(self, active_effects, action_name, target_char):
+    def perform_action(self, active_effects, target_char, action_name):
+        # perform action on target character based on which action is chosen
         if action_name == "Left Gun":
             target_char.real_health -= self.actions[0]["power"]
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["power"], "Damage"))
@@ -350,6 +352,7 @@ class RicoBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
 
+        # action dictionary
         self.actions = [
             {
                 "name": "Heal",
@@ -378,7 +381,8 @@ class RicoBot(Bot):
             }
         ]
     
-    def perform_action(self, active_effects, action_name, target_char):
+    def perform_action(self, active_effects, target_char, action_name):
+        # perform action on target character based on which action is chosen
         if action_name == "Heal":
             target_char.real_health += self.actions[0]["power"]
             active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["power"]))
@@ -390,6 +394,7 @@ class ElementalBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
 
+        # action dictionary
         self.actions = [
             {
                 "name": "Fire",
@@ -417,7 +422,8 @@ class ElementalBot(Bot):
             }
         ]
     
-    def perform_action(self, active_effects, action_name, target_char):
+    def perform_action(self, active_effects, target_char, action_name):
+        # perform action on target character based on which action is chosen
         if action_name == "Fire":
             active_effects.append(LinearProjectile((255, 0, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["fire_rounds_amount"], "Fire"))
         elif action_name == "Ice":
@@ -684,7 +690,7 @@ def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effec
                     break
             
             # perform the action chosen on the target character
-            active_bot.perform_action(active_effects, chosen_action, char)
+            active_bot.perform_action(active_effects, char, chosen_action)
             
             # check if active bot used both actions and reset for next action
             active_bot.check_actions()
