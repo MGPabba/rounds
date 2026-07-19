@@ -144,6 +144,7 @@ class BounceProjectile(ArcProjectile):
                     next_target.real_health -= self.amount
                     active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), self.amount, self.bounce_amount - 1, self.enemies_hit))
 
+
 # ------------------------------
 # CHARACTERS
 # ------------------------------
@@ -309,7 +310,6 @@ class Bot(Character):
 class GunBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
-
         # action dictionary
         self.actions = [
             {
@@ -347,11 +347,9 @@ class GunBot(Bot):
             target_char.real_health -= self.actions[1]["power"]
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["power"], "Damage"))
 
-
 class RicoBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
-
         # action dictionary
         self.actions = [
             {
@@ -393,7 +391,6 @@ class RicoBot(Bot):
 class ElementalBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
-
         # action dictionary
         self.actions = [
             {
