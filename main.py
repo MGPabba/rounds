@@ -338,12 +338,12 @@ class GunBot(Bot):
             }
         ]
     
-    def perform_action(self, active_effects, target_char, action_name):
+    def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
-        if action_name == "Left Gun":
+        if chosen_action == "Left Gun":
             target_char.real_health -= self.actions[0]["power"]
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["power"], "Damage"))
-        elif action_name == "Right Gun":
+        elif chosen_action == "Right Gun":
             target_char.real_health -= self.actions[1]["power"]
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["power"], "Damage"))
 
@@ -379,12 +379,12 @@ class RicoBot(Bot):
             }
         ]
     
-    def perform_action(self, active_effects, target_char, action_name):
+    def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
-        if action_name == "Heal":
+        if chosen_action == "Heal":
             target_char.real_health += self.actions[0]["power"]
             active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["power"]))
-        elif action_name == "Bounce":
+        elif chosen_action == "Bounce":
             target_char.real_health -= self.actions[1]["power"]
             active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["power"], self.actions[1]["bounce_amount"], []))
 
@@ -419,17 +419,17 @@ class ElementalBot(Bot):
             }
         ]
     
-    def perform_action(self, active_effects, target_char, action_name):
+    def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
-        if action_name == "Fire":
+        if chosen_action == "Fire":
             active_effects.append(LinearProjectile((255, 0, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["fire_rounds_amount"], "Fire"))
-        elif action_name == "Ice":
+        elif chosen_action == "Ice":
             active_effects.append(LinearProjectile((0, 255, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["ice_hits_needed"], "Ice"))
 
 gun_bot = GunBot(
     "Gun Bot", # name
     10, # health
-    150, 150, # x, y
+    200, 150, # x, y
     (50, 100, 255), # box_background_color
     "A bot equipped with dual guns.", # description
     [
@@ -451,7 +451,7 @@ gun_bot = GunBot(
 rico_bot = RicoBot(
     "Rico Bot", # name
     10, # health
-    150, 300, # x, y
+    200, 300, # x, y
     (50, 200, 50), # box_background_color
     "A bot that just loves balls.", # description
     [
@@ -475,7 +475,7 @@ rico_bot = RicoBot(
 elemental_bot = ElementalBot(
     "Elemental Bot", # name
     10, # health
-    150, 450, # x, y
+    200, 450, # x, y
     (150, 0, 150), # box_background_color
     "A bot that can manipulate the elements.", # description
     [
@@ -527,7 +527,7 @@ def game_quit(event):
 
 def scroll_math(mouse_pos, event, lore_height, target_scroll_y):
     # lore rectangle
-    lore_rect = pygame.Rect(600, 620, 560, 90)
+    lore_rect = pygame.Rect(600, 620, 580, 90)
 
     # scroll through the lore box if mouse is scrolled over it
     if lore_rect.collidepoint(mouse_pos):
@@ -543,7 +543,7 @@ def scroll_math(mouse_pos, event, lore_height, target_scroll_y):
 
 def open_shop(mouse_pos, battle_state, previous_battle_state):
     # shop button rectangle
-    shop_button_rect = pygame.Rect(450, 640, 100, 50)
+    shop_button_rect = pygame.Rect(40, 530, 100, 50)
 
     # open shop if button is clicked and close shop if button is clicked again
     if shop_button_rect.collidepoint(mouse_pos):
@@ -624,8 +624,8 @@ def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, 
 
 def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
     # action button rectangles
-    left_button_rect = pygame.Rect(60, 640, 150, 50)
-    right_button_rect = pygame.Rect(230, 640, 150, 50)
+    left_button_rect = pygame.Rect(120, 640, 150, 50)
+    right_button_rect = pygame.Rect(290, 640, 150, 50)
 
     # bot action is chosen based on which button is clicked or pressed and action is deselected if clicked or pressed again
     if active_bot:
@@ -1123,22 +1123,22 @@ def draw_action_button(screen, font_cache, battle_state, active_bot, x, y, text,
     # draw button text
     screen.blit(button_text, button_text_rect)
 
-def draw_action_options(screen, font_cache, battle_state, active_bot, chosen_action):
+def draw_action_box(screen, font_cache, battle_state, active_bot, chosen_action):
     # draw action box background
     if active_bot:
         color = active_bot.box_background_color
     else:
         color = (50, 50, 50)
-    pygame.draw.rect(screen, color, (40, 620, 360, 90))
-    pygame.draw.rect(screen, (255, 255, 255), (40, 620, 360, 90), 3)
+    pygame.draw.rect(screen, color, (100, 620, 360, 90))
+    pygame.draw.rect(screen, (255, 255, 255), (100, 620, 360, 90), 3)
 
     # draw action buttons based on active bot
     if active_bot:
         for index, action in enumerate(active_bot.actions):
             if index == 0:
-                x = 60
+                x = 120
             else:
-                x = 230
+                x = 290
             draw_action_button(screen, font_cache, battle_state, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
 
 def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds):
@@ -1147,11 +1147,11 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
         box_color = active_bot.box_background_color
     else:
         box_color = (50, 50, 50)
-    pygame.draw.rect(screen, box_color, (430, 620, 140, 90))
-    pygame.draw.rect(screen, (255, 255, 255), (430, 620, 140, 90), 3)
+    pygame.draw.rect(screen, box_color, (20, 510, 140, 90))
+    pygame.draw.rect(screen, (255, 255, 255), (20, 510, 140, 90), 3)
 
     # draw shop button with hover effect
-    button_rect = pygame.Rect(450, 640, 100, 50)
+    button_rect = pygame.Rect(40, 530, 100, 50)
     mouse_pos = pygame.mouse.get_pos()
     if button_rect.collidepoint(mouse_pos) and battle_state == "Shop":
         button_color = (255, 125, 125)
@@ -1173,18 +1173,18 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     else:
         text = "Shop"
     shop_text = dynamic_text(font_cache, text, 90, 40, (255, 255, 255))
-    shop_text_rect = shop_text.get_rect(center=(500, 665))
+    shop_text_rect = shop_text.get_rect(center=(90, 555))
     screen.blit(shop_text, shop_text_rect)
 
     # draw info box background
-    pygame.draw.rect(screen, box_color, (430, 563, 140, 60))
-    pygame.draw.rect(screen, (255, 255, 255), (430, 563, 140, 60), 3)
+    pygame.draw.rect(screen, box_color, (20, 453, 140, 60))
+    pygame.draw.rect(screen, (255, 255, 255), (20, 453, 140, 60), 3)
 
     # draw round and gears text
     round_text = regular_font.render(f"Round: {rounds}", True, (255, 255, 255))
     gears_text = regular_font.render(f"Gears: {gears}", True, (255, 255, 255))
-    round_text_rect = round_text.get_rect(center=(500, 583))
-    gears_text_rect = gears_text.get_rect(center=(500, 603))
+    round_text_rect = round_text.get_rect(center=(90, 473))
+    gears_text_rect = gears_text.get_rect(center=(90, 493))
     screen.blit(round_text, round_text_rect)
     screen.blit(gears_text, gears_text_rect)
 
@@ -1310,8 +1310,8 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
         color = inspecting_character.box_background_color
     else:
         color = (50, 50, 50)
-    pygame.draw.rect(screen, color, (600, 620, 560, 90))
-    pygame.draw.rect(screen, (255, 255, 255), (600, 620, 560, 90), 3)
+    pygame.draw.rect(screen, color, (600, 620, 580, 90))
+    pygame.draw.rect(screen, (255, 255, 255), (600, 620, 580, 90), 3)
 
     lore = []
     # lore text based on battle state
@@ -1323,7 +1323,7 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
     # lore text based on inspecting character
     elif inspecting_character:
         lore.append((f"Name: {inspecting_character.name}", "header"))
-        description_lines = wrap_text(f"Description: {inspecting_character.description}", regular_font, 540)
+        description_lines = wrap_text(f"Description: {inspecting_character.description}", regular_font, 560)
         for i, line in enumerate(description_lines):
             if i == len(description_lines) - 1:
                 lore.append((line, "header"))
@@ -1332,7 +1332,7 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
         if inspecting_character in player_bots:
             for action in inspecting_character.actions:
                 lore.append((f"Action: {action['name']}", "header"))
-                action_description_lines = wrap_text(f"Description: {action['description']}", regular_font, 540)
+                action_description_lines = wrap_text(f"Description: {action['description']}", regular_font, 560)
                 for i, line in enumerate(action_description_lines):
                     if i == len(action_description_lines) - 1:
                         lore.append((line, "header"))
@@ -1362,7 +1362,7 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
             lore_height += 20
 
     # create a surface for the lore text with see through background
-    lore_canvas = pygame.Surface((560, max(1, lore_height)), pygame.SRCALPHA)
+    lore_canvas = pygame.Surface((580, max(1, lore_height)), pygame.SRCALPHA)
 
     # draw lore text into the lore canvas
     y_offset = 5
@@ -1377,7 +1377,7 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
             y_offset += 20
 
     # draw the visible part of lore canvas onto the screen based on scroll position
-    visible_rect = pygame.Rect(0, int(scroll_y), 540, 80)
+    visible_rect = pygame.Rect(0, int(scroll_y), 580, 80)
     screen.blit(lore_canvas, (610, 625), visible_rect)
     
     # update lore height for scrolling calculations
@@ -1409,7 +1409,7 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state, active_bot, chosen_action, inspecting_character)
 
     # draw action options based on active bot and chosen action
-    draw_action_options(screen, font_cache, battle_state, active_bot, chosen_action)
+    draw_action_box(screen, font_cache, battle_state, active_bot, chosen_action)
 
     # draw shop box in the middle
     draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds)
@@ -1423,12 +1423,15 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     # draw effects damage or heal numbers or projectiles
     draw_effects(screen, floating_font, active_effects)
 
+    # temp box
+    if active_bot:
+        temp_box_color = active_bot.box_background_color
+    else:
+        temp_box_color = (50, 50, 50)
+    pygame.draw.rect(screen, temp_box_color, (20, 620, 60, 90))
+    pygame.draw.rect(screen, (255, 255, 255), (20, 620, 60, 90), 3)
+
     return lore_height
-
-
-# ------------------------------
-# MAIN MENU
-# ------------------------------
 
 def draw_main_menu(screen, title_font, regular_font, font_cache):
     # draw main menu background
@@ -1475,7 +1478,7 @@ def draw_main_menu(screen, title_font, regular_font, font_cache):
 
 async def main():
     # screen settings
-    screen = pygame.display.set_mode((1200, 750))
+    screen = pygame.display.set_mode((1200, 730))
     # title
     pygame.display.set_caption("Rounds")
     # setup timer to control game speed
