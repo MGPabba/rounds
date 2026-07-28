@@ -222,6 +222,16 @@ class Character:
         else:
             self.shake_x = 0
 
+    def lore_text(self, regular_font, lore):
+        # add character name and description to lore text
+        lore.append((f"Name: {self.name}", "normal"))
+        description_lines = wrap_text(f"Description: {self.description}", regular_font, 560)
+        for i, line in enumerate(description_lines):
+            if i == len(description_lines) - 1:
+                lore.append((line, "normal"))
+            else:
+                lore.append((line, "less"))
+
 class Enemy(Character):
     def __init__(self, name, health, damage, min_gears, max_gears, slot_id, x, y, box_background_color, description, idle_image, hurt_image, dead_image):
         super().__init__(name, health, x, y, box_background_color, description)
@@ -251,6 +261,11 @@ class Enemy(Character):
                     self.float_direction = -2
                 elif self.float_offset <= -4:
                     self.float_direction = 2
+
+    def lore_text(self, regular_font, lore):
+        super().lore_text(regular_font, lore)
+        # add enemy damage to lore text
+        lore.append((f"Damage: {self.damage}", "normal"))
 
 class Bot(Character):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
@@ -307,6 +322,19 @@ class Bot(Character):
         self.actions[0]["used"] = False
         self.actions[1]["used"] = False
 
+    def lore_text(self, regular_font, lore):
+        super().lore_text(regular_font, lore)
+        # add bot actions name and description to lore text
+        for action in self.actions:
+            lore.append((f"Action: {action['name']}", "normal"))
+            action_description_lines = wrap_text(f"Description: {action['description']}", regular_font, 560)
+            for i, line in enumerate(action_description_lines):
+                if i == len(action_description_lines) - 1:
+                    lore.append((line, "normal"))
+                else:
+                    lore.append((line, "less"))
+            self.lore_stats_text(lore, action)
+
 class GunBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
@@ -314,10 +342,9 @@ class GunBot(Bot):
         self.actions = [
             {
                 "name": "Left Gun",
-                "type": "Damage",
-                "power": 1,
+                "damage": 1,
                 "used": False,
-                "target_state": "Damage Enemy",
+                "target_state": "Target Enemy",
                 "image_path": "assets/bots/gun_bot/gun_bot_left_gun.png",
                 "image": None,
                 "description": "A basic attack that deals damage to a single enemy.",
@@ -326,10 +353,9 @@ class GunBot(Bot):
             },
             {
                 "name": "Right Gun",
-                "type": "Damage",
-                "power": 1,
+                "damage": 1,
                 "used": False,
-                "target_state": "Damage Enemy",
+                "target_state": "Target Enemy",
                 "image_path": "assets/bots/gun_bot/gun_bot_right_gun.png",
                 "image": None,
                 "description": "A basic attack that deals damage to a single enemy.",
@@ -341,11 +367,18 @@ class GunBot(Bot):
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Left Gun":
-            target_char.real_health -= self.actions[0]["power"]
-            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["power"], "Damage"))
+            target_char.real_health -= self.actions[0]["damage"]
+            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["damage"], "Damage"))
         elif chosen_action == "Right Gun":
-            target_char.real_health -= self.actions[1]["power"]
-            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["power"], "Damage"))
+            target_char.real_health -= self.actions[1]["damage"]
+            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["damage"], "Damage"))
+
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Left Gun":
+            lore.append((f"Damage: {action['damage']}", "normal"))
+        elif action["name"] == "Right Gun":
+            lore.append((f"Damage: {action['damage']}", "normal"))
 
 class RicoBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
@@ -354,10 +387,9 @@ class RicoBot(Bot):
         self.actions = [
             {
                 "name": "Heal",
-                "type": "Heal",
-                "power": 1,
+                "heal": 1,
                 "used": False,
-                "target_state": "Heal Friendly",
+                "target_state": "Target Bot",
                 "image_path": "assets/bots/rico_bot/rico_bot_heal.png",
                 "image": None,
                 "description": "Shoots a healing ball that heals a friendly bot.",
@@ -366,11 +398,10 @@ class RicoBot(Bot):
             },
             {
                 "name": "Bounce",
-                "type": "Damage",
-                "power": 1,
-                "bounce_amount": 1,
+                "damage": 1,
+                "bounce_amount": 2,
                 "used": False,
-                "target_state": "Damage Enemy",
+                "target_state": "Target Enemy",
                 "image_path": "assets/bots/rico_bot/rico_bot_bounce.png",
                 "image": None,
                 "description": "Shoots a bouncy ball that bounces between enemies dealing damage.",
@@ -382,11 +413,20 @@ class RicoBot(Bot):
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Heal":
-            target_char.real_health += self.actions[0]["power"]
-            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["power"]))
+            target_char.real_health += self.actions[0]["heal"]
+            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"]))
         elif chosen_action == "Bounce":
-            target_char.real_health -= self.actions[1]["power"]
-            active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["power"], self.actions[1]["bounce_amount"], []))
+            target_char.real_health -= self.actions[1]["damage"]
+            active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["damage"], self.actions[1]["bounce_amount"] - 1, []))
+
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Heal":
+            lore.append((f"Heal: {action['heal']}", "normal"))
+        elif action["name"] == "Bounce":
+            lore.append((f"Bounces: {action['bounce_amount']}", "normal"))
+            lore.append((f"Damage: {action['damage']}", "normal"))
+
 
 class ElementalBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
@@ -395,11 +435,10 @@ class ElementalBot(Bot):
         self.actions = [
             {
                 "name": "Fire",
-                "type": "Damage",
-                "power": 1,
+                "damage": 1,
                 "fire_rounds_amount": 3,
                 "used": False,
-                "target_state": "Damage Enemy",
+                "target_state": "Target Enemy",
                 "image_path": "assets/bots/elemental_bot/elemental_bot_fire.png",
                 "image": None,
                 "description": "Shoots a fire projectile at an enemy. Sets the enemy on fire, dealing damage over time. The fire does damage at the end of the round.",
@@ -410,7 +449,7 @@ class ElementalBot(Bot):
                 "name": "Ice",
                 "ice_hits_needed": 3,
                 "used": False,
-                "target_state": "Damage Enemy",
+                "target_state": "Target Enemy",
                 "image_path": "assets/bots/elemental_bot/elemental_bot_ice.png",
                 "image": None,
                 "description": "Shoots an ice projectile at an enemy. After the enemy has been hit multiple times, it will be frozen and cannot attack for a round.",
@@ -425,6 +464,14 @@ class ElementalBot(Bot):
             active_effects.append(LinearProjectile((255, 0, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["fire_rounds_amount"], "Fire"))
         elif chosen_action == "Ice":
             active_effects.append(LinearProjectile((0, 255, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["ice_hits_needed"], "Ice"))
+
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Fire":
+            lore.append((f"Fire Rounds: {action['fire_rounds_amount']}", "normal"))
+            lore.append((f"Damage: {action['damage']}", "normal"))
+        elif action["name"] == "Ice":
+            lore.append((f"Ice Hits Needed: {action['ice_hits_needed']}", "normal"))
 
 gun_bot = GunBot(
     "Gun Bot", # name
@@ -558,21 +605,21 @@ def shop_upgrade(mouse_pos, gears):
     # upgrade button rectangles
     left_gun_upgrade_rect = pygame.Rect(670, 150, 150, 50)
     right_gun_upgrade_rect = pygame.Rect(670, 240, 150, 50)
-    attack_upgrade_rect = pygame.Rect(670, 380, 150, 50)
-    heal_upgrade_rect = pygame.Rect(670, 470, 150, 50)
+    heal_upgrade_rect = pygame.Rect(670, 380, 150, 50)
+    attack_upgrade_rect = pygame.Rect(670, 470, 150, 50)
 
     # upgrade bot action if upgrade button is clicked and player has enough gears
     if left_gun_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        gun_bot.actions[0]["power"] += 1
+        gun_bot.actions[0]["damage"] += 1
         gears -= 5
     elif right_gun_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        gun_bot.actions[1]["power"] += 1
-        gears -= 5
-    elif attack_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        rico_bot.actions[0]["power"] += 1
+        gun_bot.actions[1]["damage"] += 1
         gears -= 5
     elif heal_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        rico_bot.actions[1]["power"] += 1
+        rico_bot.actions[0]["heal"] += 1
+        gears -= 5
+    elif attack_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
+        rico_bot.actions[1]["damage"] += 1
         gears -= 5
     
     return gears
@@ -604,7 +651,7 @@ def inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target
             return inspecting_character, scroll_y, target_scroll_y
     return inspecting_character, scroll_y, target_scroll_y
 
-def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
+def select_bot(mouse_pos, player_bots, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
     for bot in player_bots:
         # bot is selected if it's clicked, alive, and hasn't acted yet
         if bot.rect.collidepoint(mouse_pos) and bot.real_health > 0 and not bot.acted:
@@ -618,9 +665,8 @@ def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, 
                 target_scroll_y = 0
                 scroll_y = 0
             chosen_action = None
-            battle_state = "Select Action"
-            return battle_state,  active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
-    return battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
+            return active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
+    return active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
 
 def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
     # action button rectangles
@@ -632,7 +678,7 @@ def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, ins
         if (mouse_pos and (left_button_rect.collidepoint(mouse_pos)) or (event and event.key == pygame.K_1)) and not active_bot.actions[0]["used"]:
             if chosen_action == active_bot.actions[0]["name"]:
                 chosen_action = None
-                battle_state = "Select Action"
+                battle_state = "Player Turn"
             else:
                 chosen_action = active_bot.actions[0]["name"]
                 battle_state = active_bot.actions[0]["target_state"]
@@ -647,7 +693,7 @@ def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, ins
         elif (mouse_pos and (right_button_rect.collidepoint(mouse_pos)) or (event and event.key == pygame.K_2)) and not active_bot.actions[1]["used"]:
             if chosen_action == active_bot.actions[1]["name"]:
                 chosen_action = None
-                battle_state = "Select Action"
+                battle_state = "Player Turn"
             else:
                 chosen_action = active_bot.actions[1]["name"]
                 battle_state = active_bot.actions[1]["target_state"]
@@ -674,7 +720,7 @@ def check_bot_turn(player_bots, enemy_goons):
     # check if all bots finished their actions, change to enemy turn if so
     for bot in player_bots:
         if bot.real_health > 0 and not bot.acted:
-            return "Select Bot"
+            return "Player Turn"
     return "Enemy Turn"
 
 def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effects, battle_state, active_bot, chosen_action, inspecting_character,):
@@ -721,34 +767,33 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
             gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
 
             # inspect enemy if not targeting enemy
-            if battle_state != "Damage Enemy":
+            if battle_state != "Target Enemy":
                 inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y)
 
-            # select bot if not healing friendly
-            if battle_state != "Heal Friendly":
-                battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+            # select bot if not targeting bot
+            if battle_state != "Target Bot":
+                active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
             
             # select action if bot is selected
             battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(mouse_pos, None, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
             
             # carry out the chosen action
-            if battle_state == "Damage Enemy":
+            if battle_state == "Target Enemy":
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
-            elif battle_state == "Heal Friendly":
+            elif battle_state == "Target Bot":
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, player_bots, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
 
     # right click to close shop or cancel action or bot
     elif event.button == 3:
         if battle_state == "Shop":
             battle_state = previous_battle_state
-        elif battle_state in ["Damage Enemy", "Heal Friendly"]:
+        elif chosen_action:
             chosen_action = None
-            battle_state = "Select Action"
-        elif battle_state == "Select Action":
+            battle_state = "Player Turn"
+        elif active_bot:
             inspecting_character = None
             active_bot = None
-            battle_state = "Select Bot"
-        elif battle_state == "Select Bot":
+        elif inspecting_character:
             inspecting_character = None
 
     return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
@@ -816,13 +861,13 @@ def round_end(player_bots, enemy_goons, active_effects, battle_state, rounds):
                 char.take_damage(active_effects, 1)
                 char.real_health -= 1
             elif char in enemy_goons:
-                char.real_health -= elemental_bot.actions[0]["power"]
-                char.take_damage(active_effects, elemental_bot.actions[0]["power"])
+                char.real_health -= elemental_bot.actions[0]["damage"]
+                char.take_damage(active_effects, elemental_bot.actions[0]["damage"])
     
     # resets for next turn
     for bot in player_bots:
         bot.reset_actions()
-    battle_state = "Select Bot"
+    battle_state = "Player Turn"
     rounds += 1
     return battle_state, rounds
 
@@ -1044,9 +1089,9 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state
         # highlight character if hovering and valid target
         mouse_pos = pygame.mouse.get_pos()
         if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
-            if char in enemy_goons and battle_state == "Damage Enemy":
+            if char in enemy_goons and battle_state == "Target Enemy":
                 pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
-            elif char in player_bots and battle_state == "Heal Friendly":
+            elif char in player_bots and battle_state == "Target Bot":
                 pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
             elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted:
                 pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
@@ -1206,8 +1251,8 @@ def draw_shop_menu(screen, font_cache, battle_state, gears):
                 "bot": rico_bot,
                 "name": "Rico Bot",
                 "upgrades": [
-                    {"action": "Attack", "buff": "+1 damage", "cost": "5 gears"},
-                    {"action": "Heal", "buff": "+1 heal", "cost": "5 gears"}
+                    {"action": "Heal", "buff": "+1 heal", "cost": "5 gears"},
+                    {"action": "Attack", "buff": "+1 damage", "cost": "5 gears"}
                 ]
             }
         ]
@@ -1304,7 +1349,7 @@ def wrap_text(text, regular_font, max_width):
 
     return lines
 
-def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, rounds):
+def draw_lore_box(screen, regular_font, battle_state, inspecting_character, scroll_y, rounds):
     # draw lore box background
     if inspecting_character:
         color = inspecting_character.box_background_color
@@ -1314,51 +1359,22 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
     pygame.draw.rect(screen, (255, 255, 255), (600, 620, 580, 90), 3)
 
     lore = []
-    # lore text based on battle state
+    # lore text based on battle state or inspecting character
     if battle_state == "Game Over":
-        lore.append(("The enemies have defeated all your bots!", "header"))
-        lore.append((f"You have survived for a total of {rounds} rounds.", "header"))
-        lore.append(("Game Over!", "header"))
-
-    # lore text based on inspecting character
+        lore.append(("The enemies have defeated all your bots!", "normal"))
+        lore.append((f"You have survived for a total of {rounds} rounds.", "normal"))
+        lore.append(("Game Over!", "normal"))
     elif inspecting_character:
-        lore.append((f"Name: {inspecting_character.name}", "header"))
-        description_lines = wrap_text(f"Description: {inspecting_character.description}", regular_font, 560)
-        for i, line in enumerate(description_lines):
-            if i == len(description_lines) - 1:
-                lore.append((line, "header"))
-            else:
-                lore.append((line, "body"))
-        if inspecting_character in player_bots:
-            for action in inspecting_character.actions:
-                lore.append((f"Action: {action['name']}", "header"))
-                action_description_lines = wrap_text(f"Description: {action['description']}", regular_font, 560)
-                for i, line in enumerate(action_description_lines):
-                    if i == len(action_description_lines) - 1:
-                        lore.append((line, "header"))
-                    else:
-                        lore.append((line, "body"))
-                if inspecting_character == elemental_bot:
-                    if action['name'] == "Fire":
-                        lore.append((f"Fire Rounds: {action['fire_rounds_amount']}", "header"))
-                    elif action['name'] == "Ice":
-                        lore.append((f"Ice Hits Needed: {action['ice_hits_needed']}", "header"))
-                elif inspecting_character == rico_bot:
-                    if action['name'] == "Bounce":
-                        lore.append((f"Bounces: {action['bounce_amount'] + 1}", "header"))
-                if "type" in action and "power" in action:
-                    lore.append((f"{action['type']}: {action['power']}", "header"))
-        elif inspecting_character in enemy_goons:
-            lore.append((f"Damage: {inspecting_character.damage}", "header"))
+        inspecting_character.lore_text(regular_font, lore)
 
     # calculate lore height
     lore_height = 0
     for line, type in lore:
         if line.startswith("Action:"):
             lore_height += 15
-        if type == "header":
+        if type == "normal":
             lore_height += 25
-        elif type == "body":
+        elif type == "less":
             lore_height += 20
 
     # create a surface for the lore text with see through background
@@ -1371,9 +1387,9 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
             y_offset += 15
         lore_text = regular_font.render(line, True, (255, 255, 255))
         lore_canvas.blit(lore_text, (0, y_offset))
-        if type == "header":
+        if type == "normal":
             y_offset += 25
-        elif type == "body":
+        elif type == "less":
             y_offset += 20
 
     # draw the visible part of lore canvas onto the screen based on scroll position
@@ -1381,7 +1397,7 @@ def draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, 
     screen.blit(lore_canvas, (610, 625), visible_rect)
     
     # update lore height for scrolling calculations
-    lore_height = y_offset
+    lore_height = max(0, y_offset - 5)
 
     return lore_height
 
@@ -1418,7 +1434,7 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     draw_shop_menu(screen, font_cache, battle_state, gears)
 
     # draw lore box with scrolling
-    lore_height = draw_lore_box(screen, regular_font, player_bots, enemy_goons, battle_state, inspecting_character, scroll_y, rounds)
+    lore_height = draw_lore_box(screen, regular_font, battle_state, inspecting_character, scroll_y, rounds)
     
     # draw effects damage or heal numbers or projectiles
     draw_effects(screen, floating_font, active_effects)
@@ -1513,8 +1529,8 @@ async def main():
     # inital game state variables
     game_state = "Main Menu"
     previous_game_state = "Main Menu"
-    battle_state = "Select Bot"
-    previous_battle_state = "Select Bot"
+    battle_state = "Player Turn"
+    previous_battle_state = "Player Turn"
 
     # inital variables for player turn
     active_bot = None
