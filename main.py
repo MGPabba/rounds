@@ -144,6 +144,22 @@ class BounceProjectile(ArcProjectile):
                     next_target.real_health -= self.amount
                     active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), self.amount, self.bounce_amount - 1, self.enemies_hit))
 
+class LaserProjectile():
+    def __init__(self, start_pos, end_pos):
+        # basic laser projectile info
+        self.start_pos = start_pos
+        self.end_pos = end_pos
+        self.timer = 40
+        self.alpha = 255
+        self.active = True
+
+    def update(self):
+        # decrease timer and alpha, disappear when timer runs out
+        self.timer -= 1
+        if self.timer < 20:
+            self.alpha = int((self.timer / 20) * 255)
+        if self.timer <= 0:
+            self.active = False
 
 # ------------------------------
 # CHARACTERS
@@ -427,7 +443,6 @@ class RicoBot(Bot):
             lore.append((f"Bounces: {action['bounce_amount']}", "normal"))
             lore.append((f"Damage: {action['damage']}", "normal"))
 
-
 class ElementalBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
@@ -472,6 +487,74 @@ class ElementalBot(Bot):
             lore.append((f"Damage: {action['damage']}", "normal"))
         elif action["name"] == "Ice":
             lore.append((f"Ice Hits Needed: {action['ice_hits_needed']}", "normal"))
+
+class LazerBot(Bot):
+    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
+        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+        # action dictionary
+        self.actions = [
+            {
+                "name": "Pierce",
+                "damage": 1,
+                "movement_mode": False,
+                "used": False,
+                "target_state": "Target Line",
+                "image_path": "assets/bots/lazer_bot/lazer_bot_pierce.png",
+                "image": None,
+                "description": "Fires a laser beam that can pierce through multiple enemies in a straight line. The laser beam can be aimed with the mouse position. Click to fire the laser beam and all enemies in the line will take damage. Click on lazer bot to enter into movement mode. While in movement mode, you can move lazer bot up and down with the mouse position. Click on lazer bot again to exit movement mode. You can use movement mode to have better aim with the laser beam.",
+                "scroll": 65,
+                "projectile_offset": (11, -1)
+            },
+            {
+                "name": "Barrage",
+                "damage": 1,
+                "barrage_charge": 0,
+                "barrage_charge_needed": 10,
+                "used": True,
+                "target_state": "Target Enemy",
+                "image_path": "assets/bots/lazer_bot/lazer_bot_barrage.png",
+                "image": None,
+                "description": "Fires a laser beam at every enemy in the battle. This action can only be used after charging up the barrage. Each enemy hit with the Pierce action will charge up the barrage.",
+                "scroll": 275,
+                "projectile_offset": (-12, -8)
+            }
+        ]
+
+    def reset_actions(self):
+        # reset actions for the next turn
+        self.acted = False
+        self.actions[0]["used"] = False
+
+    def perform_action(self, active_effects, target_list, chosen_action, laser_end):
+        # perform action on target characters based on which action is chosen
+        if chosen_action == "Pierce":
+            # create laser projectile and damage all enemies hit by the laser
+            active_effects.append(LaserProjectile((self.rect.centerx + self.actions[0]["projectile_offset"][0], self.rect.centery + self.actions[0]["projectile_offset"][1]), laser_end))
+            for enemy in target_list:
+                enemy.real_health -= self.actions[0]["damage"]
+                enemy.take_damage(active_effects, self.actions[0]["damage"])
+                self.actions[1]["barrage_charge"] += 1
+            # check if barrage is charged and reset used status if it is
+            if self.actions[1]["barrage_charge"] >= self.actions[1]["barrage_charge_needed"]:
+                self.actions[1]["used"] = False
+        
+        elif chosen_action == "Barrage":
+            # damage all enemies on the field and reset barrage charge
+            self.actions[1]["barrage_charge"] -= self.actions[1]["barrage_charge_needed"]
+            for enemy in target_list:
+                if enemy.real_health > 0:
+                    enemy.real_health -= self.actions[1]["damage"]
+                    active_effects.append(LaserProjectile((self.rect.centerx + self.actions[1]["projectile_offset"][0], self.rect.centery + self.actions[1]["projectile_offset"][1]), (enemy.rect.centerx, enemy.rect.centery)))
+                    enemy.take_damage(active_effects, self.actions[1]["damage"])
+
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Pierce":
+            lore.append((f"Damage: {action['damage']}", "normal"))
+        elif action["name"] == "Barrage":
+            lore.append((f"Damage: {action['damage']}", "normal"))
+            lore.append((f"Current Charge: {action['barrage_charge']}", "normal"))
+            lore.append((f"Charge Needed: {action['barrage_charge_needed']}", "normal"))
 
 gun_bot = GunBot(
     "Gun Bot", # name
@@ -543,6 +626,30 @@ elemental_bot = ElementalBot(
     (225, 100, 225) # text_used_color
 )
 
+lazer_bot = LazerBot(
+    "Lazer Bot", # name
+    10, # health
+    480, 300, # x, y
+    (255, 50, 200), # box_background_color
+    "A bot with the coolest laser powers.", # description
+    [
+        "assets/bots/lazer_bot/lazer_bot_idle_1.png",
+        "assets/bots/lazer_bot/lazer_bot_idle_2.png",
+        "assets/bots/lazer_bot/lazer_bot_idle_3.png",
+        "assets/bots/lazer_bot/lazer_bot_idle_4.png",
+        "assets/bots/lazer_bot/lazer_bot_idle_5.png",
+        "assets/bots/lazer_bot/lazer_bot_idle_4.png",
+        "assets/bots/lazer_bot/lazer_bot_idle_3.png",
+        "assets/bots/lazer_bot/lazer_bot_idle_2.png"
+    ], # idle_images_path
+    "assets/bots/lazer_bot/lazer_bot_active.png", # active_image_path
+    "assets/bots/lazer_bot/lazer_bot_hurt.png", # hurt_image_path
+    "assets/bots/lazer_bot/lazer_bot_dead.png", # dead_image_path
+    (255, 125, 225), # button_color
+    (255, 175, 245), # button_hover_color
+    (255, 175, 225) # text_used_color
+)
+
 # catalog of different enemy types
 enemy_catalog = {
     "basic_goon": {
@@ -593,7 +700,7 @@ def open_shop(mouse_pos, battle_state, previous_battle_state):
     shop_button_rect = pygame.Rect(40, 530, 100, 50)
 
     # open shop if button is clicked and close shop if button is clicked again
-    if shop_button_rect.collidepoint(mouse_pos):
+    if shop_button_rect.collidepoint(mouse_pos) and not lazer_bot.actions[0]["movement_mode"]:
         if battle_state == "Shop":
             battle_state = previous_battle_state
         else:
@@ -651,12 +758,15 @@ def inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target
             return inspecting_character, scroll_y, target_scroll_y
     return inspecting_character, scroll_y, target_scroll_y
 
-def select_bot(mouse_pos, player_bots, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
+def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
     for bot in player_bots:
         # bot is selected if it's clicked, alive, and hasn't acted yet
         if bot.rect.collidepoint(mouse_pos) and bot.real_health > 0 and not bot.acted:
+            # if lazer bot is active and pierce is chosen, lazer bot can't be deselected by clicking on it again
+            if active_bot == bot and active_bot.name == "Lazer Bot" and chosen_action == "Pierce":
+                break
             # bot is deselected if clicked again
-            if active_bot == bot:
+            elif active_bot == bot:
                 inspecting_character = None
                 active_bot = None
             else:
@@ -664,9 +774,10 @@ def select_bot(mouse_pos, player_bots, active_bot, chosen_action, inspecting_cha
                 active_bot = bot
                 target_scroll_y = 0
                 scroll_y = 0
+            battle_state = "Player Turn"
             chosen_action = None
-            return active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
-    return active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
+            break
+    return battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
 
 def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
     # action button rectangles
@@ -723,6 +834,41 @@ def check_bot_turn(player_bots, enemy_goons):
             return "Player Turn"
     return "Enemy Turn"
 
+def execute_laser_action(mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character):
+    # bot enters and exits movement mode when clicked on
+    if active_bot.rect.collidepoint(mouse_pos) and not active_bot.actions[0]["movement_mode"]:
+        active_bot.actions[0]["movement_mode"] = True
+    elif active_bot.rect.collidepoint(mouse_pos) and active_bot.actions[0]["movement_mode"]:
+        active_bot.actions[0]["movement_mode"] = False
+    
+    # perform pierce action if lazer bot is not in movement mode and mouse is clicked to the right of lazer bot
+    elif active_bot.actions[0]["movement_mode"] == False and mouse_pos[0] > active_bot.rect.centerx + active_bot.actions[0]["projectile_offset"][0]:
+        # calculate the start position, end position, and direction of the laser beam based on the mouse position and lazer bot's position
+        start_x = active_bot.rect.centerx + active_bot.actions[0]["projectile_offset"][0]
+        start_y = active_bot.rect.centery + active_bot.actions[0]["projectile_offset"][1]
+        direction_x = mouse_pos[0] - start_x
+        direction_y = mouse_pos[1] - start_y
+        length = (direction_x ** 2 + direction_y ** 2) ** 0.5
+        end_x = start_x + direction_x / length * 1000
+        end_y = start_y + direction_y / length * 1000
+
+        # find all enemies hit by the laser beam
+        enemies_hit = []
+        for enemy in enemy_goons:
+            if enemy.real_health > 0 and enemy.rect.clipline(start_x, start_y, end_x, end_y):
+                enemies_hit.append(enemy)
+        active_bot.perform_action(active_effects, enemies_hit, chosen_action, (end_x, end_y))
+        active_bot.actions[0]["used"] = True
+
+        # check if active bot used both actions and reset for next action
+        active_bot.check_actions()
+        active_bot = None
+        chosen_action = None
+        inspecting_character = None
+
+        return check_bot_turn(player_bots, enemy_goons), active_bot, chosen_action, inspecting_character
+    return battle_state, active_bot, chosen_action, inspecting_character
+
 def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effects, battle_state, active_bot, chosen_action, inspecting_character,):
     for char in characters:
         if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
@@ -733,13 +879,16 @@ def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effec
                     break
             
             # perform the action chosen on the target character
-            active_bot.perform_action(active_effects, char, chosen_action)
+            if chosen_action == "Barrage":
+                active_bot.perform_action(active_effects, enemy_goons, chosen_action, None)
+            else:
+                active_bot.perform_action(active_effects, char, chosen_action)
             
             # check if active bot used both actions and reset for next action
             active_bot.check_actions()
-            inspecting_character = None
             active_bot = None
             chosen_action = None
+            inspecting_character = None
 
             return check_bot_turn(player_bots, enemy_goons), active_bot, chosen_action, inspecting_character
     return battle_state, active_bot, chosen_action, inspecting_character
@@ -763,22 +912,26 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
             gears = shop_upgrade(mouse_pos, gears)
 
         else:
-            # harvest gears
-            gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
+            # if lazer bot is in movement mode, other actions are disabled
+            if not lazer_bot.actions[0]["movement_mode"]:
+                # harvest gears
+                gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
 
-            # inspect enemy if not targeting enemy
-            if battle_state != "Target Enemy":
-                inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y)
+                # inspect enemy if not targeting enemy
+                if battle_state != "Target Enemy":
+                    inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y)
 
-            # select bot if not targeting bot
-            if battle_state != "Target Bot":
-                active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
-            
-            # select action if bot is selected
-            battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(mouse_pos, None, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
-            
+                # select bot if not targeting bot
+                if battle_state != "Target Bot":
+                    battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+                
+                # select action if bot is selected
+                battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(mouse_pos, None, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+                
             # carry out the chosen action
-            if battle_state == "Target Enemy":
+            if battle_state == "Target Line":
+                battle_state, active_bot, chosen_action, inspecting_character = execute_laser_action(mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
+            elif battle_state == "Target Enemy":
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
             elif battle_state == "Target Bot":
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, player_bots, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
@@ -787,14 +940,15 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
     elif event.button == 3:
         if battle_state == "Shop":
             battle_state = previous_battle_state
-        elif chosen_action:
-            chosen_action = None
-            battle_state = "Player Turn"
-        elif active_bot:
-            inspecting_character = None
-            active_bot = None
-        elif inspecting_character:
-            inspecting_character = None
+        elif not lazer_bot.actions[0]["movement_mode"]:
+            if chosen_action:
+                chosen_action = None
+                battle_state = "Player Turn"
+            elif active_bot:
+                inspecting_character = None
+                active_bot = None
+            elif inspecting_character:
+                inspecting_character = None
 
     return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
 
@@ -823,8 +977,9 @@ def handle_input(running, player_bots, enemy_goons, active_effects, game_state, 
                     event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
         
         elif event.type == pygame.KEYDOWN:
-            # select action if bot is selected based on key press
-            battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(None, event, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+            if not lazer_bot.actions[0]["movement_mode"]:
+                # select action if bot is selected based on key press
+                battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(None, event, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
 
     return running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
 
@@ -989,7 +1144,7 @@ def check_game_over(player_bots, battle_state, scroll_y, target_scroll_y):
 # DRAWING, ANIMATION, AND RENDERING
 # ------------------------------
 
-def update_animations(player_bots, enemy_goons, active_effects, scroll_y, target_scroll_y):
+def update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, scroll_y, target_scroll_y):
     # update characters shake when they are hurt
     for char in player_bots + enemy_goons:
         char.hurt_animations()
@@ -998,9 +1153,14 @@ def update_animations(player_bots, enemy_goons, active_effects, scroll_y, target
     for char in player_bots + enemy_goons:
         char.update_idle_animation()
 
+    # update lazer bot position if in movement mode
+    if battle_state == "Target Line" and active_bot.actions[0]["movement_mode"]:
+        mouse_pos_y = pygame.mouse.get_pos()[1]
+        active_bot.rect.centery = max(1, min(730, mouse_pos_y))
+
     # update and remove effects
     for effect in active_effects[:]:
-        if isinstance(effect, FloatingText):
+        if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile):
             effect.update()
         elif isinstance(effect, BounceProjectile):
             effect.update(enemy_goons, active_effects)
@@ -1091,9 +1251,9 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state
         if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
             if char in enemy_goons and battle_state == "Target Enemy":
                 pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
-            elif char in player_bots and battle_state == "Target Bot":
+            elif (char in player_bots and battle_state == "Target Bot") or (char.name == "Lazer Bot" and battle_state == "Target Line"):
                 pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
-            elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted:
+            elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted and not lazer_bot.actions[0]["movement_mode"]:
                 pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
 
         # draw name and health
@@ -1134,7 +1294,7 @@ def draw_action_button(screen, font_cache, battle_state, active_bot, x, y, text,
     
     # change button color based on hover and chosen state
     mouse_pos = pygame.mouse.get_pos()
-    if battle_state != "Shop":
+    if battle_state != "Shop" and not lazer_bot.actions[0]["movement_mode"]:
         if chosen and button_rect.collidepoint(mouse_pos):
             button_color = (255, 125, 125)
         elif not used and button_rect.collidepoint(mouse_pos):
@@ -1201,12 +1361,12 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     if button_rect.collidepoint(mouse_pos) and battle_state == "Shop":
         button_color = (255, 125, 125)
     elif active_bot:
-        if button_rect.collidepoint(mouse_pos):
+        if button_rect.collidepoint(mouse_pos) and not lazer_bot.actions[0]["movement_mode"]:
             button_color = active_bot.button_hover_color
         else:
             button_color = active_bot.button_color
     else:
-        if button_rect.collidepoint(mouse_pos) and battle_state != "Game Over":
+        if button_rect.collidepoint(mouse_pos) and battle_state != "Game Over" and not lazer_bot.actions[0]["movement_mode"]:
             button_color = (200, 200, 200)
         else:
             button_color = (150, 150, 150)
@@ -1401,6 +1561,27 @@ def draw_lore_box(screen, regular_font, battle_state, inspecting_character, scro
 
     return lore_height
 
+def draw_laser(screen, enemy_goons, battle_state, active_bot):
+    if battle_state == "Target Line" and not active_bot.actions[0]["movement_mode"]:
+        mouse_pos = pygame.mouse.get_pos()
+        if mouse_pos[0] > active_bot.rect.centerx + active_bot.actions[0]["projectile_offset"][0]:
+            # calculate the start position, end position, and direction of the laser beam based on the mouse position and lazer bot's position
+            start_x = active_bot.rect.centerx + active_bot.actions[0]["projectile_offset"][0]
+            start_y = active_bot.rect.centery + active_bot.actions[0]["projectile_offset"][1]
+            direction_x = mouse_pos[0] - start_x
+            direction_y = mouse_pos[1] - start_y
+            length = (direction_x ** 2 + direction_y ** 2) ** 0.5
+            end_x = start_x + direction_x / length * 1000
+            end_y = start_y + direction_y / length * 1000
+
+            # highlight all enemies being hit by the laser
+            for enemy in enemy_goons:
+                if enemy.real_health > 0 and enemy.rect.clipline(start_x, start_y, end_x, end_y):
+                    pygame.draw.rect(screen, (255, 0, 0), enemy.rect, 3)
+
+            # draw the laser beam
+            pygame.draw.line(screen, (255, 50, 255), (start_x, start_y), (end_x, end_y), 3)
+
 def draw_effects(screen, floating_font, active_effects):
     # draw animation based on its type
     for effect in active_effects:
@@ -1408,12 +1589,21 @@ def draw_effects(screen, floating_font, active_effects):
         if isinstance(effect, FloatingText):
             text = floating_font.render(effect.text, True, effect.color)
             screen.blit(text, (effect.x, effect.y))
-        # draw projectile
+        # draw laser projectile
+        elif isinstance(effect, LaserProjectile):
+            laser_surface = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+            if effect.timer > 20:
+                pygame.draw.line(laser_surface, (255, 50, 255, 255), effect.start_pos, effect.end_pos, 7)
+            else:
+                pygame.draw.line(laser_surface, (255, 50, 255, effect.alpha), effect.start_pos, effect.end_pos, 3)
+            screen.blit(laser_surface, (0, 0))
+        # draw linear projectiles
         elif isinstance(effect, LinearProjectile):
             if effect.projectile_type == "Damage":
                 pygame.draw.rect(screen, effect.color, (effect.x, effect.y, 10, 5))
             else:
                 pygame.draw.ellipse(screen, effect.color, (int(effect.x), int(effect.y), 10, 5))
+        # draw arc projectiles
         else:
             pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5)
 
@@ -1435,6 +1625,9 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
 
     # draw lore box with scrolling
     lore_height = draw_lore_box(screen, regular_font, battle_state, inspecting_character, scroll_y, rounds)
+
+    # draw laser beam if lazer bot is using its pierce
+    draw_laser(screen, enemy_goons, battle_state, active_bot)
     
     # draw effects damage or heal numbers or projectiles
     draw_effects(screen, floating_font, active_effects)
@@ -1522,7 +1715,7 @@ async def main():
     ]
 
     # inital list of characters and effects
-    player_bots = [gun_bot, rico_bot, elemental_bot]
+    player_bots = [gun_bot, rico_bot, elemental_bot, lazer_bot]
     enemy_goons = []
     active_effects = []
 
@@ -1579,7 +1772,7 @@ async def main():
             battle_state, scroll_y, target_scroll_y = check_game_over(player_bots, battle_state, scroll_y, target_scroll_y)
 
             # update animations
-            scroll_y = update_animations(player_bots, enemy_goons, active_effects, scroll_y, target_scroll_y)
+            scroll_y = update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, scroll_y, target_scroll_y)
 
             # drawing, animation, and rendering
             lore_height = draw_screen(
