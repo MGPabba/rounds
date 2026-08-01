@@ -161,6 +161,7 @@ class LaserProjectile():
         if self.timer <= 0:
             self.active = False
 
+
 # ------------------------------
 # CHARACTERS
 # ------------------------------
@@ -698,7 +699,6 @@ def scroll_math(mouse_pos, event, lore_height, target_scroll_y):
 def open_shop(mouse_pos, battle_state, previous_battle_state):
     # shop button rectangle
     shop_button_rect = pygame.Rect(40, 530, 100, 50)
-
     # open shop if button is clicked and close shop if button is clicked again
     if shop_button_rect.collidepoint(mouse_pos) and not lazer_bot.actions[0]["movement_mode"]:
         if battle_state == "Shop":
@@ -741,7 +741,7 @@ def harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots):
             active_effects.append(FloatingText((100, 100, 100), enemy.rect.left, enemy.rect.centery, f"+{enemy_gears} gears"))
             enemy_slots[enemy.slot_id]["occupied"] = False
             enemy_goons.pop(i)
-            return gears
+            break
     return gears
 
 def inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y):
@@ -755,7 +755,7 @@ def inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target
                 inspecting_character = enemy
                 target_scroll_y = 0
                 scroll_y = 0
-            return inspecting_character, scroll_y, target_scroll_y
+            break
     return inspecting_character, scroll_y, target_scroll_y
 
 def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
@@ -1135,7 +1135,7 @@ def check_game_over(player_bots, battle_state, scroll_y, target_scroll_y):
     if game_end:
         target_scroll_y = 0
         scroll_y = 0
-        return "Game Over", scroll_y, target_scroll_y
+        battle_state = "Game Over"
     
     return battle_state, scroll_y, target_scroll_y
 
