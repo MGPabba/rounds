@@ -56,9 +56,8 @@ class LinearProjectile(Projectile):
         self.projectile_type = projectile_type
         self.speed = 10
         self.distance = math.sqrt(self.distance_x ** 2 + self.distance_y ** 2)
-        self.frames = self.distance / self.speed
-        self.speed_x = self.distance_x / self.frames
-        self.speed_y = self.distance_y / self.frames
+        self.speed_x = self.distance_x / self.distance * self.speed
+        self.speed_y = self.distance_y / self.distance * self.speed
     
     def update(self, active_effects):
         # move projectile towards target
@@ -131,7 +130,8 @@ class BounceProjectile(ArcProjectile):
         
         # damage when projectile reaches and bounce again if valid
         if self.current_frame >= self.frames:
-            self.target_char.take_damage(active_effects, self.amount)
+            damage = self.target_char.damage_amount(self.amount)
+            self.target_char.take_damage(active_effects, damage)
             self.active = False
             self.enemies_hit.append(self.target_char)
             if self.bounce_amount > 0:
@@ -141,7 +141,8 @@ class BounceProjectile(ArcProjectile):
                         valid_targets.append(enemy)
                 if valid_targets:
                     next_target = random.choice(valid_targets)
-                    next_target.real_health -= self.amount
+                    damage = next_target.damage_amount(self.amount)
+                    next_target.real_health -= damage
                     active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), self.amount, self.bounce_amount - 1, self.enemies_hit))
 
 class LaserProjectile():
@@ -160,6 +161,110 @@ class LaserProjectile():
             self.alpha = int((self.timer / 20) * 255)
         if self.timer <= 0:
             self.active = False
+
+class GlitchyProjectile(Projectile):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+        super().__init__(color, source_char, target_char, projectile_offset, amount)
+        # glitchy projectile specific info
+        self.shake_x = 0
+        self.shake_y = 0
+
+    def update(self):
+        # randomly shake projectile
+        shake_roll = random.randint(1, 100)
+        if shake_roll <= 20:
+            self.shake_x = random.randint(-10, 10)
+            self.shake_y = random.randint(-10, 10)
+
+class GlitchyDamageProjectile(GlitchyProjectile):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+        super().__init__(color, source_char, target_char, projectile_offset, amount)
+        # glitchy damage projectile specific info
+        self.speed = 10
+        self.distance = math.sqrt(self.distance_x ** 2 + self.distance_y ** 2)
+        self.speed_x = self.distance_x / self.distance * self.speed
+        self.speed_y = self.distance_y / self.distance * self.speed
+
+    def update(self, active_effects):
+        super().update()
+        
+        # move projectile towards target
+        self.x += self.speed_x
+        self.y += self.speed_y
+
+        # damage when projectile reaches
+        if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
+            self.active = False
+            self.target_char.take_damage(active_effects, self.amount)
+
+class GlitchyHealProjectile(GlitchyProjectile):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+        super().__init__(color, source_char, target_char, projectile_offset, amount)
+        # glitchy heal projectile specific info
+        self.movement = "Forward"
+        self.speed = 7
+
+    def update(self, active_effects):
+        super().update()
+
+        # move projectile forward
+        if self.movement == "Forward":
+            self.x += self.speed
+            if self.x >= 600:
+                if self.target_y < self.y:
+                    self.movement = "Upward"
+                else:
+                    self.movement = "Downward"
+
+        # move projectile upward or downward towards target
+        elif self.movement == "Upward":
+            self.y -= self.speed
+            if self.y <= self.target_y:
+                self.movement = "Backward"
+        elif self.movement == "Downward":
+            self.y += self.speed
+            if self.y >= self.target_y:
+                self.movement = "Backward"
+
+        # move projectile backward towards target
+        elif self.movement == "Backward":
+            self.x -= self.speed
+
+            # heal when projectile reaches target
+            if self.x <= self.target_x:
+                self.active = False
+                self.target_char.take_heal(active_effects, self.amount)
+
+class GlitchyBlockProjectile(GlitchyProjectile):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+        super().__init__(color, source_char, target_char, projectile_offset, amount)
+        # glitchy block projectile specific info
+        self.movement = "Forward"
+        self.speed = 20
+
+    def update(self):
+        super().update()
+
+        # move projectile forward
+        if self.movement == "Forward":
+            self.x += 5
+            if self.x >= 600:
+                self.movement = "Backward"
+                self.distance_x = self.target_x - self.x
+                self.distance_y = self.target_y - self.y
+                self.distance = math.sqrt(self.distance_x ** 2 + self.distance_y ** 2)
+                self.speed_x = self.distance_x / self.distance * self.speed
+                self.speed_y = self.distance_y / self.distance * self.speed
+
+        # move projectile towards target
+        elif self.movement == "Backward":
+            self.x += self.speed_x
+            self.y += self.speed_y
+
+            # apply block when projectile reaches target
+            if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
+                self.active = False
+                self.target_char.block = self.amount
 
 
 # ------------------------------
@@ -180,6 +285,7 @@ class Character:
         self.fire_rounds = 0
         self.ice_hits = 0
         self.frozen = False
+        self.block = 0
 
         # animation
         self.animation_timer = 0
@@ -187,18 +293,33 @@ class Character:
         self.hurt_timer = 0
         self.shake_x = 0  
 
-    def take_damage(self, active_effects, amount):
-        # reduce health and start hurt animation
-        self.visual_health -= amount
+    def damage_amount(self, damage):
+        # calculate damage amount based on block chance
+        if self.block > 0:
+            block_roll = random.randint(1, 100)
+            if block_roll <= self.block:
+                return 0
+        return damage
+
+    def take_damage(self, active_effects, damage):
+        # reduce health
+        self.visual_health -= damage
         if self.visual_health < 0:
             self.visual_health = 0
         if self.real_health < 0:
             self.real_health = 0
-        self.hurt_timer = 30
 
         # text animation
-        text_x = random.randint(self.rect.left, self.rect.right - 30)
-        active_effects.append(FloatingText((255, 0, 0), text_x, self.rect.top + 10, f"-{amount}"))
+        if damage == 0:
+            text = "Blocked!"
+            color = (255, 255, 0)
+        else:
+            self.hurt_timer = 30
+            text = f"-{damage}"
+            color = (255, 0, 0)
+        text_width = len(text) * 10
+        text_x = random.randint(self.rect.left, self.rect.right - text_width)
+        active_effects.append(FloatingText(color, text_x, self.rect.top + 10, text))
 
     def take_heal(self, active_effects, amount):
         # increase health
@@ -384,11 +505,13 @@ class GunBot(Bot):
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Left Gun":
-            target_char.real_health -= self.actions[0]["damage"]
-            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["damage"], "Damage"))
+            damage = target_char.damage_amount(self.actions[0]["damage"])
+            target_char.real_health -= damage
+            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], damage, "Damage"))
         elif chosen_action == "Right Gun":
-            target_char.real_health -= self.actions[1]["damage"]
-            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["damage"], "Damage"))
+            damage = target_char.damage_amount(self.actions[1]["damage"])
+            target_char.real_health -= damage
+            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], damage, "Damage"))
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -433,7 +556,8 @@ class RicoBot(Bot):
             target_char.real_health += self.actions[0]["heal"]
             active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"]))
         elif chosen_action == "Bounce":
-            target_char.real_health -= self.actions[1]["damage"]
+            damage = target_char.damage_amount(self.actions[1]["damage"])
+            target_char.real_health -= damage
             active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["damage"], self.actions[1]["bounce_amount"] - 1, []))
 
     def lore_stats_text(self, lore, action):
@@ -532,8 +656,9 @@ class LazerBot(Bot):
             # create laser projectile and damage all enemies hit by the laser
             active_effects.append(LaserProjectile((self.rect.centerx + self.actions[0]["projectile_offset"][0], self.rect.centery + self.actions[0]["projectile_offset"][1]), laser_end))
             for enemy in target_list:
-                enemy.real_health -= self.actions[0]["damage"]
-                enemy.take_damage(active_effects, self.actions[0]["damage"])
+                damage = enemy.damage_amount(self.actions[0]["damage"])
+                enemy.real_health -= damage
+                enemy.take_damage(active_effects, damage)
                 self.actions[1]["barrage_charge"] += 1
             # check if barrage is charged and reset used status if it is
             if self.actions[1]["barrage_charge"] >= self.actions[1]["barrage_charge_needed"]:
@@ -544,9 +669,10 @@ class LazerBot(Bot):
             self.actions[1]["barrage_charge"] -= self.actions[1]["barrage_charge_needed"]
             for enemy in target_list:
                 if enemy.real_health > 0:
-                    enemy.real_health -= self.actions[1]["damage"]
+                    damage = enemy.damage_amount(self.actions[1]["damage"])
+                    enemy.real_health -= damage
                     active_effects.append(LaserProjectile((self.rect.centerx + self.actions[1]["projectile_offset"][0], self.rect.centery + self.actions[1]["projectile_offset"][1]), (enemy.rect.centerx, enemy.rect.centery)))
-                    enemy.take_damage(active_effects, self.actions[1]["damage"])
+                    enemy.take_damage(active_effects, damage)
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -557,10 +683,70 @@ class LazerBot(Bot):
             lore.append((f"Current Charge: {action['barrage_charge']}", "normal"))
             lore.append((f"Charge Needed: {action['barrage_charge_needed']}", "normal"))
 
+class ChaosBot(Bot):
+    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
+        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+        # action dictionary
+        self.actions = [
+            {
+                "name": "Random",
+                "min_power": 1,
+                "max_power": 5,
+                "used": False,
+                "target_state": "Target Any",
+                "image_path": "assets/bots/chaos_bot/chaos_bot_random.png",
+                "image": None,
+                "description": "Shoots a glitchy projectile that can heal a friendly bot or damage an enemy. The amount of healing or damage is random.",
+                "scroll": 65,
+                "projectile_offset": (-6, 6)
+            },
+            {
+                "name": "Barrier",
+                "block": 50,
+                "used": False,
+                "target_state": "Target Bot",
+                "image_path": "assets/bots/chaos_bot/chaos_bot_barrier.png",
+                "image": None,
+                "description": "Shoots a glitchy projectile that creates a barrier around a friendly bot. The barrier has a chance to block enemy damage for one round.",
+                "scroll": 200,
+                "projectile_offset": (-5, 6)
+            }
+        ]
+
+    def update_idle_animation(self):
+        # update idle animation to be random when character is alive and doing nothing
+        if self.visual_health > 0:
+            self.animation_timer += 1
+            if self.animation_timer >= self.animation_speed:
+                self.animation_timer = 0
+                self.current_frame = random.randint(0, len(self.idle_images) - 1)
+
+    def perform_action(self, active_effects, target_char, chosen_action):
+        # perform action on target character based on which action is chosen
+        if chosen_action == "Random":
+            random_amount = random.randint(self.actions[0]["min_power"], self.actions[0]["max_power"])
+            if isinstance(target_char, Enemy):
+                damage = target_char.damage_amount(random_amount)
+                target_char.real_health -= damage
+                active_effects.append(GlitchyDamageProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], damage))
+            else:
+                target_char.real_health += random_amount
+                active_effects.append(GlitchyHealProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], random_amount))
+        elif chosen_action == "Barrier":
+            active_effects.append(GlitchyBlockProjectile((255, 155, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["block"]))
+
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Random":
+            lore.append((f"Min Damage: {action['min_power']}", "normal"))
+            lore.append((f"Max Damage: {action['max_power']}", "normal"))
+        elif action["name"] == "Barrier":
+            lore.append((f"Block Chance: {action['block']}%", "normal"))
+
 gun_bot = GunBot(
     "Gun Bot", # name
     10, # health
-    200, 150, # x, y
+    200, 100, # x, y
     (50, 100, 255), # box_background_color
     "A bot equipped with dual guns.", # description
     [
@@ -582,7 +768,7 @@ gun_bot = GunBot(
 rico_bot = RicoBot(
     "Rico Bot", # name
     10, # health
-    200, 300, # x, y
+    200, 275, # x, y
     (50, 200, 50), # box_background_color
     "A bot that just loves balls.", # description
     [
@@ -649,6 +835,27 @@ lazer_bot = LazerBot(
     (255, 125, 225), # button_color
     (255, 175, 245), # button_hover_color
     (255, 175, 225) # text_used_color
+)
+
+chaos_bot = ChaosBot(
+    "Chaos Bot", # name
+    10, # health
+    350, 250, # x, y
+    (255, 155, 0), # box_background_color
+    "A bot full of powerful chaos, use carefully.", # description
+    [
+        "assets/bots/chaos_bot/chaos_bot_idle_1.png",
+        "assets/bots/chaos_bot/chaos_bot_idle_2.png",
+        "assets/bots/chaos_bot/chaos_bot_idle_3.png",
+        "assets/bots/chaos_bot/chaos_bot_idle_4.png",
+        "assets/bots/chaos_bot/chaos_bot_idle_5.png"
+    ], # idle_images_path
+    "assets/bots/chaos_bot/chaos_bot_active.png", # active_image_path
+    "assets/bots/chaos_bot/chaos_bot_hurt.png", # hurt_image_path
+    "assets/bots/chaos_bot/chaos_bot_dead.png", # dead_image_path
+    (255, 205, 100), # button_color
+    (255, 230, 175), # button_hover_color
+    (255, 230, 175) # text_used_color
 )
 
 # catalog of different enemy types
@@ -819,20 +1026,20 @@ def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, ins
     return battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y
 
 def check_bot_turn(player_bots, enemy_goons):
-    # check if all enemies are dead, change to enemy turn if so to prevent soft lock
+    # check if all enemies are dead
     no_enemies_alive = True
     for enemy in enemy_goons:
         if enemy.real_health > 0:
             no_enemies_alive = False
             break
     if no_enemies_alive:
-        return "Enemy Turn"
+        return "Player Turn Over"
 
-    # check if all bots finished their actions, change to enemy turn if so
+    # check if all bots finished their actions
     for bot in player_bots:
         if bot.real_health > 0 and not bot.acted:
             return "Player Turn"
-    return "Enemy Turn"
+    return "Player Turn Over"
 
 def execute_laser_action(mouse_pos, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character):
     # bot enters and exits movement mode when clicked on
@@ -918,11 +1125,11 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
                 gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
 
                 # inspect enemy if not targeting enemy
-                if battle_state != "Target Enemy":
+                if battle_state not in ["Target Enemy", "Target Any"]:
                     inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y)
 
                 # select bot if not targeting bot
-                if battle_state != "Target Bot":
+                if battle_state not in ["Target Bot", "Target Any"]:
                     battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
                 
                 # select action if bot is selected
@@ -935,6 +1142,8 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
             elif battle_state == "Target Bot":
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, player_bots, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
+            elif battle_state == "Target Any":
+                battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, player_bots + enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
 
     # right click to close shop or cancel action or bot
     elif event.button == 3:
@@ -988,24 +1197,28 @@ def handle_input(running, player_bots, enemy_goons, active_effects, game_state, 
 # ENEMY TURN
 # ------------------------------
 
-def enemy_attacks(enemy_goons, player_bots, active_effects):
-    for enemy in enemy_goons:
-        if enemy.real_health > 0:
-            # skip the enemy turn if frozen
-            if enemy.frozen:
-                enemy.frozen = False
-                enemy.ice_hits = 0
-                continue
-            
-            # attack a random alive bot
-            bots_alive = []
-            for bot in player_bots:
-                if bot.real_health > 0:
-                    bots_alive.append(bot)
-            if bots_alive:
-                target = random.choice(bots_alive)
-                target.real_health -= enemy.damage
-                active_effects.append(LinearProjectile((255, 0, 0), enemy, target, (-50, -50), enemy.damage, "Damage"))
+def enemy_attacks(player_bots, enemy_goons, active_effects, battle_state):
+    if battle_state == "Enemy Turn":
+        for enemy in enemy_goons:
+            if enemy.real_health > 0:
+                # skip the enemy turn if frozen
+                if enemy.frozen:
+                    enemy.frozen = False
+                    enemy.ice_hits = 0
+                    continue
+                
+                # attack a random alive bot
+                bots_alive = []
+                for bot in player_bots:
+                    if bot.real_health > 0:
+                        bots_alive.append(bot)
+                if bots_alive:
+                    target = random.choice(bots_alive)
+                    damage = target.damage_amount(enemy.damage)
+                    target.real_health -= damage
+                    active_effects.append(LinearProjectile((255, 0, 0), enemy, target, (-50, -50), damage, "Damage"))
+        battle_state = "Enemy Turn Over"
+    return battle_state
 
 def round_end(player_bots, enemy_goons, active_effects, battle_state, rounds):
     # does fire damage to characters on fire
@@ -1013,15 +1226,19 @@ def round_end(player_bots, enemy_goons, active_effects, battle_state, rounds):
         if char.real_health > 0 and char.fire_rounds > 0:
             char.fire_rounds -= 1
             if char in player_bots:
-                char.take_damage(active_effects, 1)
-                char.real_health -= 1
+                damage = char.damage_amount(1)
+                char.real_health -= damage
+                char.take_damage(active_effects, damage)
             elif char in enemy_goons:
-                char.real_health -= elemental_bot.actions[0]["damage"]
-                char.take_damage(active_effects, elemental_bot.actions[0]["damage"])
+                damage = char.damage_amount(elemental_bot.actions[0]["damage"])
+                char.real_health -= damage
+                char.take_damage(active_effects, damage)
     
     # resets for next turn
     for bot in player_bots:
         bot.reset_actions()
+    for char in player_bots + enemy_goons:
+        char.block = 0
     battle_state = "Player Turn"
     rounds += 1
     return battle_state, rounds
@@ -1091,10 +1308,30 @@ def spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_s
     return gears, max_enemies
 
 def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, rounds, max_enemies, enemy_slots):
-    if battle_state == "Enemy Turn":
-        # enemy attack logic
-        enemy_attacks(enemy_goons, player_bots, active_effects)
-        
+    # change to enemy turn if player turn is over and all projectiles have reached their target
+    if battle_state == "Player Turn Over":
+        projectiles_effects_active = False
+        for effect in active_effects:
+            if not isinstance(effect, FloatingText):
+                projectiles_effects_active = True
+                break
+        if not projectiles_effects_active:
+            battle_state = "Enemy Turn"
+
+    # enemy attack logic
+    battle_state = enemy_attacks(player_bots, enemy_goons, active_effects, battle_state)
+
+    # change to round end if enemy turn is over and all projectiles have reached their target
+    if battle_state == "Enemy Turn Over":
+        projectiles_effects_active = False
+        for effect in active_effects:
+            if not isinstance(effect, FloatingText):
+                projectiles_effects_active = True
+                break
+        if not projectiles_effects_active:
+            battle_state = "Round End"
+
+    if battle_state == "Round End":
         # end of round logic
         battle_state, rounds = round_end(player_bots, enemy_goons, active_effects, battle_state, rounds)
 
@@ -1160,7 +1397,7 @@ def update_animations(player_bots, enemy_goons, active_effects, battle_state, ac
 
     # update and remove effects
     for effect in active_effects[:]:
-        if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile):
+        if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile) or isinstance(effect, GlitchyBlockProjectile):
             effect.update()
         elif isinstance(effect, BounceProjectile):
             effect.update(enemy_goons, active_effects)
@@ -1246,12 +1483,18 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state
                 else:
                     pygame.draw.rect(screen, (0, 255, 255), box_rect, 1)
 
+        # draw block barrier
+        if char.visual_health > 0 and char.block > 0:
+            pygame.draw.rect(screen, (255, 200, 0), (char.rect.x -10, char.rect.y, 110, 110), 3)
+            pygame.draw.rect(screen, (255, 200, 0), (char.rect.x, char.rect.y - 5, 105, 105), 3)
+            pygame.draw.rect(screen, (255, 200, 0), (char.rect.x, char.rect.y, 120, 120), 3)
+
         # highlight character if hovering and valid target
         mouse_pos = pygame.mouse.get_pos()
         if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
-            if char in enemy_goons and battle_state == "Target Enemy":
+            if char in enemy_goons and battle_state in ["Target Enemy", "Target Any"]:
                 pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
-            elif (char in player_bots and battle_state == "Target Bot") or (char.name == "Lazer Bot" and battle_state == "Target Line"):
+            elif (char in player_bots and battle_state in ["Target Bot", "Target Any"]) or (char.name == "Lazer Bot" and battle_state == "Target Line"):
                 pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
             elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted and not lazer_bot.actions[0]["movement_mode"]:
                 pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
@@ -1589,6 +1832,7 @@ def draw_effects(screen, floating_font, active_effects):
         if isinstance(effect, FloatingText):
             text = floating_font.render(effect.text, True, effect.color)
             screen.blit(text, (effect.x, effect.y))
+
         # draw laser projectile
         elif isinstance(effect, LaserProjectile):
             laser_surface = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
@@ -1597,12 +1841,20 @@ def draw_effects(screen, floating_font, active_effects):
             else:
                 pygame.draw.line(laser_surface, (255, 50, 255, effect.alpha), effect.start_pos, effect.end_pos, 3)
             screen.blit(laser_surface, (0, 0))
+
         # draw linear projectiles
         elif isinstance(effect, LinearProjectile):
             if effect.projectile_type == "Damage":
                 pygame.draw.rect(screen, effect.color, (effect.x, effect.y, 10, 5))
             else:
                 pygame.draw.ellipse(screen, effect.color, (int(effect.x), int(effect.y), 10, 5))
+
+        # draw glitchy projectiles
+        elif isinstance(effect, GlitchyDamageProjectile) or isinstance(effect, GlitchyHealProjectile):
+            pygame.draw.rect(screen, effect.color, (effect.x + effect.shake_x, effect.y + effect.shake_y, 10, 10))
+        elif isinstance(effect, GlitchyBlockProjectile):
+            pygame.draw.rect(screen, effect.color, (effect.x + effect.shake_x, effect.y + effect.shake_y, 10, 10), 2)
+        
         # draw arc projectiles
         else:
             pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5)
@@ -1715,7 +1967,7 @@ async def main():
     ]
 
     # inital list of characters and effects
-    player_bots = [gun_bot, rico_bot, elemental_bot, lazer_bot]
+    player_bots = [gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot]
     enemy_goons = []
     active_effects = []
 
