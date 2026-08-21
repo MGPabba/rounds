@@ -73,6 +73,45 @@ class LinearProjectile(Projectile):
                 self.target_char.apply_fire(active_effects, self.amount)
             elif self.projectile_type == "Ice":
                 self.target_char.apply_ice(active_effects, self.amount)
+            elif self.projectile_type == "Mark":
+                self.target_char.apply_mark(active_effects, self.amount)
+
+class ChargeProjectile(LinearProjectile):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, projectile_type, max_radius):
+        super().__init__(color, source_char, target_char, projectile_offset, amount, projectile_type)
+        # charge projectile specific info
+        self.max_radius = max_radius
+        self.current_radius = 0
+        self.border = 1
+        self.border_phase = "Grow"
+    
+    def update(self, active_effects):
+        # projectile grows based on amount of charge
+        if self.current_radius < self.max_radius:
+            self.current_radius += 1
+        else:
+            super().update(active_effects)
+            # border grows and shrinks as projectile moves towards target
+            if self.border_phase == "Grow":
+                self.border += 1
+                if self.border >= self.max_radius:
+                    self.border_phase = "Shrink"
+            elif self.border_phase == "Shrink":
+                self.border -= 1
+                if self.border <= 0:
+                    self.border_phase = "Grow"
+
+class MarkProjectile(LinearProjectile):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, projectile_type):
+        super().__init__(color, source_char, target_char, projectile_offset, amount, projectile_type)
+        # mark projectile specific info
+        self.angle = 0
+        self.rotation_speed = 0.5
+    
+    def update(self, active_effects):
+        super().update(active_effects)
+        # rotate projectile as it moves towards target
+        self.angle -= self.rotation_speed
 
 class ArcProjectile(Projectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
@@ -285,6 +324,8 @@ class Character:
         self.fire_rounds = 0
         self.ice_hits = 0
         self.frozen = False
+        self.mark_hits = 0
+        self.marked = False
         self.block = 0
 
         # animation
@@ -299,6 +340,10 @@ class Character:
             block_roll = random.randint(1, 100)
             if block_roll <= self.block:
                 return 0
+
+        # double damage if marked
+        if self.marked:
+            damage *= 2
         return damage
 
     def take_damage(self, active_effects, damage):
@@ -351,6 +396,19 @@ class Character:
         text_width = len(text) * 10
         text_x = random.randint(self.rect.left, self.rect.right - text_width)
         active_effects.append(FloatingText((0, 255, 255), text_x, self.rect.top + 10, text))
+
+    def apply_mark(self, active_effects, mark_hits_needed):
+        # add mark hits, mark if enough hits, and display text animation
+        self.mark_hits += 1
+        if self.mark_hits == mark_hits_needed:
+            self.marked = True
+            self.mark_hits = 0
+            text = "Marked!"
+        else:
+            text = "+1 mark"
+        text_width = len(text) * 10
+        text_x = random.randint(self.rect.left, self.rect.right - text_width)
+        active_effects.append(FloatingText((255, 255, 0), text_x, self.rect.top + 10, text))
 
     def hurt_animations(self):
         # shake character when hurt
@@ -743,6 +801,64 @@ class ChaosBot(Bot):
         elif action["name"] == "Barrier":
             lore.append((f"Block Chance: {action['block']}%", "normal"))
 
+class DuploBot(Bot):
+    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
+        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+        # action dictionary
+        self.actions = [
+            {
+                "name": "Charge",
+                "damage": 1,
+                "projectile_radius": 2,
+                "used": False,
+                "target_state": "Target Enemy or Self",
+                "image_path": "assets/bots/duplo_bot/duplo_bot_charge.png",
+                "image": None,
+                "description": "Charge or attack. Click on Duplo Bot to charge. Charging doubles the damage. Click on an enemy to attack. The damage will reset to 1 after attacking.",
+                "scroll": 65,
+                "projectile_offset": (26, -28)
+            },
+            {
+                "name": "Mark",
+                "mark_hits_needed": 2,
+                "used": False,
+                "target_state": "Target Enemy",
+                "image_path": "assets/bots/duplo_bot/duplo_bot_mark.png",
+                "image": None,
+                "description": "Shoots a marker at an enemy. After the enemy has been hit multiple times, it will be marked and take double damage from all sources for a round.",
+                "scroll": 195,
+                "projectile_offset": (26, -28)
+            }
+        ]
+
+    def perform_action(self, active_effects, target_char, chosen_action):
+        # perform action on target character based on which action is chosen
+        if chosen_action == "Charge":
+            # if target character is self, increase damage
+            if target_char == self:
+                self.actions[0]["damage"] *= 2
+                self.actions[0]["projectile_radius"] += 2
+                text = "Charged!"
+                text_width = len(text) * 10
+                text_x = random.randint(self.rect.left, self.rect.right - text_width)
+                active_effects.append(FloatingText((255, 255, 0), text_x, self.rect.top + 10, text))
+            # if target character is an enemy, deal damage and reset damage
+            else:
+                damage = target_char.damage_amount(self.actions[0]["damage"])
+                target_char.real_health -= damage
+                active_effects.append(ChargeProjectile((255, 255, 0), self, target_char, self.actions[0]["projectile_offset"], damage, "Damage", self.actions[0]["projectile_radius"]))
+                self.actions[0]["damage"] = 1
+                self.actions[0]["projectile_radius"] = 2
+        elif chosen_action == "Mark":
+            active_effects.append(MarkProjectile((255, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["mark_hits_needed"], "Mark"))
+
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Charge":
+            lore.append((f"Damage: {action['damage']}", "normal"))
+        elif action["name"] == "Mark":
+            lore.append((f"Mark Hits Needed: {action['mark_hits_needed']}", "normal"))
+
 gun_bot = GunBot(
     "Gun Bot", # name
     10, # health
@@ -858,6 +974,27 @@ chaos_bot = ChaosBot(
     (255, 230, 175) # text_used_color
 )
 
+duplo_bot = DuploBot(
+    "Duplo Bot", # name
+    10, # health
+    350, 400, # x, y
+    (200, 200, 0), # box_background_color
+    "A bot made of doubling power.", # description
+    [
+        "assets/bots/duplo_bot/duplo_bot_idle_1.png",
+        "assets/bots/duplo_bot/duplo_bot_idle_2.png",
+        "assets/bots/duplo_bot/duplo_bot_idle_3.png",
+        "assets/bots/duplo_bot/duplo_bot_idle_4.png",
+        "assets/bots/duplo_bot/duplo_bot_idle_5.png"
+    ], # idle_images_path
+    "assets/bots/duplo_bot/duplo_bot_active.png", # active_image_path
+    "assets/bots/duplo_bot/duplo_bot_hurt.png", # hurt_image_path
+    "assets/bots/duplo_bot/duplo_bot_dead.png", # dead_image_path
+    (220, 220, 50), # button_color
+    (240, 240, 100), # button_hover_color
+    (255, 240, 100) # text_used_color
+)
+
 # catalog of different enemy types
 enemy_catalog = {
     "basic_goon": {
@@ -971,6 +1108,9 @@ def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, 
         if bot.rect.collidepoint(mouse_pos) and bot.real_health > 0 and not bot.acted:
             # if lazer bot is active and pierce is chosen, lazer bot can't be deselected by clicking on it again
             if active_bot == bot and active_bot.name == "Lazer Bot" and chosen_action == "Pierce":
+                break
+            # if duplo bot is active and charge is chosen, duplo bot can't be deselected by clicking on it again
+            elif active_bot == bot and active_bot.name == "Duplo Bot" and chosen_action == "Charge":
                 break
             # bot is deselected if clicked again
             elif active_bot == bot:
@@ -1125,7 +1265,7 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
                 gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
 
                 # inspect enemy if not targeting enemy
-                if battle_state not in ["Target Enemy", "Target Any"]:
+                if battle_state not in ["Target Enemy", "Target Enemy or Self", "Target Any"]:
                     inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y)
 
                 # select bot if not targeting bot
@@ -1142,7 +1282,7 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
             elif battle_state == "Target Bot":
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, player_bots, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
-            elif battle_state == "Target Any":
+            elif battle_state in ["Target Enemy or Self", "Target Any"]:
                 battle_state, active_bot, chosen_action, inspecting_character = execute_action(mouse_pos, player_bots, enemy_goons, player_bots + enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character)
 
     # right click to close shop or cancel action or bot
@@ -1203,8 +1343,6 @@ def enemy_attacks(player_bots, enemy_goons, active_effects, battle_state):
             if enemy.real_health > 0:
                 # skip the enemy turn if frozen
                 if enemy.frozen:
-                    enemy.frozen = False
-                    enemy.ice_hits = 0
                     continue
                 
                 # attack a random alive bot
@@ -1239,6 +1377,8 @@ def round_end(player_bots, enemy_goons, active_effects, battle_state, rounds):
         bot.reset_actions()
     for char in player_bots + enemy_goons:
         char.block = 0
+        char.frozen = False
+        char.marked = False
     battle_state = "Player Turn"
     rounds += 1
     return battle_state, rounds
@@ -1454,47 +1594,12 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state
         # draw character image
         screen.blit(current_image, (char.rect.x + char.shake_x, char_y))
 
-        # draw overlay on character if frozen or on fire
-        if char.visual_health > 0:
-            if char.frozen:
-                overlay = pygame.Surface((100, 100), pygame.SRCALPHA)
-                overlay.fill((0, 255, 255, 100))
-                screen.blit(overlay, char.rect)
-            elif char.fire_rounds > 0:
-                overlay = pygame.Surface((100, 100), pygame.SRCALPHA)
-                overlay.fill((255, 0, 0, 100))
-                screen.blit(overlay, char.rect)
-
-        # draw number of fire rounds at bottom left of character
-        if char.visual_health > 0 and char.fire_rounds > 0:
-            fire_text = regular_font.render(f"{char.fire_rounds}", True, (255, 0, 0))
-            screen.blit(fire_text, (char.rect.x + 2, char.rect.bottom - 16))
-        
-        # draw boxes for number of ice hits and how many needed
-        if char.visual_health > 0 and char.ice_hits > 0:
-            for i in range(elemental_bot.actions[1]["ice_hits_needed"]):
-                if elemental_bot.actions[1]["ice_hits_needed"] == 3:
-                    box_x_offset = 28
-                elif elemental_bot.actions[1]["ice_hits_needed"] == 2:
-                    box_x_offset = 19
-                box_rect = pygame.Rect(char.rect.right - box_x_offset + (i * 9), char.rect.y - 11, 10, 10)
-                if i < char.ice_hits:
-                    pygame.draw.rect(screen, (0, 255, 255), box_rect)
-                else:
-                    pygame.draw.rect(screen, (0, 255, 255), box_rect, 1)
-
-        # draw block barrier
-        if char.visual_health > 0 and char.block > 0:
-            pygame.draw.rect(screen, (255, 200, 0), (char.rect.x -10, char.rect.y, 110, 110), 3)
-            pygame.draw.rect(screen, (255, 200, 0), (char.rect.x, char.rect.y - 5, 105, 105), 3)
-            pygame.draw.rect(screen, (255, 200, 0), (char.rect.x, char.rect.y, 120, 120), 3)
-
         # highlight character if hovering and valid target
         mouse_pos = pygame.mouse.get_pos()
         if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
-            if char in enemy_goons and battle_state in ["Target Enemy", "Target Any"]:
+            if char in enemy_goons and battle_state in ["Target Enemy", "Target Enemy or Self", "Target Any"]:
                 pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
-            elif (char in player_bots and battle_state in ["Target Bot", "Target Any"]) or (char.name == "Lazer Bot" and battle_state == "Target Line"):
+            elif (char in player_bots and battle_state in ["Target Bot", "Target Any"]) or (char.name == "Lazer Bot" and battle_state == "Target Line") or (char.name == "Duplo Bot" and battle_state == "Target Enemy or Self"):
                 pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
             elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted and not lazer_bot.actions[0]["movement_mode"]:
                 pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
@@ -1514,6 +1619,57 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state
                 color = (255, 0, 0)
                 dot_offset = 0
             pygame.draw.circle(screen, color, (char.rect.x - 10, char.rect.y - 33 - dot_offset), 5)
+
+def draw_character_status_effects(screen, regular_font, player_bots, enemy_goons):
+    for char in player_bots + enemy_goons:
+        if char.visual_health > 0:
+            # draw overlay on character if frozen or on fire
+            if char.frozen:
+                overlay = pygame.Surface((100, 100), pygame.SRCALPHA)
+                overlay.fill((0, 255, 255, 100))
+                screen.blit(overlay, char.rect)
+            elif char.fire_rounds > 0:
+                overlay = pygame.Surface((100, 100), pygame.SRCALPHA)
+                overlay.fill((255, 0, 0, 100))
+                screen.blit(overlay, char.rect)
+
+            # draw number of fire rounds at bottom left of character
+            if char.fire_rounds > 0:
+                fire_text = regular_font.render(f"{char.fire_rounds}", True, (255, 0, 0))
+                screen.blit(fire_text, (char.rect.x + 2, char.rect.bottom - 16))
+            
+            # draw boxes for number of ice hits and how many needed
+            if char.ice_hits > 0:
+                for i in range(elemental_bot.actions[1]["ice_hits_needed"]):
+                    if elemental_bot.actions[1]["ice_hits_needed"] == 3:
+                        box_x_offset = 28
+                    elif elemental_bot.actions[1]["ice_hits_needed"] == 2:
+                        box_x_offset = 19
+                    box_rect = pygame.Rect(char.rect.right - box_x_offset + (i * 9), char.rect.y - 11, 10, 10)
+                    if i < char.ice_hits:
+                        pygame.draw.rect(screen, (0, 255, 255), box_rect)
+                    else:
+                        pygame.draw.rect(screen, (0, 255, 255), box_rect, 1)
+            
+            # draw boxes for number of mark hits and how many needed
+            if char.mark_hits > 0:
+                for i in range(2):
+                    box_rect = pygame.Rect(char.rect.right - 19 + (i * 9), char.rect.y - 21, 10, 10)
+                    if i < char.mark_hits:
+                        pygame.draw.rect(screen, (255, 255, 0), box_rect)
+                    else:
+                        pygame.draw.rect(screen, (255, 255, 0), box_rect, 1)
+
+            # draw "M" if marked
+            if char.marked:
+                mark_text = regular_font.render("M", True, (255, 255, 0))
+                screen.blit(mark_text, (char.rect.x - 16, char.rect.y - 20))
+
+            # draw block barrier
+            if char.block > 0:
+                pygame.draw.rect(screen, (255, 200, 0), (char.rect.x -10, char.rect.y, 110, 110), 3)
+                pygame.draw.rect(screen, (255, 200, 0), (char.rect.x, char.rect.y - 5, 105, 105), 3)
+                pygame.draw.rect(screen, (255, 200, 0), (char.rect.x, char.rect.y, 120, 120), 3)
 
 def dynamic_text(font_cache, text, max_width, max_height, color):
     # default font size
@@ -1842,6 +1998,15 @@ def draw_effects(screen, floating_font, active_effects):
                 pygame.draw.line(laser_surface, (255, 50, 255, effect.alpha), effect.start_pos, effect.end_pos, 3)
             screen.blit(laser_surface, (0, 0))
 
+        # draw charge projectiles
+        elif isinstance(effect, ChargeProjectile):
+            pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), effect.current_radius)
+            pygame.draw.circle(screen, (150, 150, 0), (int(effect.x), int(effect.y)), effect.current_radius, effect.border)
+
+        # draw mark projectiles
+        elif isinstance(effect, MarkProjectile):
+            pygame.draw.arc(screen, effect.color, (effect.x-5, effect.y-5, 10, 10), effect.angle, effect.angle + 3.14, 2)
+
         # draw linear projectiles
         elif isinstance(effect, LinearProjectile):
             if effect.projectile_type == "Damage":
@@ -1865,6 +2030,9 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
 
     # draw bots and goons with animations based on their states and actions
     draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state, active_bot, chosen_action, inspecting_character)
+
+    # draw bots and goons status effects
+    draw_character_status_effects(screen, regular_font, player_bots, enemy_goons)
 
     # draw action options based on active bot and chosen action
     draw_action_box(screen, font_cache, battle_state, active_bot, chosen_action)
@@ -1967,7 +2135,8 @@ async def main():
     ]
 
     # inital list of characters and effects
-    player_bots = [gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot]
+    # gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot
+    player_bots = [gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot]
     enemy_goons = []
     active_effects = []
 
