@@ -113,6 +113,58 @@ class MarkProjectile(LinearProjectile):
         # rotate projectile as it moves towards target
         self.angle -= self.rotation_speed
 
+class PercentageProjectile(LinearProjectile):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, projectile_type):
+        super().__init__(color, source_char, target_char, projectile_offset, amount, projectile_type)
+        # percentage projectile specific info
+        self.line_one_angle = 0
+        self.line_two_angle = 0
+        self.rotation_speed = 0.2
+    
+    def update(self, active_effects):
+        super().update(active_effects)
+
+        # rotate one line clockwise as it moves towards target
+        self.line_one_angle += self.rotation_speed
+        self.line_one_x1 = self.x + math.cos(self.line_one_angle) * 10
+        self.line_one_y1 = self.y + math.sin(self.line_one_angle) * 10
+        self.line_one_x2 = self.x - math.cos(self.line_one_angle) * 5
+        self.line_one_y2 = self.y - math.sin(self.line_one_angle) * 5
+
+        # rotate the other line counterclockwise as it moves towards target
+        self.line_two_angle -= self.rotation_speed
+        self.line_two_x1 = self.x + math.cos(self.line_two_angle) * 10
+        self.line_two_y1 = self.y + math.sin(self.line_two_angle) * 5
+        self.line_two_x2 = self.x - math.cos(self.line_two_angle) * 10
+        self.line_two_y2 = self.y - math.sin(self.line_two_angle) * 5
+
+class ShieldProjectile(Projectile):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+        super().__init__(color, source_char, target_char, projectile_offset, amount)
+        # shield projectile specific info
+        self.progress = 0
+        self.control_x = 800
+        self.control_y1 = self.source_y + (self.target_y - self.source_y) * 0.1
+        self.control_y2 = self.source_y + (self.target_y - self.source_y) * 0.9
+
+    def update(self):
+        # increase progress of projectile movement
+        self.progress += 0.015
+
+        # calculate projectile position using quadratic and cubic Bezier curve
+        self.x = ((1 - self.progress) ** 2 * self.source_x
+                  + 2 * (1 - self.progress) * self.progress * self.control_x
+                  + self.progress ** 2 * self.target_x)
+        self.y = ((1 - self.progress) ** 3 * self.source_y
+                  + 3 * (1 - self.progress) ** 2 * self.progress * self.control_y1
+                  + 3 * (1 - self.progress) * self.progress ** 2 * self.control_y2
+                  + self.progress ** 3 * self.target_y)
+
+        # apply shield when projectile reaches target
+        if self.progress >= 1:
+            self.active = False
+            self.target_char.shield = self.amount
+
 class ArcProjectile(Projectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
@@ -327,6 +379,7 @@ class Character:
         self.mark_hits = 0
         self.marked = False
         self.block = 0
+        self.shield = 0
 
         # animation
         self.animation_timer = 0
@@ -344,6 +397,11 @@ class Character:
         # double damage if marked
         if self.marked:
             damage *= 2
+        
+        # reduce damage if shield is active
+        if self.shield > 0:
+            damage = math.ceil(damage * self.shield)
+        
         return damage
 
     def take_damage(self, active_effects, damage):
@@ -859,6 +917,52 @@ class DuploBot(Bot):
         elif action["name"] == "Mark":
             lore.append((f"Mark Hits Needed: {action['mark_hits_needed']}", "normal"))
 
+class ModBot(Bot):
+    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
+        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+        # action dictionary
+        self.actions = [
+            {
+                "name": "Percentage",
+                "damage": 0.1,
+                "used": False,
+                "target_state": "Target Enemy",
+                "image_path": "assets/bots/mod_bot/mod_bot_percentage.png",
+                "image": None,
+                "description": "Shoots a percentage projectile that damages an enemy. The amount of damage is based on the percentage of the enemy's current health. The amount of damage is rounded down with a minimum of 1 damage.",
+                "scroll": 65,
+                "projectile_offset": (-22, -26)
+            },
+            {
+                "name": "Shield",
+                "shield": 0.5,
+                "used": False,
+                "target_state": "Target Bot",
+                "image_path": "assets/bots/mod_bot/mod_bot_shield.png",
+                "image": None,
+                "description": "Shoots a shield projectile that creates a shield around a friendly bot. The shield reduces enemy damage for one round. The damage taken is rounded up.",
+                "scroll": 215,
+                "projectile_offset": (21, 19)
+            }
+        ]
+
+    def perform_action(self, active_effects, target_char, chosen_action):
+        # perform action on target character based on which action is chosen
+        if chosen_action == "Percentage":
+            percentage_damage = max(1, int(target_char.real_health * self.actions[0]["damage"]))
+            damage = target_char.damage_amount(percentage_damage)
+            target_char.real_health -= damage
+            active_effects.append(PercentageProjectile((200, 200, 200), self, target_char, self.actions[0]["projectile_offset"], damage, "Damage"))
+        elif chosen_action == "Shield":
+            active_effects.append(ShieldProjectile((200, 200, 200), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["shield"]))
+
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Percentage":
+            lore.append((f"Damage: {int(action['damage'] * 100)}%", "normal"))
+        elif action["name"] == "Shield":
+            lore.append((f"Damage Reduction: {int(action['shield'] * 100)}%", "normal"))
+
 gun_bot = GunBot(
     "Gun Bot", # name
     10, # health
@@ -993,6 +1097,30 @@ duplo_bot = DuploBot(
     (220, 220, 50), # button_color
     (240, 240, 100), # button_hover_color
     (255, 240, 100) # text_used_color
+)
+
+mod_bot = ModBot(
+    "Mod Bot", # name
+    10, # health
+    350, 100, # x, y
+    (100, 100, 100), # box_background_color
+    "A bot full of mod power.", # description
+    [
+        "assets/bots/mod_bot/mod_bot_idle_1.png",
+        "assets/bots/mod_bot/mod_bot_idle_2.png",
+        "assets/bots/mod_bot/mod_bot_idle_3.png",
+        "assets/bots/mod_bot/mod_bot_idle_4.png",
+        "assets/bots/mod_bot/mod_bot_idle_5.png",
+        "assets/bots/mod_bot/mod_bot_idle_4.png",
+        "assets/bots/mod_bot/mod_bot_idle_3.png",
+        "assets/bots/mod_bot/mod_bot_idle_2.png"
+    ], # idle_images_path
+    "assets/bots/mod_bot/mod_bot_active.png", # active_image_path
+    "assets/bots/mod_bot/mod_bot_hurt.png", # hurt_image_path
+    "assets/bots/mod_bot/mod_bot_dead.png", # dead_image_path
+    (150, 150, 150), # button_color
+    (200, 200, 200), # button_hover_color
+    (190, 190, 190) # text_used_color
 )
 
 # catalog of different enemy types
@@ -1376,9 +1504,10 @@ def round_end(player_bots, enemy_goons, active_effects, battle_state, rounds):
     for bot in player_bots:
         bot.reset_actions()
     for char in player_bots + enemy_goons:
-        char.block = 0
         char.frozen = False
         char.marked = False
+        char.block = 0
+        char.shield = 0
     battle_state = "Player Turn"
     rounds += 1
     return battle_state, rounds
@@ -1537,7 +1666,7 @@ def update_animations(player_bots, enemy_goons, active_effects, battle_state, ac
 
     # update and remove effects
     for effect in active_effects[:]:
-        if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile) or isinstance(effect, GlitchyBlockProjectile):
+        if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile) or isinstance(effect, GlitchyBlockProjectile) or isinstance(effect, ShieldProjectile):
             effect.update()
         elif isinstance(effect, BounceProjectile):
             effect.update(enemy_goons, active_effects)
@@ -1552,7 +1681,7 @@ def update_animations(player_bots, enemy_goons, active_effects, battle_state, ac
         scroll_y = target_scroll_y
     return scroll_y
 
-def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state, active_bot, chosen_action, inspecting_character):
+def draw_characters(screen, regular_font, player_bots, enemy_goons, active_bot, chosen_action, inspecting_character):
     for char in player_bots + enemy_goons:
         # dead state
         if char.visual_health <= 0:
@@ -1594,16 +1723,6 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state
         # draw character image
         screen.blit(current_image, (char.rect.x + char.shake_x, char_y))
 
-        # highlight character if hovering and valid target
-        mouse_pos = pygame.mouse.get_pos()
-        if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
-            if char in enemy_goons and battle_state in ["Target Enemy", "Target Enemy or Self", "Target Any"]:
-                pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
-            elif (char in player_bots and battle_state in ["Target Bot", "Target Any"]) or (char.name == "Lazer Bot" and battle_state == "Target Line") or (char.name == "Duplo Bot" and battle_state == "Target Enemy or Self"):
-                pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
-            elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted and not lazer_bot.actions[0]["movement_mode"]:
-                pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
-
         # draw name and health
         name_text = regular_font.render(char.name, True, (255, 255, 255))
         health_text = regular_font.render(f"HP: {char.visual_health}", True, (255, 255, 255))
@@ -1620,7 +1739,7 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state
                 dot_offset = 0
             pygame.draw.circle(screen, color, (char.rect.x - 10, char.rect.y - 33 - dot_offset), 5)
 
-def draw_character_status_effects(screen, regular_font, player_bots, enemy_goons):
+def draw_character_status_effects(screen, regular_font, player_bots, enemy_goons, battle_state):
     for char in player_bots + enemy_goons:
         if char.visual_health > 0:
             # draw overlay on character if frozen or on fire
@@ -1670,6 +1789,20 @@ def draw_character_status_effects(screen, regular_font, player_bots, enemy_goons
                 pygame.draw.rect(screen, (255, 200, 0), (char.rect.x -10, char.rect.y, 110, 110), 3)
                 pygame.draw.rect(screen, (255, 200, 0), (char.rect.x, char.rect.y - 5, 105, 105), 3)
                 pygame.draw.rect(screen, (255, 200, 0), (char.rect.x, char.rect.y, 120, 120), 3)
+
+            # draw shield
+            if char.shield > 0:
+                pygame.draw.circle(screen, (200, 200, 200), (char.rect.centerx, char.rect.centery), 55, 3)
+
+            # highlight character if hovering and valid target
+            mouse_pos = pygame.mouse.get_pos()
+            if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
+                if char in enemy_goons and battle_state in ["Target Enemy", "Target Enemy or Self", "Target Any"]:
+                    pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
+                elif (char in player_bots and battle_state in ["Target Bot", "Target Any"]) or (char.name == "Lazer Bot" and battle_state == "Target Line") or (char.name == "Duplo Bot" and battle_state == "Target Enemy or Self"):
+                    pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
+                elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted and not lazer_bot.actions[0]["movement_mode"]:
+                    pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
 
 def dynamic_text(font_cache, text, max_width, max_height, color):
     # default font size
@@ -2007,6 +2140,15 @@ def draw_effects(screen, floating_font, active_effects):
         elif isinstance(effect, MarkProjectile):
             pygame.draw.arc(screen, effect.color, (effect.x-5, effect.y-5, 10, 10), effect.angle, effect.angle + 3.14, 2)
 
+        # draw percentage projectiles
+        elif isinstance(effect, PercentageProjectile):
+            pygame.draw.line(screen, effect.color, (effect.line_one_x1, effect.line_one_y1), (effect.line_one_x2, effect.line_one_y2), 2)
+            pygame.draw.line(screen, effect.color, (effect.line_two_x1, effect.line_two_y1), (effect.line_two_x2, effect.line_two_y2), 2)
+
+        # draw shield projectiles
+        elif isinstance(effect, ShieldProjectile):
+            pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5, 2)
+
         # draw linear projectiles
         elif isinstance(effect, LinearProjectile):
             if effect.projectile_type == "Damage":
@@ -2029,10 +2171,10 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     screen.fill((0, 0, 0))
 
     # draw bots and goons with animations based on their states and actions
-    draw_characters(screen, regular_font, player_bots, enemy_goons, battle_state, active_bot, chosen_action, inspecting_character)
+    draw_characters(screen, regular_font, player_bots, enemy_goons, active_bot, chosen_action, inspecting_character)
 
     # draw bots and goons status effects
-    draw_character_status_effects(screen, regular_font, player_bots, enemy_goons)
+    draw_character_status_effects(screen, regular_font, player_bots, enemy_goons, battle_state)
 
     # draw action options based on active bot and chosen action
     draw_action_box(screen, font_cache, battle_state, active_bot, chosen_action)
@@ -2135,8 +2277,8 @@ async def main():
     ]
 
     # inital list of characters and effects
-    # gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot
-    player_bots = [gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot]
+    # gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot, mod_bot
+    player_bots = [gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot, mod_bot]
     enemy_goons = []
     active_effects = []
 
