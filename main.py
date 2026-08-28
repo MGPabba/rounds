@@ -27,6 +27,7 @@ async def main():
     title_font = pygame.font.SysFont(None, 120)
     regular_font = pygame.font.SysFont(None, 24)
     floating_font = pygame.font.SysFont(None, 30)
+    shop_title_font = pygame.font.SysFont(None, 40)
     font_cache = {}
     for size in range(10, 31):
         font_cache[size] = pygame.font.SysFont(None, size)
@@ -46,7 +47,7 @@ async def main():
 
     # initial list of characters and effects
     # gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot, mod_bot
-    player_bots = [gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot, mod_bot]
+    player_bots = [gun_bot]
     enemy_goons = []
     active_effects = []
 
@@ -63,11 +64,16 @@ async def main():
     # initial variables related to lore box
     inspecting_character = None
     lore_height = 0
-    scroll_y = 0.0
-    target_scroll_y = 0.0
+    lore_scroll_y = 0.0
+    lore_target_scroll_y = 0.0
+
+    # initial variables related to shop
+    menu_height = 0
+    menu_scroll_y = 0.0
+    menu_target_scroll_y = 0.0
 
     # initial variables for game progression
-    gears = 0
+    gears = 10
     rounds = 1
     max_enemies = 3
     running = True
@@ -83,8 +89,8 @@ async def main():
     while running:
 
         # handle input events based on game state and battle state
-        running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears = handle_input(
-            running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
+        running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears = handle_input(
+            running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, enemy_slots)
 
         if game_state == "Endless Mode" and previous_game_state != "Endless Mode":
             # setup for the first round of endless mode
@@ -100,14 +106,14 @@ async def main():
             battle_state, gears, rounds, max_enemies = enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, rounds, max_enemies, enemy_slots)
 
             # check if game is over
-            battle_state, scroll_y, target_scroll_y = check_game_over(player_bots, battle_state, scroll_y, target_scroll_y)
+            battle_state, lore_scroll_y, lore_target_scroll_y = check_game_over(player_bots, battle_state, lore_scroll_y, lore_target_scroll_y)
 
             # update animations
-            scroll_y = update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, scroll_y, target_scroll_y)
+            lore_scroll_y, menu_scroll_y = update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y)
 
             # drawing, animation, and rendering
-            lore_height = draw_screen(
-                screen, regular_font, floating_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, gears, rounds)
+            lore_height, menu_height = draw_screen(
+                screen, regular_font, floating_font, shop_title_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds)
 
         # keeps the game from flickering
         pygame.display.flip()

@@ -19,7 +19,7 @@ def game_quit(event):
         return False
     return True
 
-def scroll_math(mouse_pos, event, lore_height, target_scroll_y):
+def scroll_math(mouse_pos, event, battle_state, lore_height, lore_target_scroll_y, menu_height, menu_target_scroll_y):
     # lore rectangle
     lore_rect = pygame.Rect(600, 620, 580, 90)
 
@@ -28,12 +28,26 @@ def scroll_math(mouse_pos, event, lore_height, target_scroll_y):
         max_scroll_index = max(0, lore_height - 80)
         # scroll up (text moves down)
         if event.button == 4:
-            target_scroll_y = max(0, target_scroll_y - 30)
+            lore_target_scroll_y = max(0, lore_target_scroll_y - 30)
         # scroll down (text moves up)
         elif event.button == 5:
-            target_scroll_y = min(max_scroll_index, target_scroll_y + 30)
+            lore_target_scroll_y = min(max_scroll_index, lore_target_scroll_y + 30)
+
+    if battle_state == "Shop":
+        # menu rectangle
+        menu_rect = pygame.Rect(257, 40, 760, 560)
+
+        # scroll through the shop menu if mouse is scrolled over it
+        if menu_rect.collidepoint(mouse_pos):
+            max_scroll_index = max(0, menu_height - 560)
+            # scroll up (text moves down)
+            if event.button == 4:
+                menu_target_scroll_y = max(0, menu_target_scroll_y - 30)
+            # scroll down (text moves up)
+            elif event.button == 5:
+                menu_target_scroll_y = min(max_scroll_index, menu_target_scroll_y + 30)
     
-    return target_scroll_y
+    return lore_target_scroll_y, menu_target_scroll_y
 
 def open_shop(mouse_pos, battle_state, previous_battle_state):
     # shop button rectangle
@@ -83,7 +97,7 @@ def harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots):
             break
     return gears
 
-def inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y):
+def inspect_enemy(mouse_pos, enemy_goons, inspecting_character, lore_scroll_y, lore_target_scroll_y):
     for enemy in enemy_goons:
         # inspect enemy if it's clicked and alive when its not time to target enemy
         if enemy.rect.collidepoint(mouse_pos) and enemy.real_health > 0:
@@ -92,12 +106,12 @@ def inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target
                 inspecting_character = None
             else:
                 inspecting_character = enemy
-                target_scroll_y = 0
-                scroll_y = 0
+                lore_target_scroll_y = 0
+                lore_scroll_y = 0
             break
-    return inspecting_character, scroll_y, target_scroll_y
+    return inspecting_character, lore_scroll_y, lore_target_scroll_y
 
-def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
+def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y):
     for bot in player_bots:
         # bot is selected if it's clicked, alive, and hasn't acted yet
         if bot.rect.collidepoint(mouse_pos) and bot.real_health > 0 and not bot.acted:
@@ -114,14 +128,14 @@ def select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, 
             else:
                 inspecting_character = bot
                 active_bot = bot
-                target_scroll_y = 0
-                scroll_y = 0
+                lore_target_scroll_y = 0
+                lore_scroll_y = 0
             battle_state = "Player Turn"
             chosen_action = None
             break
-    return battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y
+    return battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y
 
-def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y):
+def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y):
     # action button rectangles
     left_button_rect = pygame.Rect(120, 640, 150, 50)
     right_button_rect = pygame.Rect(290, 640, 150, 50)
@@ -135,12 +149,12 @@ def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, ins
             else:
                 chosen_action = active_bot.actions[0]["name"]
                 battle_state = active_bot.actions[0]["target_state"]
-                target_scroll_y = active_bot.actions[0]["scroll"]
+                lore_target_scroll_y = active_bot.actions[0]["scroll"]
             
             # if enemy is being inspected, switch inspecting to active bot when action is chosen
             if inspecting_character != active_bot:
-                target_scroll_y = active_bot.actions[0]["scroll"]
-                scroll_y = active_bot.actions[0]["scroll"]
+                lore_target_scroll_y = active_bot.actions[0]["scroll"]
+                lore_scroll_y = active_bot.actions[0]["scroll"]
                 inspecting_character = active_bot
 
         elif (mouse_pos and (right_button_rect.collidepoint(mouse_pos)) or (event and event.key == pygame.K_2)) and not active_bot.actions[1]["used"]:
@@ -150,15 +164,15 @@ def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, ins
             else:
                 chosen_action = active_bot.actions[1]["name"]
                 battle_state = active_bot.actions[1]["target_state"]
-                target_scroll_y = active_bot.actions[1]["scroll"]
+                lore_target_scroll_y = active_bot.actions[1]["scroll"]
             
             # if enemy is being inspected, switch inspecting to active bot when action is chosen
             if inspecting_character != active_bot:
-                target_scroll_y = active_bot.actions[1]["scroll"]
-                scroll_y = active_bot.actions[1]["scroll"]
+                lore_target_scroll_y = active_bot.actions[1]["scroll"]
+                lore_scroll_y = active_bot.actions[1]["scroll"]
                 inspecting_character = active_bot
     
-    return battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y
+    return battle_state, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y
 
 def check_bot_turn(player_bots, enemy_goons):
     # check if all enemies are dead
@@ -235,14 +249,14 @@ def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effec
             return check_bot_turn(player_bots, enemy_goons), active_bot, chosen_action, inspecting_character
     return battle_state, active_bot, chosen_action, inspecting_character
 
-def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
+def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, enemy_slots):
     # if game is over, dont allow any more actions
     if battle_state == "Game Over":
-        return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
+        return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears
  
     # update target scroll based on mouse scroll
     if event.button in [4, 5]:
-        target_scroll_y = scroll_math(mouse_pos, event, lore_height, target_scroll_y)
+        lore_target_scroll_y, menu_target_scroll_y = scroll_math(mouse_pos, event, battle_state, lore_height, lore_target_scroll_y, menu_height, menu_target_scroll_y)
     
     # handle player actions based on battle state and mouse clicks
     elif event.button == 1:
@@ -261,14 +275,14 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
 
                 # inspect enemy if not targeting enemy
                 if battle_state not in ["Target Enemy", "Target Enemy or Self", "Target Any"]:
-                    inspecting_character, scroll_y, target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, scroll_y, target_scroll_y)
+                    inspecting_character, lore_scroll_y, lore_target_scroll_y = inspect_enemy(mouse_pos, enemy_goons, inspecting_character, lore_scroll_y, lore_target_scroll_y)
 
                 # select bot if not targeting bot
                 if battle_state not in ["Target Bot", "Target Any"]:
-                    battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+                    battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y = select_bot(mouse_pos, player_bots, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y)
                 
                 # select action if bot is selected
-                battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(mouse_pos, None, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+                battle_state, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y = select_action(mouse_pos, None, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y)
                 
             # carry out the chosen action
             if battle_state == "Target Line":
@@ -294,9 +308,9 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
             elif inspecting_character:
                 inspecting_character = None
 
-    return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
+    return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears
 
-def handle_input(running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots):
+def handle_input(running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, enemy_slots):
     for event in pygame.event.get():
         # check for quit events
         running = game_quit(event)
@@ -317,15 +331,15 @@ def handle_input(running, player_bots, enemy_goons, active_effects, game_state, 
             
             # handle battle input
             elif game_state == "Endless Mode":
-                battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears = player_turn(
-                    event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, scroll_y, target_scroll_y, gears, enemy_slots)
+                battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears = player_turn(
+                    event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, enemy_slots)
         
         elif event.type == pygame.KEYDOWN:
-            if not lazer_bot.actions[0]["movement_mode"]:
+            if battle_state != "Shop" and not lazer_bot.actions[0]["movement_mode"]:
                 # select action if bot is selected based on key press
-                battle_state, chosen_action, inspecting_character, scroll_y, target_scroll_y = select_action(None, event, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y)
+                battle_state, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y = select_action(None, event, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y)
 
-    return running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, scroll_y, target_scroll_y, gears
+    return running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears
 
 # ------------------------------
 # ENEMY TURN
@@ -492,10 +506,10 @@ def spawn_initial_enemies(enemy_goons, enemy_slots):
         enemy_goons.append(new_enemy)
         slot["occupied"] = True
 
-def check_game_over(player_bots, battle_state, scroll_y, target_scroll_y):
+def check_game_over(player_bots, battle_state, lore_scroll_y, lore_target_scroll_y):
     # check if battle state is already game over
     if battle_state == "Game Over":
-        return battle_state, scroll_y, target_scroll_y
+        return battle_state, lore_scroll_y, lore_target_scroll_y
     
     # game ends when all bots are dead
     game_end = True
@@ -504,8 +518,8 @@ def check_game_over(player_bots, battle_state, scroll_y, target_scroll_y):
             game_end = False
             break
     if game_end:
-        target_scroll_y = 0
-        scroll_y = 0
+        lore_target_scroll_y = 0
+        lore_scroll_y = 0
         battle_state = "Game Over"
     
-    return battle_state, scroll_y, target_scroll_y
+    return battle_state, lore_scroll_y, lore_target_scroll_y

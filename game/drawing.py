@@ -2,7 +2,8 @@ import pygame
 
 # import game modules
 from .helper import FloatingText, dynamic_text
-from .bots import gun_bot, rico_bot, elemental_bot, lazer_bot
+from .bots import elemental_bot, lazer_bot
+from .shop import all_bots, bot_upgrades
 from .projectiles import (
     LinearProjectile,
     ChargeProjectile,
@@ -20,7 +21,7 @@ from .projectiles import (
 # UPDATE ANIMATIONS
 # ------------------------------
 
-def update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, scroll_y, target_scroll_y):
+def update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y):
     # update characters shake when they are hurt
     for char in player_bots + enemy_goons:
         char.hurt_animations()
@@ -46,10 +47,16 @@ def update_animations(player_bots, enemy_goons, active_effects, battle_state, ac
             active_effects.remove(effect)
     
     # update scrolling position for lore box
-    scroll_y += (target_scroll_y - scroll_y) * 0.2
-    if abs(target_scroll_y - scroll_y) < 0.1:
-        scroll_y = target_scroll_y
-    return scroll_y
+    lore_scroll_y += (lore_target_scroll_y - lore_scroll_y) * 0.2
+    if abs(lore_target_scroll_y - lore_scroll_y) < 0.1:
+        lore_scroll_y = lore_target_scroll_y
+
+    # update scrolling position for menu
+    menu_scroll_y += (menu_target_scroll_y - menu_scroll_y) * 0.2
+    if abs(menu_target_scroll_y - menu_scroll_y) < 0.1:
+        menu_scroll_y = menu_target_scroll_y
+
+    return lore_scroll_y, menu_scroll_y
 
 # ------------------------------
 # DRAWING CHARACTERS AND STATUS EFFECTS
@@ -229,99 +236,204 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     screen.blit(round_text, round_text_rect)
     screen.blit(gears_text, gears_text_rect)
 
-def draw_shop_menu(screen, font_cache, battle_state, gears):
+def draw_shop_bar(screen, shop_title_font, battle_state):
     if battle_state == "Shop":
-        mouse_pos = pygame.mouse.get_pos()
-        
-        # dictionary of shop upgrades for each bot
-        shop_items = [
-            {
-                "bot": gun_bot,
-                "name": "Gun Bot",
-                "upgrades": [
-                    {"action": "Left Gun", "buff": "+1 damage", "cost": "5 gears"},
-                    {"action": "Right Gun", "buff": "+1 damage", "cost": "5 gears"}
-                ]
-            },
-            {
-                "bot": rico_bot,
-                "name": "Rico Bot",
-                "upgrades": [
-                    {"action": "Heal", "buff": "+1 heal", "cost": "5 gears"},
-                    {"action": "Attack", "buff": "+1 damage", "cost": "5 gears"}
-                ]
-            }
-        ]
+        for i in range(len(all_bots)):
+            mouse_pos = pygame.mouse.get_pos()
 
-        # the center x-coordinate for each column
-        col_x_center_1 = 175
-        col_x_center_2 = 365
-        col_x_center_3 = 555
-        col_x_center_4 = 745
+            # draw bot button if unlocked
+            if all_bots[i]["unlocked"]:
 
-        # draw each shop row and column with the bots upgrades
-        for i, item in enumerate(shop_items):
-            # draw the background box for the bots upgrades
-            box_y = 80 + (i * 230)
-            pygame.draw.rect(screen, item["bot"].box_background_color, (80, box_y, 760, 230))
-
-            # draw the header for each column
-            header_y = box_y + 27
-            heading_name = dynamic_text(font_cache, item["name"], 180, 40, (255, 255, 255))
-            screen.blit(heading_name, heading_name.get_rect(center=(col_x_center_1, header_y)))
-            heading_buff = dynamic_text(font_cache, "Buff", 180, 40, (255, 255, 255))
-            screen.blit(heading_buff, heading_buff.get_rect(center=(col_x_center_2, header_y)))
-            heading_cost = dynamic_text(font_cache, "Cost", 180, 40, (255, 255, 255))
-            screen.blit(heading_cost, heading_cost.get_rect(center=(col_x_center_3, header_y)))
-            heading_upgrade = dynamic_text(font_cache, "Upgrade", 180, 40, (255, 255, 255))
-            screen.blit(heading_upgrade, heading_upgrade.get_rect(center=(col_x_center_4, header_y)))
-
-            # draw each upgrade row for the bot
-            for j, upgrade in enumerate(item["upgrades"]):
-                # calculate the y-coordinate center for each row and button
-                row_y = box_y + 95 + (j * 90)
-                button_y = box_y + 70 + (j * 90)
-
-                # draw the action, buff, and cost text for each upgrade
-                action = dynamic_text(font_cache, upgrade["action"], 180, 40, (255, 255, 255))
-                screen.blit(action, action.get_rect(center=(col_x_center_1, row_y)))
-                buff = dynamic_text(font_cache, upgrade["buff"], 180, 40, (255, 255, 255))
-                screen.blit(buff, buff.get_rect(center=(col_x_center_2, row_y)))
-                cost = dynamic_text(font_cache, upgrade["cost"], 180, 40, (255, 255, 255))
-                screen.blit(cost, cost.get_rect(center=(col_x_center_3, row_y)))
-
-                # draw the upgrade button with color change based on hover and if enough gears
-                button_rect = pygame.Rect(670, button_y, 150, 50)
-                if button_rect.collidepoint(mouse_pos) and gears >= int(upgrade["cost"].split()[0]):
-                    button_color = item["bot"].button_hover_color
+                # navigation button
+                button_rect = pygame.Rect(180, 40 + i * 80, 80, 80)
+                if button_rect.collidepoint(mouse_pos):
+                    button_color = all_bots[i]["bot"].button_color
                 else:
-                    button_color = item["bot"].button_color
+                    button_color = all_bots[i]["bot"].box_background_color
                 pygame.draw.rect(screen, button_color, button_rect)
 
-                # draw the upgrade button text with color change based on if enough gears
-                if gears >= int(upgrade["cost"].split()[0]):
-                    text_color = (255, 255, 255)
+                # bot first letter of name
+                bot_letter_text = shop_title_font.render(all_bots[i]["bot"].name[0], True, (255, 255, 255))
+                bot_letter_rect = bot_letter_text.get_rect(center=(220, 80 + i * 80))
+                screen.blit(bot_letter_text, bot_letter_rect)
+
+            # draw ? if not unlocked
+            else:
+                pygame.draw.rect(screen, all_bots[i]["bot"].box_background_color, (180, 40 + i * 80, 80, 80))
+                question_mark_text = shop_title_font.render("?", True, (255, 255, 255))
+                question_mark_rect = question_mark_text.get_rect(center=(220, 80 + i * 80))
+                screen.blit(question_mark_text, question_mark_rect)
+
+            # line between buttons
+            if i != 0:
+                pygame.draw.line(screen, (255, 255, 255), (180, 40 + i * 80), (260, 40 + i * 80), 3)
+
+        # shop nav bar outline
+        pygame.draw.rect(screen, (255, 255, 255), (180, 40, 80, 560), 3)
+
+def draw_shop_text(menu_canvas, font_cache, text, color, center_x, center_y):
+    # draw text on the shop menu
+    text_label = dynamic_text(font_cache, text, 180, 40, color)
+    text_rect = text_label.get_rect(center=(center_x, center_y))
+    menu_canvas.blit(text_label, text_rect)
+
+def draw_shop_menu(screen, shop_title_font, font_cache, battle_state, menu_height, menu_scroll_y, gears, rounds):
+    if battle_state == "Shop":
+        # get mouse position relative to shop menu
+        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = (mouse_pos[0] - 257, mouse_pos[1] - 40 + menu_scroll_y)
+
+        # calculate the shop menu height
+        menu_height = 0
+        for i in range(len(bot_upgrades)):
+            if all_bots[i]["unlocked"]:
+                menu_height += len(bot_upgrades[all_bots[i]["bot"].name]) * 90 + 100
+            else:
+                menu_height += 90
+
+        # create a surface for the shop menu
+        menu_canvas = pygame.Surface((760, menu_height))
+
+        menu_y = 0
+        for i in range(len(bot_upgrades)):
+            # draw bot and its upgrades if unlocked
+            if all_bots[i]["unlocked"]:
+
+                # background box for each bot and its upgrades
+                pygame.draw.rect(menu_canvas, all_bots[i]["bot"].box_background_color, (0, menu_y, 760, len(bot_upgrades[all_bots[i]["bot"].name]) * 90 + 100))
+
+                # bot name title
+                bot_name_text = shop_title_font.render(all_bots[i]["bot"].name, True, (255, 255, 255))
+                bot_name_rect = bot_name_text.get_rect(center=(380, menu_y + 26))
+                menu_canvas.blit(bot_name_text, bot_name_rect)
+
+                # line under bot name row
+                menu_y += 50
+                pygame.draw.line(menu_canvas, (255, 255, 255), (0, menu_y), (760, menu_y), 3)
+                column_top_y = menu_y
+
+                # heading row
+                draw_shop_text(menu_canvas, font_cache, "Action", (255, 255, 255), 95, menu_y + 26)
+                draw_shop_text(menu_canvas, font_cache, "Buff", (255, 255, 255), 285, menu_y + 26)
+                draw_shop_text(menu_canvas, font_cache, "Cost", (255, 255, 255), 475, menu_y + 26)
+                draw_shop_text(menu_canvas, font_cache, "Upgrade", (255, 255, 255), 665, menu_y + 26)
+
+                # line under heading row
+                menu_y += 50
+                pygame.draw.line(menu_canvas, (255, 255, 255), (0, menu_y), (760, menu_y), 3)
+
+                for j in range(len(bot_upgrades[all_bots[i]["bot"].name])):
+                    # upgrade information
+                    upgrade = bot_upgrades[all_bots[i]["bot"].name][j]
+
+                    # upgrade action
+                    draw_shop_text(menu_canvas, font_cache, upgrade["action"], (255, 255, 255), 95, menu_y + 46)
+
+                    # upgrade row if not max level
+                    if upgrade["level"] < len(upgrade["cost"]):
+                        cost_number = upgrade["cost"][upgrade["level"]]
+
+                        # upgrade buff and cost
+                        draw_shop_text(menu_canvas, font_cache, upgrade["buff_desc_1"], (255, 255, 255), 285, menu_y + 31)
+                        draw_shop_text(menu_canvas, font_cache, upgrade["buff_desc_2"][upgrade["level"]], (255, 255, 255), 285, menu_y + 61)
+                        draw_shop_text(menu_canvas, font_cache, f"{cost_number} Gears", (255, 255, 255), 475, menu_y + 46)
+
+                        # upgrade button
+                        button_rect = pygame.Rect(590, menu_y + 20, 150, 50)
+                        if gears >= cost_number and button_rect.collidepoint(mouse_pos):
+                            button_color = all_bots[i]["bot"].button_hover_color
+                        else:
+                            button_color = all_bots[i]["bot"].button_color
+                        pygame.draw.rect(menu_canvas, button_color, button_rect)
+
+                        # upgrade text
+                        if gears >= cost_number:
+                            button_text_color = (255, 255, 255)
+                        else:
+                            button_text_color = all_bots[i]["bot"].text_used_color
+                        draw_shop_text(menu_canvas, font_cache, "Upgrade", button_text_color, 665, menu_y + 46)
+
+                    # upgrade row if max level
+                    else:
+                        draw_shop_text(menu_canvas, font_cache, "Max Level", (255, 255, 255), 285, menu_y + 46)
+                        draw_shop_text(menu_canvas, font_cache, "Max Level", (255, 255, 255), 475, menu_y + 46)
+                        draw_shop_text(menu_canvas, font_cache, "Max Level", (255, 255, 255), 665, menu_y + 46)
+
+                    # line under upgrade row
+                    menu_y += 90
+                    pygame.draw.line(menu_canvas, (255, 255, 255), (0, menu_y), (760, menu_y), 3)
+
+                # column lines
+                pygame.draw.line(menu_canvas, (255, 255, 255), (190, column_top_y), (190, menu_y), 3)
+                pygame.draw.line(menu_canvas, (255, 255, 255), (380, column_top_y), (380, menu_y), 3)
+                pygame.draw.line(menu_canvas, (255, 255, 255), (570, column_top_y), (570, menu_y), 3)
+
+                # line before bot name row
+                if i != 0:
+                    pygame.draw.line(menu_canvas, (255, 255, 255), (0, column_top_y - 50), (760, column_top_y - 50), 3)
+
+            # draw locked bot not yet available
+            elif all_bots[i]["round"] > rounds:
+
+                # background box for locked bot
+                pygame.draw.rect(menu_canvas, all_bots[i]["bot"].box_background_color, (0, menu_y, 760, 90))
+
+                # bot name title
+                bot_name_text = shop_title_font.render(all_bots[i]["bot"].name, True, (255, 255, 255))
+                bot_name_rect = bot_name_text.get_rect(center=(190, menu_y + 46))
+                menu_canvas.blit(bot_name_text, bot_name_rect)
+
+                # bot unlock round
+                unlock_text = dynamic_text(font_cache, f"Available after round {all_bots[i]["round"] - 1}", 380, 40, (255, 255, 255))
+                unlock_rect = unlock_text.get_rect(center=(475, menu_y + 46))
+                menu_canvas.blit(unlock_text, unlock_rect)
+
+                # line before unlock row
+                menu_y += 90
+                pygame.draw.line(menu_canvas, (255, 255, 255), (0, menu_y - 90), (760, menu_y - 90), 3)
+
+            # draw locked bot if not unlocked
+            else:
+
+                # background box for locked bot
+                pygame.draw.rect(menu_canvas, all_bots[i]["bot"].box_background_color, (0, menu_y, 760, 90))
+
+                # bot name title
+                bot_name_text = shop_title_font.render(all_bots[i]["bot"].name, True, (255, 255, 255))
+                bot_name_rect = bot_name_text.get_rect(center=(190, menu_y + 46))
+                menu_canvas.blit(bot_name_text, bot_name_rect)
+
+                # bot unlock cost
+                draw_shop_text(menu_canvas, font_cache, f"Unlock Cost:", (255, 255, 255), 475, menu_y + 31)
+                draw_shop_text(menu_canvas, font_cache, f"{all_bots[i]["cost"]} Gears", (255, 255, 255), 475, menu_y + 61)
+
+                # unlock button
+                button_rect = pygame.Rect(590, menu_y + 20, 150, 50)
+                if gears >= all_bots[i]["cost"] and button_rect.collidepoint(mouse_pos):
+                    button_color = all_bots[i]["bot"].button_hover_color
                 else:
-                    text_color = item["bot"].text_used_color
-                button_text = dynamic_text(font_cache, "Upgrade", 140, 40, text_color)
-                screen.blit(button_text, button_text.get_rect(center=(col_x_center_4, row_y)))
+                    button_color = all_bots[i]["bot"].button_color
+                pygame.draw.rect(menu_canvas, button_color, button_rect)
 
+                # unlock text
+                if gears >= all_bots[i]["cost"]:
+                    button_text_color = (255, 255, 255)
+                else:
+                    button_text_color = all_bots[i]["bot"].text_used_color
+                draw_shop_text(menu_canvas, font_cache, "Unlock", button_text_color, 665, menu_y + 46)
+
+                # line before unlock row
+                menu_y += 90
+                pygame.draw.line(menu_canvas, (255, 255, 255), (0, menu_y - 90), (760, menu_y - 90), 3)
+
+        # draw the visible part of the shop menu onto the screen based on scroll position
+        visible_rect = pygame.Rect(0, int(menu_scroll_y), 760, 560)
+        screen.blit(menu_canvas, (257, 40), visible_rect)
+        
         # shop menu outline
-        pygame.draw.rect(screen, (255, 255, 255), (80, 80, 760, 460), 3)
+        pygame.draw.rect(screen, (255, 255, 255), (257, 40, 760, 560), 3)
 
-        # gun bot row lines
-        pygame.draw.line(screen, (255, 255, 255), (80, 130), (839, 130), 2)
-        pygame.draw.line(screen, (255, 255, 255), (80, 220), (839, 220), 2)
-        pygame.draw.line(screen, (255, 255, 255), (80, 310), (839, 310), 3)
-
-        # rico bot row lines
-        pygame.draw.line(screen, (255, 255, 255), (80, 360), (839, 360), 2)
-        pygame.draw.line(screen, (255, 255, 255), (80, 450), (839, 450), 2)
-
-        # columns lines
-        pygame.draw.line(screen, (255, 255, 255), (270, 80), (270, 539), 3)
-        pygame.draw.line(screen, (255, 255, 255), (460, 80), (460, 539), 3)
-        pygame.draw.line(screen, (255, 255, 255), (650, 80), (650, 539), 3)
+    return menu_height
 
 # ------------------------------
 # DRAWING ACTION BOX AND BUTTONS
@@ -389,7 +501,7 @@ def draw_action_box(screen, font_cache, battle_state, active_bot, chosen_action)
 # DRAWING LORE BOX AND TEXT
 # ------------------------------
 
-def draw_lore_box(screen, regular_font, battle_state, inspecting_character, scroll_y, rounds):
+def draw_lore_box(screen, regular_font, battle_state, inspecting_character, lore_scroll_y, rounds):
     # draw lore box background
     if inspecting_character:
         color = inspecting_character.box_background_color
@@ -433,7 +545,7 @@ def draw_lore_box(screen, regular_font, battle_state, inspecting_character, scro
             y_offset += 20
 
     # draw the visible part of lore canvas onto the screen based on scroll position
-    visible_rect = pygame.Rect(0, int(scroll_y), 580, 80)
+    visible_rect = pygame.Rect(0, int(lore_scroll_y), 580, 80)
     screen.blit(lore_canvas, (610, 625), visible_rect)
     
     # update lore height for scrolling calculations
@@ -522,7 +634,7 @@ def draw_effects(screen, floating_font, active_effects):
 # DRAWING SCREEN AND MAIN MENU
 # ------------------------------
 
-def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, scroll_y, gears, rounds):
+def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds):
     # background color
     screen.fill((0, 0, 0))
 
@@ -535,14 +647,15 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     # draw shop box above action box
     draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds)
 
-    # draw shop menu if opened
-    draw_shop_menu(screen, font_cache, battle_state, gears)
+    # draw shop bar and menu if opened
+    draw_shop_bar(screen, shop_title_font, battle_state)
+    menu_height = draw_shop_menu(screen, shop_title_font, font_cache, battle_state, menu_height, menu_scroll_y, gears, rounds)
 
     # draw action options based on active bot and chosen action
     draw_action_box(screen, font_cache, battle_state, active_bot, chosen_action)
 
     # draw lore box with scrolling
-    lore_height = draw_lore_box(screen, regular_font, battle_state, inspecting_character, scroll_y, rounds)
+    lore_height = draw_lore_box(screen, regular_font, battle_state, inspecting_character, lore_scroll_y, rounds)
 
     # draw laser beam if lazer bot is using its pierce
     draw_laser(screen, enemy_goons, battle_state, active_bot)
@@ -558,7 +671,7 @@ def draw_screen(screen, regular_font, floating_font, font_cache, player_bots, en
     pygame.draw.rect(screen, temp_box_color, (20, 620, 60, 90))
     pygame.draw.rect(screen, (255, 255, 255), (20, 620, 60, 90), 3)
 
-    return lore_height
+    return lore_height, menu_height
 
 def draw_main_menu(screen, title_font, regular_font, font_cache):
     # draw main menu background
