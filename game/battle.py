@@ -5,6 +5,7 @@ import random
 from .helper import FloatingText
 from .projectiles import LinearProjectile
 from .characters import Enemy, enemy_catalog
+from .shop import all_bots, bot_upgrades
 from .bots import gun_bot, rico_bot, elemental_bot, lazer_bot
 
 # ------------------------------
@@ -42,12 +43,19 @@ def scroll_math(mouse_pos, event, battle_state, lore_height, lore_target_scroll_
             max_scroll_index = max(0, menu_height - 560)
             # scroll up (text moves down)
             if event.button == 4:
-                menu_target_scroll_y = max(0, menu_target_scroll_y - 30)
+                menu_target_scroll_y = max(0, menu_target_scroll_y - 60)
             # scroll down (text moves up)
             elif event.button == 5:
-                menu_target_scroll_y = min(max_scroll_index, menu_target_scroll_y + 30)
+                menu_target_scroll_y = min(max_scroll_index, menu_target_scroll_y + 60)
     
     return lore_target_scroll_y, menu_target_scroll_y
+
+def reset_shop_confirmations():
+    # reset all unlock and upgrades confirmations
+    for bot in all_bots:
+        bot["confirm"] = False
+        for upgrade in bot_upgrades[bot["bot"].name]:
+            upgrade["confirm"] = False
 
 def open_shop(mouse_pos, battle_state, previous_battle_state):
     # shop button rectangle
@@ -55,34 +63,120 @@ def open_shop(mouse_pos, battle_state, previous_battle_state):
     # open shop if button is clicked and close shop if button is clicked again
     if shop_button_rect.collidepoint(mouse_pos) and not lazer_bot.actions[0]["movement_mode"]:
         if battle_state == "Shop":
+            reset_shop_confirmations()
             battle_state = previous_battle_state
         else:
             previous_battle_state = battle_state
             battle_state = "Shop"
     return battle_state, previous_battle_state
 
-def shop_upgrade(mouse_pos, gears):
-    # upgrade button rectangles
-    left_gun_upgrade_rect = pygame.Rect(670, 150, 150, 50)
-    right_gun_upgrade_rect = pygame.Rect(670, 240, 150, 50)
-    heal_upgrade_rect = pygame.Rect(670, 380, 150, 50)
-    attack_upgrade_rect = pygame.Rect(670, 470, 150, 50)
+def shop_bar_navigation(mouse_pos, menu_height, menu_target_scroll_y):
+    for i in range(len(all_bots)):
+        # bar bot rectangle
+        bar_bot_rect = pygame.Rect(180, 40 + i * 80, 80, 80)
 
-    # upgrade bot action if upgrade button is clicked and player has enough gears
-    if left_gun_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        gun_bot.actions[0]["damage"] += 1
-        gears -= 5
-    elif right_gun_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        gun_bot.actions[1]["damage"] += 1
-        gears -= 5
-    elif heal_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        rico_bot.actions[0]["heal"] += 1
-        gears -= 5
-    elif attack_upgrade_rect.collidepoint(mouse_pos) and gears >= 5:
-        rico_bot.actions[1]["damage"] += 1
-        gears -= 5
-    
-    return gears
+        # scroll to the bot's section if it is unlocked
+        if bar_bot_rect.collidepoint(mouse_pos) and all_bots[i]["unlocked"]:
+            jump_y = 0
+            for j in range(i):
+                if all_bots[j]["unlocked"]:
+                    jump_y += len(bot_upgrades[all_bots[j]["bot"].name]) * 90 + 100
+                else:
+                    jump_y += 90
+            menu_target_scroll_y = min(menu_height - 560, jump_y)
+            break
+
+    return menu_target_scroll_y
+
+def shop_upgrade(mouse_pos, player_bots, enemy_goons, active_effects, previous_battle_state, menu_scroll_y, gears, rounds):
+    # ignore clicks outside of the shop menu
+    menu_rect = pygame.Rect(257, 40, 760, 560)
+    if menu_rect.collidepoint(mouse_pos):
+
+        # adjust mouse position based on menu scroll
+        mouse_pos = (mouse_pos[0] - 257, mouse_pos[1] - 40 + menu_scroll_y)
+        menu_y = 0
+
+        for bot in all_bots:
+            if bot["unlocked"]:
+                menu_y += 100
+                for upgrade in bot_upgrades[bot["bot"].name]:
+                    # upgrade button rectangle
+                    upgrade_button_rect = pygame.Rect(590, menu_y + 20, 150, 50)
+                    menu_y += 90
+
+                    # check if valid upgrade click
+                    if upgrade["level"] < len(upgrade["cost"]):
+                        cost_number = upgrade["cost"][upgrade["level"]]
+                        if upgrade_button_rect.collidepoint(mouse_pos) and gears >= cost_number:
+
+                            # upgrade bot action if confirmed
+                            if upgrade["confirm"]:
+                                i = upgrade["action_number"]
+                                bot["bot"].actions[i][upgrade["stat"]] = upgrade["amount"][upgrade["level"]]
+
+                                # if the upgrade is for barrage, check if barrage can be used with the new charge needed value
+                                if upgrade["stat"] == "barrage_charge_needed" and bot["bot"].actions[i]["barrage_charge"] >= bot["bot"].actions[i]["barrage_charge_needed"] and bot["bot"].actions[i]["used"]:
+                                    bot["bot"].actions[i]["used"] = False
+                                    active_effects.append(FloatingText((255, 50, 255), bot["bot"].rect.x, bot["bot"].rect.top - 20, "Barrage Ready!"))
+                                
+                                # if the upgrade is for ice hits needed, freeze the enemies if they have enough ice hits with the new ice hits needed value
+                                if upgrade["stat"] == "ice_hits_needed":
+                                    for enemy in enemy_goons:
+                                        if enemy.real_health > 0 and enemy.ice_hits >= bot["bot"].actions[i]["ice_hits_needed"]:
+                                            enemy.frozen = True
+                                            enemy.ice_hits = 0
+                                            text = "Frozen!"
+                                            text_width = len(text) * 10
+                                            text_x = random.randint(enemy.rect.left, enemy.rect.right - text_width)
+                                            active_effects.append(FloatingText((0, 255, 255), text_x, enemy.rect.top + 10, text))
+
+                                # if the upgrade is for mark hits needed, mark the enemies if they have enough mark hits with the new mark hits needed value
+                                if upgrade["stat"] == "mark_hits_needed":
+                                    for enemy in enemy_goons:
+                                        if enemy.real_health > 0 and enemy.mark_hits >= bot["bot"].actions[i]["mark_hits_needed"]:
+                                            enemy.marked = True
+                                            enemy.mark_hits = 0
+                                            text = "Marked!"
+                                            text_width = len(text) * 10
+                                            text_x = random.randint(enemy.rect.left, enemy.rect.right - text_width)
+                                            active_effects.append(FloatingText((255, 255, 0), text_x, enemy.rect.top + 10, text))
+
+                                # update data
+                                gears -= cost_number
+                                upgrade["level"] += 1
+                                upgrade["confirm"] = False
+
+                            # set confirm to true if not confirmed yet
+                            else:
+                                reset_shop_confirmations()
+                                upgrade["confirm"] = True
+                            
+                            return previous_battle_state, gears
+
+            # unlock bot if valid unlock click
+            else:
+                # unlock button rectangle
+                unlock_button_rect = pygame.Rect(590, menu_y + 20, 150, 50)
+                menu_y += 90
+
+                if unlock_button_rect.collidepoint(mouse_pos) and rounds >= bot["round"] and gears >= bot["cost"]:
+                    # unlock bot if confirmed
+                    if bot["confirm"]:
+                        gears -= bot["cost"]
+                        bot["unlocked"] = True
+                        player_bots.append(bot["bot"])
+                        if previous_battle_state == "Player Turn Over":
+                            previous_battle_state = "Player Turn"
+
+                    # set confirm to true if not confirmed yet
+                    else:
+                        reset_shop_confirmations()
+                        bot["confirm"] = True
+
+                    return previous_battle_state, gears
+
+    return previous_battle_state, gears
 
 def harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots):
     for i in range(len(enemy_goons) - 1, -1, -1):
@@ -249,7 +343,7 @@ def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effec
             return check_bot_turn(player_bots, enemy_goons), active_bot, chosen_action, inspecting_character
     return battle_state, active_bot, chosen_action, inspecting_character
 
-def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, enemy_slots):
+def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, rounds, enemy_slots):
     # if game is over, dont allow any more actions
     if battle_state == "Game Over":
         return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears
@@ -265,7 +359,8 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
 
         # upgrade bot actions if shop is open
         if battle_state == "Shop":
-            gears = shop_upgrade(mouse_pos, gears)
+            menu_target_scroll_y = shop_bar_navigation(mouse_pos, menu_height, menu_target_scroll_y)
+            previous_battle_state, gears = shop_upgrade(mouse_pos, player_bots, enemy_goons, active_effects, previous_battle_state, menu_scroll_y, gears, rounds)
 
         else:
             # if lazer bot is in movement mode, other actions are disabled
@@ -297,6 +392,7 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
     # right click to close shop or cancel action or bot
     elif event.button == 3:
         if battle_state == "Shop":
+            reset_shop_confirmations()
             battle_state = previous_battle_state
         elif not lazer_bot.actions[0]["movement_mode"]:
             if chosen_action:
@@ -310,7 +406,7 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
 
     return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears
 
-def handle_input(running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, enemy_slots):
+def handle_input(running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, rounds, enemy_slots):
     for event in pygame.event.get():
         # check for quit events
         running = game_quit(event)
@@ -332,7 +428,7 @@ def handle_input(running, player_bots, enemy_goons, active_effects, game_state, 
             # handle battle input
             elif game_state == "Endless Mode":
                 battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears = player_turn(
-                    event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, enemy_slots)
+                    event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, rounds, enemy_slots)
         
         elif event.type == pygame.KEYDOWN:
             if battle_state != "Shop" and not lazer_bot.actions[0]["movement_mode"]:
@@ -425,7 +521,7 @@ def spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_s
         spawns = 2
     
     # increase the max number of enemies every 5 rounds, up to a maximum of 9
-    if max_enemies <= 9 and rounds % 5 == 0:
+    if max_enemies < 9 and rounds % 5 == 0:
         max_enemies += 1
     
     for _ in range(spawns):

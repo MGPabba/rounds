@@ -62,7 +62,7 @@ class Character:
         # text animation
         if damage == 0:
             text = "Blocked!"
-            color = (255, 255, 0)
+            color = (255, 155, 0)
         else:
             self.hurt_timer = 30
             text = f"-{damage}"
@@ -88,11 +88,11 @@ class Character:
         text_width = len(text) * 10
         text_x = random.randint(self.rect.left, self.rect.right - text_width)
         active_effects.append(FloatingText((255, 100, 0), text_x, self.rect.top + 10, text))
-    
+
     def apply_ice(self, active_effects, ice_hits_needed):
         # add ice hits, freeze if enough hits, and display text animation
         self.ice_hits += 1
-        if self.ice_hits == ice_hits_needed:
+        if self.ice_hits >= ice_hits_needed:
             self.frozen = True
             self.ice_hits = 0
             text = "Frozen!"
@@ -105,7 +105,7 @@ class Character:
     def apply_mark(self, active_effects, mark_hits_needed):
         # add mark hits, mark if enough hits, and display text animation
         self.mark_hits += 1
-        if self.mark_hits == mark_hits_needed:
+        if self.mark_hits >= mark_hits_needed:
             self.marked = True
             self.mark_hits = 0
             text = "Marked!"

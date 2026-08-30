@@ -10,6 +10,7 @@ from game.bots import gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, du
 from game.characters import enemy_catalog
 from game.drawing import update_animations, draw_screen, draw_main_menu
 from game.battle import handle_input, enemy_turn, spawn_initial_enemies, check_game_over
+from game.shop import all_bots
 
 # ------------------------------
 # MAIN
@@ -46,8 +47,7 @@ async def main():
     ]
 
     # initial list of characters and effects
-    # gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot, mod_bot
-    player_bots = [gun_bot]
+    player_bots = [gun_bot, rico_bot]
     enemy_goons = []
     active_effects = []
 
@@ -73,14 +73,14 @@ async def main():
     menu_target_scroll_y = 0.0
 
     # initial variables for game progression
-    gears = 10
+    gears = 0
     rounds = 1
     max_enemies = 3
     running = True
 
     # load initial character images
-    for char in player_bots:
-        char.load_images()
+    for char in all_bots:
+        char["bot"].load_images()
     for enemy, stats in enemy_catalog.items():
         stats["idle_image"] = pygame.image.load(stats["idle_image_path"]).convert_alpha()
         stats["hurt_image"] = pygame.image.load(stats["hurt_image_path"]).convert_alpha()
@@ -90,7 +90,7 @@ async def main():
 
         # handle input events based on game state and battle state
         running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears = handle_input(
-            running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, enemy_slots)
+            running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, rounds, enemy_slots)
 
         if game_state == "Endless Mode" and previous_game_state != "Endless Mode":
             # setup for the first round of endless mode

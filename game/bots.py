@@ -185,6 +185,52 @@ class RicoBot(Bot):
             lore.append((f"Bounces: {action['bounce_amount']}", "normal"))
             lore.append((f"Damage: {action['damage']}", "normal"))
 
+class ModBot(Bot):
+    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
+        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+        # action dictionary
+        self.actions = [
+            {
+                "name": "Percentage",
+                "damage": 0.1,
+                "used": False,
+                "target_state": "Target Enemy",
+                "image_path": "assets/bots/mod_bot/mod_bot_percentage.png",
+                "image": None,
+                "description": "Shoots a percentage projectile that damages an enemy. The amount of damage is based on the percentage of the enemy's current health. The amount of damage is rounded down with a minimum of 1 damage.",
+                "scroll": 65,
+                "projectile_offset": (-22, -26)
+            },
+            {
+                "name": "Shield",
+                "shield": 0.9,
+                "used": False,
+                "target_state": "Target Bot",
+                "image_path": "assets/bots/mod_bot/mod_bot_shield.png",
+                "image": None,
+                "description": "Shoots a shield projectile that creates a shield around a friendly bot. The shield reduces enemy damage for one round. The damage taken is rounded up.",
+                "scroll": 215,
+                "projectile_offset": (21, 19)
+            }
+        ]
+
+    def perform_action(self, active_effects, target_char, chosen_action):
+        # perform action on target character based on which action is chosen
+        if chosen_action == "Percentage":
+            percentage_damage = max(1, int(target_char.real_health * self.actions[0]["damage"]))
+            damage = target_char.damage_amount(percentage_damage)
+            target_char.real_health -= damage
+            active_effects.append(PercentageProjectile((200, 200, 200), self, target_char, self.actions[0]["projectile_offset"], damage, "Damage"))
+        elif chosen_action == "Shield":
+            active_effects.append(ShieldProjectile((200, 200, 200), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["shield"]))
+
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Percentage":
+            lore.append((f"Damage: {int(action['damage'] * 100)}%", "normal"))
+        elif action["name"] == "Shield":
+            lore.append((f"Damage Reduction: {round((1-action['shield']) * 100)}%", "normal"))
+
 class ElementalBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
@@ -193,7 +239,7 @@ class ElementalBot(Bot):
             {
                 "name": "Fire",
                 "damage": 1,
-                "fire_rounds_amount": 3,
+                "fire_rounds_amount": 2,
                 "used": False,
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/elemental_bot/elemental_bot_fire.png",
@@ -230,51 +276,76 @@ class ElementalBot(Bot):
         elif action["name"] == "Ice":
             lore.append((f"Ice Hits Needed: {action['ice_hits_needed']}", "normal"))
 
-class ModBot(Bot):
+class LazerBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
         super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
         # action dictionary
         self.actions = [
             {
-                "name": "Percentage",
-                "damage": 0.1,
+                "name": "Pierce",
+                "damage": 1,
+                "movement_mode": False,
                 "used": False,
-                "target_state": "Target Enemy",
-                "image_path": "assets/bots/mod_bot/mod_bot_percentage.png",
+                "target_state": "Target Line",
+                "image_path": "assets/bots/lazer_bot/lazer_bot_pierce.png",
                 "image": None,
-                "description": "Shoots a percentage projectile that damages an enemy. The amount of damage is based on the percentage of the enemy's current health. The amount of damage is rounded down with a minimum of 1 damage.",
+                "description": "Fires a laser beam that can pierce through multiple enemies in a straight line. The laser beam can be aimed with the mouse position. Click to fire the laser beam and all enemies in the line will take damage. Click on lazer bot to enter into movement mode. While in movement mode, you can move lazer bot up and down with the mouse position. Click on lazer bot again to exit movement mode. You can use movement mode to have better aim with the laser beam.",
                 "scroll": 65,
-                "projectile_offset": (-22, -26)
+                "projectile_offset": (11, -1)
             },
             {
-                "name": "Shield",
-                "shield": 0.5,
-                "used": False,
-                "target_state": "Target Bot",
-                "image_path": "assets/bots/mod_bot/mod_bot_shield.png",
+                "name": "Barrage",
+                "damage": 1,
+                "barrage_charge": 0,
+                "barrage_charge_needed": 20,
+                "used": True,
+                "target_state": "Target Enemy",
+                "image_path": "assets/bots/lazer_bot/lazer_bot_barrage.png",
                 "image": None,
-                "description": "Shoots a shield projectile that creates a shield around a friendly bot. The shield reduces enemy damage for one round. The damage taken is rounded up.",
-                "scroll": 215,
-                "projectile_offset": (21, 19)
+                "description": "Fires a laser beam at every enemy in the battle. This action can only be used after charging up the barrage. Each enemy hit with the Pierce action will charge up the barrage.",
+                "scroll": 275,
+                "projectile_offset": (-12, -8)
             }
         ]
 
-    def perform_action(self, active_effects, target_char, chosen_action):
-        # perform action on target character based on which action is chosen
-        if chosen_action == "Percentage":
-            percentage_damage = max(1, int(target_char.real_health * self.actions[0]["damage"]))
-            damage = target_char.damage_amount(percentage_damage)
-            target_char.real_health -= damage
-            active_effects.append(PercentageProjectile((200, 200, 200), self, target_char, self.actions[0]["projectile_offset"], damage, "Damage"))
-        elif chosen_action == "Shield":
-            active_effects.append(ShieldProjectile((200, 200, 200), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["shield"]))
+    def reset_actions(self):
+        # reset actions for the next turn
+        self.acted = False
+        self.actions[0]["used"] = False
+
+    def perform_action(self, active_effects, target_list, chosen_action, laser_end):
+        # perform action on target characters based on which action is chosen
+        if chosen_action == "Pierce":
+            # create laser projectile and damage all enemies hit by the laser
+            active_effects.append(LaserProjectile((self.rect.centerx + self.actions[0]["projectile_offset"][0], self.rect.centery + self.actions[0]["projectile_offset"][1]), laser_end))
+            for enemy in target_list:
+                damage = enemy.damage_amount(self.actions[0]["damage"])
+                enemy.real_health -= damage
+                enemy.take_damage(active_effects, damage)
+                self.actions[1]["barrage_charge"] += 1
+            # check if barrage is charged and reset used status if it is
+            if self.actions[1]["barrage_charge"] >= self.actions[1]["barrage_charge_needed"] and self.actions[1]["used"]:
+                self.actions[1]["used"] = False
+                active_effects.append(FloatingText((255, 50, 255), self.rect.x, self.rect.top - 20, "Barrage Ready!"))
+        
+        elif chosen_action == "Barrage":
+            # damage all enemies on the field and reset barrage charge
+            self.actions[1]["barrage_charge"] -= self.actions[1]["barrage_charge_needed"]
+            for enemy in target_list:
+                if enemy.real_health > 0:
+                    damage = enemy.damage_amount(self.actions[1]["damage"])
+                    enemy.real_health -= damage
+                    active_effects.append(LaserProjectile((self.rect.centerx + self.actions[1]["projectile_offset"][0], self.rect.centery + self.actions[1]["projectile_offset"][1]), (enemy.rect.centerx, enemy.rect.centery)))
+                    enemy.take_damage(active_effects, damage)
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
-        if action["name"] == "Percentage":
-            lore.append((f"Damage: {int(action['damage'] * 100)}%", "normal"))
-        elif action["name"] == "Shield":
-            lore.append((f"Damage Reduction: {int(action['shield'] * 100)}%", "normal"))
+        if action["name"] == "Pierce":
+            lore.append((f"Damage: {action['damage']}", "normal"))
+        elif action["name"] == "Barrage":
+            lore.append((f"Damage: {action['damage']}", "normal"))
+            lore.append((f"Current Charge: {action['barrage_charge']}", "normal"))
+            lore.append((f"Charge Needed: {action['barrage_charge_needed']}", "normal"))
 
 class ChaosBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
@@ -295,7 +366,7 @@ class ChaosBot(Bot):
             },
             {
                 "name": "Barrier",
-                "block": 50,
+                "block": 10,
                 "used": False,
                 "target_state": "Target Bot",
                 "image_path": "assets/bots/chaos_bot/chaos_bot_barrier.png",
@@ -393,76 +464,6 @@ class DuploBot(Bot):
             lore.append((f"Damage: {action['damage']}", "normal"))
         elif action["name"] == "Mark":
             lore.append((f"Mark Hits Needed: {action['mark_hits_needed']}", "normal"))
-
-class LazerBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
-        # action dictionary
-        self.actions = [
-            {
-                "name": "Pierce",
-                "damage": 1,
-                "movement_mode": False,
-                "used": False,
-                "target_state": "Target Line",
-                "image_path": "assets/bots/lazer_bot/lazer_bot_pierce.png",
-                "image": None,
-                "description": "Fires a laser beam that can pierce through multiple enemies in a straight line. The laser beam can be aimed with the mouse position. Click to fire the laser beam and all enemies in the line will take damage. Click on lazer bot to enter into movement mode. While in movement mode, you can move lazer bot up and down with the mouse position. Click on lazer bot again to exit movement mode. You can use movement mode to have better aim with the laser beam.",
-                "scroll": 65,
-                "projectile_offset": (11, -1)
-            },
-            {
-                "name": "Barrage",
-                "damage": 1,
-                "barrage_charge": 0,
-                "barrage_charge_needed": 10,
-                "used": True,
-                "target_state": "Target Enemy",
-                "image_path": "assets/bots/lazer_bot/lazer_bot_barrage.png",
-                "image": None,
-                "description": "Fires a laser beam at every enemy in the battle. This action can only be used after charging up the barrage. Each enemy hit with the Pierce action will charge up the barrage.",
-                "scroll": 275,
-                "projectile_offset": (-12, -8)
-            }
-        ]
-
-    def reset_actions(self):
-        # reset actions for the next turn
-        self.acted = False
-        self.actions[0]["used"] = False
-
-    def perform_action(self, active_effects, target_list, chosen_action, laser_end):
-        # perform action on target characters based on which action is chosen
-        if chosen_action == "Pierce":
-            # create laser projectile and damage all enemies hit by the laser
-            active_effects.append(LaserProjectile((self.rect.centerx + self.actions[0]["projectile_offset"][0], self.rect.centery + self.actions[0]["projectile_offset"][1]), laser_end))
-            for enemy in target_list:
-                damage = enemy.damage_amount(self.actions[0]["damage"])
-                enemy.real_health -= damage
-                enemy.take_damage(active_effects, damage)
-                self.actions[1]["barrage_charge"] += 1
-            # check if barrage is charged and reset used status if it is
-            if self.actions[1]["barrage_charge"] >= self.actions[1]["barrage_charge_needed"]:
-                self.actions[1]["used"] = False
-        
-        elif chosen_action == "Barrage":
-            # damage all enemies on the field and reset barrage charge
-            self.actions[1]["barrage_charge"] -= self.actions[1]["barrage_charge_needed"]
-            for enemy in target_list:
-                if enemy.real_health > 0:
-                    damage = enemy.damage_amount(self.actions[1]["damage"])
-                    enemy.real_health -= damage
-                    active_effects.append(LaserProjectile((self.rect.centerx + self.actions[1]["projectile_offset"][0], self.rect.centery + self.actions[1]["projectile_offset"][1]), (enemy.rect.centerx, enemy.rect.centery)))
-                    enemy.take_damage(active_effects, damage)
-
-    def lore_stats_text(self, lore, action):
-        # add action stats to lore text
-        if action["name"] == "Pierce":
-            lore.append((f"Damage: {action['damage']}", "normal"))
-        elif action["name"] == "Barrage":
-            lore.append((f"Damage: {action['damage']}", "normal"))
-            lore.append((f"Current Charge: {action['barrage_charge']}", "normal"))
-            lore.append((f"Charge Needed: {action['barrage_charge_needed']}", "normal"))
 
 # ------------------------------
 # BOT INSTANCES
