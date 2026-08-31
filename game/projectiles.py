@@ -26,9 +26,10 @@ class Projectile:
 # ------------------------------
 
 class LinearProjectile(Projectile):
-    def __init__(self, color, source_char, target_char, projectile_offset, amount, projectile_type):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
         # linear projectile specific info
+        self.reduction = reduction
         self.projectile_type = projectile_type
         self.speed = 10
         self.distance = math.sqrt(self.distance_x ** 2 + self.distance_y ** 2)
@@ -44,7 +45,7 @@ class LinearProjectile(Projectile):
         if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
             self.active = False
             if self.projectile_type == "Damage":
-                self.target_char.take_damage(active_effects, self.amount)
+                self.target_char.take_damage(active_effects, self.amount, self.reduction)
             elif self.projectile_type == "Fire":
                 self.target_char.apply_fire(active_effects, self.amount)
             elif self.projectile_type == "Ice":
@@ -57,8 +58,8 @@ class LinearProjectile(Projectile):
 # ------------------------------
 
 class ChargeProjectile(LinearProjectile):
-    def __init__(self, color, source_char, target_char, projectile_offset, amount, projectile_type, max_radius):
-        super().__init__(color, source_char, target_char, projectile_offset, amount, projectile_type)
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type, max_radius):
+        super().__init__(color, source_char, target_char, projectile_offset, amount, reduction, projectile_type)
         # charge projectile specific info
         self.max_radius = max_radius
         self.current_radius = 0
@@ -82,8 +83,8 @@ class ChargeProjectile(LinearProjectile):
                     self.border_phase = "Grow"
 
 class MarkProjectile(LinearProjectile):
-    def __init__(self, color, source_char, target_char, projectile_offset, amount, projectile_type):
-        super().__init__(color, source_char, target_char, projectile_offset, amount, projectile_type)
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type):
+        super().__init__(color, source_char, target_char, projectile_offset, amount, reduction, projectile_type)
         # mark projectile specific info
         self.angle = 0
         self.rotation_speed = 0.5
@@ -98,8 +99,8 @@ class MarkProjectile(LinearProjectile):
 # ------------------------------
 
 class PercentageProjectile(LinearProjectile):
-    def __init__(self, color, source_char, target_char, projectile_offset, amount, projectile_type):
-        super().__init__(color, source_char, target_char, projectile_offset, amount, projectile_type)
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type):
+        super().__init__(color, source_char, target_char, projectile_offset, amount, reduction, projectile_type)
         # percentage projectile specific info
         self.line_one_angle = 0
         self.line_two_angle = 0
@@ -209,8 +210,8 @@ class BounceProjectile(ArcProjectile):
         
         # damage when projectile reaches and bounce again if valid
         if self.current_frame >= self.frames:
-            damage = self.target_char.damage_amount(self.amount)
-            self.target_char.take_damage(active_effects, damage)
+            damage, reduction = self.target_char.damage_amount(self.amount)
+            self.target_char.take_damage(active_effects, damage, reduction)
             self.active = False
             self.enemies_hit.append(self.target_char)
             if self.bounce_amount > 0:
@@ -220,7 +221,7 @@ class BounceProjectile(ArcProjectile):
                         valid_targets.append(enemy)
                 if valid_targets:
                     next_target = random.choice(valid_targets)
-                    damage = next_target.damage_amount(self.amount)
+                    damage, reduction = next_target.damage_amount(self.amount)
                     next_target.real_health -= damage
                     active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), self.amount, self.bounce_amount - 1, self.enemies_hit))
 
@@ -243,9 +244,10 @@ class GlitchyProjectile(Projectile):
             self.shake_y = random.randint(-10, 10)
 
 class GlitchyDamageProjectile(GlitchyProjectile):
-    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
         # glitchy damage projectile specific info
+        self.reduction = reduction
         self.speed = 10
         self.distance = math.sqrt(self.distance_x ** 2 + self.distance_y ** 2)
         self.speed_x = self.distance_x / self.distance * self.speed
@@ -261,7 +263,7 @@ class GlitchyDamageProjectile(GlitchyProjectile):
         # damage when projectile reaches
         if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
             self.active = False
-            self.target_char.take_damage(active_effects, self.amount)
+            self.target_char.take_damage(active_effects, self.amount, self.reduction)
 
 class GlitchyHealProjectile(GlitchyProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):

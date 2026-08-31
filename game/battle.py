@@ -6,7 +6,7 @@ from .helper import FloatingText
 from .projectiles import LinearProjectile
 from .characters import Enemy, enemy_catalog
 from .shop import all_bots, bot_upgrades
-from .bots import gun_bot, rico_bot, elemental_bot, lazer_bot
+from .bots import elemental_bot, lazer_bot
 
 # ------------------------------
 # PLAYER TURN
@@ -456,25 +456,25 @@ def enemy_attacks(player_bots, enemy_goons, active_effects, battle_state):
                         bots_alive.append(bot)
                 if bots_alive:
                     target = random.choice(bots_alive)
-                    damage = target.damage_amount(enemy.damage)
+                    damage, reduction = target.damage_amount(enemy.damage)
                     target.real_health -= damage
-                    active_effects.append(LinearProjectile((255, 0, 0), enemy, target, (-50, -50), damage, "Damage"))
+                    active_effects.append(LinearProjectile((255, 0, 0), enemy, target, (-50, -50), damage, reduction, "Damage"))
         battle_state = "Enemy Turn Over"
     return battle_state
 
-def round_end(player_bots, enemy_goons, active_effects, battle_state, rounds):
+def round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rounds):
     # does fire damage to characters on fire
     for char in player_bots + enemy_goons:
         if char.real_health > 0 and char.fire_rounds > 0:
             char.fire_rounds -= 1
             if char in player_bots:
-                damage = char.damage_amount(1)
+                damage, reduction = char.damage_amount(1)
                 char.real_health -= damage
-                char.take_damage(active_effects, damage)
+                char.take_damage(active_effects, damage, reduction)
             elif char in enemy_goons:
-                damage = char.damage_amount(elemental_bot.actions[0]["damage"])
+                damage, reduction = char.damage_amount(elemental_bot.actions[0]["damage"])
                 char.real_health -= damage
-                char.take_damage(active_effects, damage)
+                char.take_damage(active_effects, damage, reduction)
     
     # resets for next turn
     for bot in player_bots:
@@ -486,7 +486,21 @@ def round_end(player_bots, enemy_goons, active_effects, battle_state, rounds):
         char.shield = 0
     battle_state = "Player Turn"
     rounds += 1
-    return battle_state, rounds
+
+    # bonus gears every 10 rounds
+    if rounds % 10 == 0:
+        if rounds <= 50:
+            gears += 10
+            bonus_text = "Bonus Gears: 10"
+        else:
+            gears += 20
+            bonus_text = "Bonus Gears: 20"
+        active_effects.append(FloatingText((255, 255, 255), 460, 350, bonus_text))
+
+    # display round number for new round
+    active_effects.append(FloatingText((255, 255, 255), 460, 300, f"Round: {rounds}"))
+
+    return battle_state, gears, rounds
 
 def spawn_enemy(x, y, slot_id):
     # randomize the enemy spawn position within a range
@@ -578,7 +592,7 @@ def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, ro
 
     if battle_state == "Round End":
         # end of round logic
-        battle_state, rounds = round_end(player_bots, enemy_goons, active_effects, battle_state, rounds)
+        battle_state, gears, rounds = round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rounds)
 
         # spawn new enemies based on the round and max enemies
         gears, max_enemies = spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_slots)

@@ -39,7 +39,7 @@ class Character:
         if self.block > 0:
             block_roll = random.randint(1, 100)
             if block_roll <= self.block:
-                return 0
+                return 0, 0
 
         # double damage if marked
         if self.marked:
@@ -47,11 +47,15 @@ class Character:
         
         # reduce damage if shield is active
         if self.shield > 0:
+            og_damage = damage
             damage = math.ceil(damage * self.shield)
+            reduction = og_damage - damage
+        else:
+            reduction = 0
         
-        return damage
+        return damage, reduction
 
-    def take_damage(self, active_effects, damage):
+    def take_damage(self, active_effects, damage, reduction):
         # reduce health
         self.visual_health -= damage
         if self.visual_health < 0:
@@ -70,6 +74,13 @@ class Character:
         text_width = len(text) * 10
         text_x = random.randint(self.rect.left, self.rect.right - text_width)
         active_effects.append(FloatingText(color, text_x, self.rect.top + 10, text))
+
+        # reduction text animation
+        if reduction > 0:
+            reduction_text = f"{reduction} reduced"
+            reduction_text_width = len(reduction_text) * 10
+            reduction_text_x = random.randint(self.rect.left, self.rect.right - reduction_text_width)
+            active_effects.append(FloatingText((200, 200, 200), reduction_text_x, self.rect.top + 30, reduction_text))
 
     def take_heal(self, active_effects, amount):
         # increase health

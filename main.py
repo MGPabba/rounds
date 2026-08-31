@@ -6,7 +6,7 @@ pygame.init()
 pygame.font.init()
 
 # import game modules
-from game.bots import gun_bot, rico_bot, elemental_bot, lazer_bot, chaos_bot, duplo_bot, mod_bot
+from game.bots import gun_bot, rico_bot
 from game.characters import enemy_catalog
 from game.drawing import update_animations, draw_screen, draw_main_menu
 from game.battle import handle_input, enemy_turn, spawn_initial_enemies, check_game_over

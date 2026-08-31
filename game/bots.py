@@ -122,13 +122,13 @@ class GunBot(Bot):
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Left Gun":
-            damage = target_char.damage_amount(self.actions[0]["damage"])
+            damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
             target_char.real_health -= damage
-            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], damage, "Damage"))
+            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage"))
         elif chosen_action == "Right Gun":
-            damage = target_char.damage_amount(self.actions[1]["damage"])
+            damage, reduction = target_char.damage_amount(self.actions[1]["damage"])
             target_char.real_health -= damage
-            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], damage, "Damage"))
+            active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], damage, reduction, "Damage"))
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -173,7 +173,7 @@ class RicoBot(Bot):
             target_char.real_health += self.actions[0]["heal"]
             active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"]))
         elif chosen_action == "Bounce":
-            damage = target_char.damage_amount(self.actions[1]["damage"])
+            damage, reduction = target_char.damage_amount(self.actions[1]["damage"])
             target_char.real_health -= damage
             active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["damage"], self.actions[1]["bounce_amount"] - 1, []))
 
@@ -218,9 +218,9 @@ class ModBot(Bot):
         # perform action on target character based on which action is chosen
         if chosen_action == "Percentage":
             percentage_damage = max(1, int(target_char.real_health * self.actions[0]["damage"]))
-            damage = target_char.damage_amount(percentage_damage)
+            damage, reduction = target_char.damage_amount(percentage_damage)
             target_char.real_health -= damage
-            active_effects.append(PercentageProjectile((200, 200, 200), self, target_char, self.actions[0]["projectile_offset"], damage, "Damage"))
+            active_effects.append(PercentageProjectile((200, 200, 200), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage"))
         elif chosen_action == "Shield":
             active_effects.append(ShieldProjectile((200, 200, 200), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["shield"]))
 
@@ -264,9 +264,9 @@ class ElementalBot(Bot):
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Fire":
-            active_effects.append(LinearProjectile((255, 0, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["fire_rounds_amount"], "Fire"))
+            active_effects.append(LinearProjectile((255, 0, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["fire_rounds_amount"], 0, "Fire"))
         elif chosen_action == "Ice":
-            active_effects.append(LinearProjectile((0, 255, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["ice_hits_needed"], "Ice"))
+            active_effects.append(LinearProjectile((0, 255, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["ice_hits_needed"], 0, "Ice"))
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -319,9 +319,9 @@ class LazerBot(Bot):
             # create laser projectile and damage all enemies hit by the laser
             active_effects.append(LaserProjectile((self.rect.centerx + self.actions[0]["projectile_offset"][0], self.rect.centery + self.actions[0]["projectile_offset"][1]), laser_end))
             for enemy in target_list:
-                damage = enemy.damage_amount(self.actions[0]["damage"])
+                damage, reduction = enemy.damage_amount(self.actions[0]["damage"])
                 enemy.real_health -= damage
-                enemy.take_damage(active_effects, damage)
+                enemy.take_damage(active_effects, damage, reduction)
                 self.actions[1]["barrage_charge"] += 1
             # check if barrage is charged and reset used status if it is
             if self.actions[1]["barrage_charge"] >= self.actions[1]["barrage_charge_needed"] and self.actions[1]["used"]:
@@ -333,10 +333,10 @@ class LazerBot(Bot):
             self.actions[1]["barrage_charge"] -= self.actions[1]["barrage_charge_needed"]
             for enemy in target_list:
                 if enemy.real_health > 0:
-                    damage = enemy.damage_amount(self.actions[1]["damage"])
+                    damage, reduction = enemy.damage_amount(self.actions[1]["damage"])
                     enemy.real_health -= damage
                     active_effects.append(LaserProjectile((self.rect.centerx + self.actions[1]["projectile_offset"][0], self.rect.centery + self.actions[1]["projectile_offset"][1]), (enemy.rect.centerx, enemy.rect.centery)))
-                    enemy.take_damage(active_effects, damage)
+                    enemy.take_damage(active_effects, damage, reduction)
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -390,9 +390,9 @@ class ChaosBot(Bot):
         if chosen_action == "Random":
             random_amount = random.randint(self.actions[0]["min_power"], self.actions[0]["max_power"])
             if isinstance(target_char, Enemy):
-                damage = target_char.damage_amount(random_amount)
+                damage, reduction = target_char.damage_amount(random_amount)
                 target_char.real_health -= damage
-                active_effects.append(GlitchyDamageProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], damage))
+                active_effects.append(GlitchyDamageProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], damage, reduction))
             else:
                 target_char.real_health += random_amount
                 active_effects.append(GlitchyHealProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], random_amount))
@@ -450,13 +450,13 @@ class DuploBot(Bot):
                 active_effects.append(FloatingText((255, 255, 0), text_x, self.rect.top + 10, text))
             # if target character is an enemy, deal damage and reset damage
             else:
-                damage = target_char.damage_amount(self.actions[0]["damage"])
+                damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
                 target_char.real_health -= damage
-                active_effects.append(ChargeProjectile((255, 255, 0), self, target_char, self.actions[0]["projectile_offset"], damage, "Damage", self.actions[0]["projectile_radius"]))
+                active_effects.append(ChargeProjectile((255, 255, 0), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage", self.actions[0]["projectile_radius"]))
                 self.actions[0]["damage"] = 1
                 self.actions[0]["projectile_radius"] = 2
         elif chosen_action == "Mark":
-            active_effects.append(MarkProjectile((255, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["mark_hits_needed"], "Mark"))
+            active_effects.append(MarkProjectile((255, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["mark_hits_needed"], 0, "Mark"))
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text

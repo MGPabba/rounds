@@ -120,7 +120,7 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, active_bot, 
                 dot_offset = 0
             pygame.draw.circle(screen, color, (char.rect.x - 10, char.rect.y - 33 - dot_offset), 5)
 
-def draw_character_status_effects(screen, regular_font, player_bots, enemy_goons, battle_state):
+def draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, enemy_goons, battle_state):
     for char in player_bots + enemy_goons:
         if char.visual_health > 0:
             # draw overlay on character if frozen or on fire
@@ -176,7 +176,6 @@ def draw_character_status_effects(screen, regular_font, player_bots, enemy_goons
                 pygame.draw.circle(screen, (200, 200, 200), (char.rect.centerx, char.rect.centery), 55, 3)
 
             # highlight character if hovering and valid target
-            mouse_pos = pygame.mouse.get_pos()
             if char.rect.collidepoint(mouse_pos) and char.real_health > 0:
                 if char in enemy_goons and battle_state in ["Target Enemy", "Target Enemy or Self", "Target Any"]:
                     pygame.draw.rect(screen, (255, 0, 0), char.rect, 3)
@@ -189,7 +188,7 @@ def draw_character_status_effects(screen, regular_font, player_bots, enemy_goons
 # DRAWING SHOP BOX AND MENU
 # ------------------------------
 
-def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds):
+def draw_shop_box(screen, mouse_pos, regular_font, font_cache, battle_state, active_bot, gears, rounds):
     # draw shop box background
     if active_bot:
         box_color = active_bot.box_background_color
@@ -200,7 +199,6 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
 
     # draw shop button with hover effect
     button_rect = pygame.Rect(40, 530, 100, 50)
-    mouse_pos = pygame.mouse.get_pos()
     if button_rect.collidepoint(mouse_pos) and battle_state == "Shop":
         button_color = (255, 125, 125)
     elif active_bot:
@@ -236,11 +234,9 @@ def draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, ge
     screen.blit(round_text, round_text_rect)
     screen.blit(gears_text, gears_text_rect)
 
-def draw_shop_bar(screen, shop_title_font, battle_state):
+def draw_shop_bar(screen, mouse_pos, shop_title_font, battle_state):
     if battle_state == "Shop":
         for i in range(len(all_bots)):
-            mouse_pos = pygame.mouse.get_pos()
-
             # draw bot button if unlocked
             if all_bots[i]["unlocked"]:
 
@@ -274,10 +270,9 @@ def draw_shop_text(menu_canvas, font_cache, text, max_width, color, center_x, ce
     text_rect = text_label.get_rect(center=(center_x, center_y))
     menu_canvas.blit(text_label, text_rect)
 
-def draw_shop_menu(screen, shop_title_font, font_cache, battle_state, menu_height, menu_scroll_y, gears, rounds):
+def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state, menu_height, menu_scroll_y, gears, rounds):
     if battle_state == "Shop":
         # get mouse position relative to shop menu
-        mouse_pos = pygame.mouse.get_pos()
         mouse_pos = (mouse_pos[0] - 257, mouse_pos[1] - 40 + menu_scroll_y)
 
         # calculate the shop menu height
@@ -429,12 +424,11 @@ def draw_shop_menu(screen, shop_title_font, font_cache, battle_state, menu_heigh
 # DRAWING ACTION BOX AND BUTTONS
 # ------------------------------
 
-def draw_action_button(screen, font_cache, battle_state, active_bot, x, y, text, used, chosen):
+def draw_action_button(screen, mouse_pos, font_cache, battle_state, active_bot, x, y, text, used, chosen):
     # button rectangle
     button_rect = pygame.Rect(x, y, 150, 50)
     
     # change button color based on hover and chosen state
-    mouse_pos = pygame.mouse.get_pos()
     if battle_state != "Shop" and not lazer_bot.actions[0]["movement_mode"]:
         if chosen and button_rect.collidepoint(mouse_pos):
             button_color = (255, 125, 125)
@@ -469,7 +463,7 @@ def draw_action_button(screen, font_cache, battle_state, active_bot, x, y, text,
     # draw button text
     screen.blit(button_text, button_text_rect)
 
-def draw_action_box(screen, font_cache, battle_state, active_bot, chosen_action):
+def draw_action_box(screen, mouse_pos, font_cache, battle_state, active_bot, chosen_action):
     # draw action box background
     if active_bot:
         color = active_bot.box_background_color
@@ -485,7 +479,7 @@ def draw_action_box(screen, font_cache, battle_state, active_bot, chosen_action)
                 x = 120
             else:
                 x = 290
-            draw_action_button(screen, font_cache, battle_state, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
+            draw_action_button(screen, mouse_pos, font_cache, battle_state, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
 
 # ------------------------------
 # DRAWING LORE BOX AND TEXT
@@ -547,10 +541,10 @@ def draw_lore_box(screen, regular_font, battle_state, inspecting_character, lore
 # DRAWING PROJECTILE EFFECTS
 # ------------------------------
 
-def draw_laser(screen, enemy_goons, battle_state, active_bot):
+def draw_laser(screen, mouse_pos, enemy_goons, battle_state, active_bot):
     if battle_state == "Target Line" and not active_bot.actions[0]["movement_mode"]:
-        mouse_pos = pygame.mouse.get_pos()
         if mouse_pos[0] > active_bot.rect.centerx + active_bot.actions[0]["projectile_offset"][0]:
+
             # calculate the start position, end position, and direction of the laser beam based on the mouse position and lazer bot's position
             start_x = active_bot.rect.centerx + active_bot.actions[0]["projectile_offset"][0]
             start_y = active_bot.rect.centery + active_bot.actions[0]["projectile_offset"][1]
@@ -628,27 +622,30 @@ def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache
     # background color
     screen.fill((0, 0, 0))
 
+    # get mouse position for hover effects
+    mouse_pos = pygame.mouse.get_pos()
+
     # draw bots and goons with animations based on their states and actions
     draw_characters(screen, regular_font, player_bots, enemy_goons, active_bot, chosen_action, inspecting_character)
 
     # draw bots and goons status effects
-    draw_character_status_effects(screen, regular_font, player_bots, enemy_goons, battle_state)
+    draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, enemy_goons, battle_state)
 
     # draw shop box above action box
-    draw_shop_box(screen, regular_font, font_cache, battle_state, active_bot, gears, rounds)
+    draw_shop_box(screen, mouse_pos, regular_font, font_cache, battle_state, active_bot, gears, rounds)
 
     # draw shop bar and menu if opened
-    draw_shop_bar(screen, shop_title_font, battle_state)
-    menu_height = draw_shop_menu(screen, shop_title_font, font_cache, battle_state, menu_height, menu_scroll_y, gears, rounds)
+    draw_shop_bar(screen, mouse_pos, shop_title_font, battle_state)
+    menu_height = draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state, menu_height, menu_scroll_y, gears, rounds)
 
     # draw action options based on active bot and chosen action
-    draw_action_box(screen, font_cache, battle_state, active_bot, chosen_action)
+    draw_action_box(screen, mouse_pos, font_cache, battle_state, active_bot, chosen_action)
 
     # draw lore box with scrolling
     lore_height = draw_lore_box(screen, regular_font, battle_state, inspecting_character, lore_scroll_y, rounds)
 
     # draw laser beam if lazer bot is using its pierce
-    draw_laser(screen, enemy_goons, battle_state, active_bot)
+    draw_laser(screen, mouse_pos, enemy_goons, battle_state, active_bot)
     
     # draw effects damage or heal numbers or projectiles
     draw_effects(screen, floating_font, active_effects)
