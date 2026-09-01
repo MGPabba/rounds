@@ -175,7 +175,7 @@ class RicoBot(Bot):
         elif chosen_action == "Bounce":
             damage, reduction = target_char.damage_amount(self.actions[1]["damage"])
             target_char.real_health -= damage
-            active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["damage"], self.actions[1]["bounce_amount"] - 1, []))
+            active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], damage, reduction, self.actions[1]["damage"], self.actions[1]["bounce_amount"] - 1, []))
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -388,6 +388,7 @@ class ChaosBot(Bot):
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Random":
+            # damage enemy or heal bot
             random_amount = random.randint(self.actions[0]["min_power"], self.actions[0]["max_power"])
             if isinstance(target_char, Enemy):
                 damage, reduction = target_char.damage_amount(random_amount)

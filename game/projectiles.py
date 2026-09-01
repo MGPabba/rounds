@@ -192,9 +192,11 @@ class HealProjectile(ArcProjectile):
             self.target_char.take_heal(active_effects, self.amount)
 
 class BounceProjectile(ArcProjectile):
-    def __init__(self, color, source_char, target_char, projectile_offset, amount, bounce_amount, enemies_hit):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, base_amount, bounce_amount, enemies_hit):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
         # bounce projectile specific info
+        self.reduction = reduction
+        self.base_amount = base_amount
         self.bounce_amount = bounce_amount
         self.enemies_hit = enemies_hit
     
@@ -210,8 +212,7 @@ class BounceProjectile(ArcProjectile):
         
         # damage when projectile reaches and bounce again if valid
         if self.current_frame >= self.frames:
-            damage, reduction = self.target_char.damage_amount(self.amount)
-            self.target_char.take_damage(active_effects, damage, reduction)
+            self.target_char.take_damage(active_effects, self.amount, self.reduction)
             self.active = False
             self.enemies_hit.append(self.target_char)
             if self.bounce_amount > 0:
@@ -221,9 +222,9 @@ class BounceProjectile(ArcProjectile):
                         valid_targets.append(enemy)
                 if valid_targets:
                     next_target = random.choice(valid_targets)
-                    damage, reduction = next_target.damage_amount(self.amount)
+                    damage, reduction = next_target.damage_amount(self.base_amount)
                     next_target.real_health -= damage
-                    active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), self.amount, self.bounce_amount - 1, self.enemies_hit))
+                    active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), damage, reduction, self.base_amount, self.bounce_amount - 1, self.enemies_hit))
 
 # ------------------------------
 # PROJECTILE CLASSES FOR CHAOS BOT
