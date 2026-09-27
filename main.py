@@ -120,6 +120,11 @@ async def main():
         pygame.display.flip()
         # makes the game run at 60 frames per second
         clock.tick(60)
+
+        # prints the current fps for debugging purposes
+        fps = clock.get_fps()
+        print(fps)
+
         # prevents freezing in the web
         await asyncio.sleep(0)
     
