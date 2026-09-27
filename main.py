@@ -116,15 +116,17 @@ async def main():
             lore_height, menu_height = draw_screen(
                 screen, regular_font, floating_font, shop_title_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds)
 
-        # keeps the game from flickering
-        pygame.display.flip()
+        
         # makes the game run at 60 frames per second
         clock.tick(60)
 
         # prints the current fps for debugging purposes
         fps = clock.get_fps()
-        print(fps)
+        fps_text = regular_font.render(f"FPS: {fps:.2f}", True, (255, 255, 255))
+        screen.blit(fps_text, (20, 20))
 
+        # keeps the game from flickering
+        pygame.display.flip()
         # prevents freezing in the web
         await asyncio.sleep(0)
     
