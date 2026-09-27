@@ -18,12 +18,12 @@ bot_upgrades = {
         {
             "action": "Left Gun",
             "action_number": 0,
-            "stat": "damage",
+            "stat": "aiming_unlocked",
             "level": 0,
-            "buff_desc_1": "+1 damage",
-            "buff_desc_2": ["Damage: 1 -> 2", "Damage: 2 -> 3", "Damage: 3 -> 4", "Damage: 4 -> 5"],
-            "amount": [2, 3, 4, 5],
-            "cost": [5, 10, 15, 20],
+            "buff_desc_1": "Unlock Aiming",
+            "buff_desc_2": ["Locked -> Unlocked"],
+            "amount": [True],
+            "cost": [100],
             "confirm": False
         },
         {

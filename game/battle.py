@@ -6,7 +6,7 @@ from .helper import FloatingText
 from .projectiles import LinearProjectile
 from .characters import Enemy, enemy_catalog
 from .shop import all_bots, bot_upgrades
-from .bots import elemental_bot, lazer_bot
+from .bots import gun_bot, elemental_bot, lazer_bot
 
 # ------------------------------
 # PLAYER TURN
@@ -484,6 +484,7 @@ def round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rou
         char.marked = False
         char.block = 0
         char.shield = 0
+    gun_bot.reset_gun_aiming()
     battle_state = "Player Turn"
     rounds += 1
 

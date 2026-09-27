@@ -95,6 +95,7 @@ async def main():
         if game_state == "Endless Mode" and previous_game_state != "Endless Mode":
             # setup for the first round of endless mode
             spawn_initial_enemies(enemy_goons, enemy_slots)
+            gun_bot.reset_gun_aiming()
             previous_game_state = "Endless Mode"
 
         if game_state == "Main Menu":
@@ -109,7 +110,7 @@ async def main():
             battle_state, lore_scroll_y, lore_target_scroll_y = check_game_over(player_bots, battle_state, lore_scroll_y, lore_target_scroll_y)
 
             # update animations
-            lore_scroll_y, menu_scroll_y = update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y)
+            lore_scroll_y, menu_scroll_y = update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y)
 
             # drawing, animation, and rendering
             lore_height, menu_height = draw_screen(

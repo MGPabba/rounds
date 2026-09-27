@@ -82,7 +82,11 @@ class Bot(Character):
         # add bot actions name and description to lore text
         for action in self.actions:
             lore.append((f"Action: {action['name']}", "normal"))
-            action_description_lines = wrap_text(f"Description: {action['description']}", regular_font, 560)
+            # show different description for gun bot left gun if aiming is unlocked
+            if action["name"] == "Left Gun" and action["aiming_unlocked"]:
+                action_description_lines = wrap_text("Description: An attack that fires at an enemy. The damage is based on the timing of the attack. The marker will go up and down until you attack. The damage is based on where the marker is.", regular_font, 560)
+            else:
+                action_description_lines = wrap_text(f"Description: {action['description']}", regular_font, 560)
             for i, line in enumerate(action_description_lines):
                 if i == len(action_description_lines) - 1:
                     lore.append((line, "normal"))
@@ -98,13 +102,18 @@ class GunBot(Bot):
             {
                 "name": "Left Gun",
                 "damage": 1,
+                "aiming_unlocked": False,
+                "marker_y": 40,
+                "marker_y_direction": "Down",
+                "marker_y_speed": 10,
+                "zones": [],
                 "used": False,
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/gun_bot/gun_bot_left_gun.png",
                 "image": None,
-                "description": "A basic attack that deals damage to a single enemy.",
+                "description": "A basic attack that fires at an enemy.",
                 "scroll": 65,
-                "projectile_offset": (-25, -49)
+                "projectile_offset": (-20, -49)
             },
             {
                 "name": "Right Gun",
@@ -113,15 +122,23 @@ class GunBot(Bot):
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/gun_bot/gun_bot_right_gun.png",
                 "image": None,
-                "description": "A basic attack that deals damage to a single enemy.",
+                "description": "A basic attack that fires at an enemy.",
                 "scroll": 155,
-                "projectile_offset": (32, -18)
+                "projectile_offset": (35, -18)
             }
         ]
     
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Left Gun":
+            # if aiming is unlocked, find the damage
+            if self.actions[0]["aiming_unlocked"]:
+                for zone in self.actions[0]["zones"]:
+                    if zone["position"] <= self.actions[0]["marker_y"] < zone["position"] + zone["height"]:
+                        self.actions[0]["damage"] = zone["damage"]
+                        break
+                active_effects.append(FloatingText((50, 100, 255), 50, self.actions[0]["marker_y"], f"{self.actions[0]['damage']}"))
+            
             damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
             target_char.real_health -= damage
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage"))
@@ -136,6 +153,118 @@ class GunBot(Bot):
             lore.append((f"Damage: {action['damage']}", "normal"))
         elif action["name"] == "Right Gun":
             lore.append((f"Damage: {action['damage']}", "normal"))
+
+    def reset_gun_aiming(self):
+        # reset damage
+        self.actions[0]["damage"] = 1
+        self.actions[0]["marker_y"] = 40
+        self.actions[0]["marker_y_direction"] = "Down"
+        self.actions[0]["zones"] = []
+
+        # randomize the position and height of the 5 damage zone
+        five_height = random.randint(10, 20)
+        five_position = random.randint(60, 350)
+        self.actions[0]["zones"] = [{
+            "damage": 5,
+            "position": five_position,
+            "height": five_height
+        }]
+
+        # create a random damage sequence
+        damage_sequence = []
+        damage_sequence.append(random.randint(1, 4))
+        damage_sequence.append(random.randint(3, 4))
+        damage_sequence.append(random.randint(2, 4))
+        damage_sequence.append(random.randint(1, 3))
+        damage_sequence.append(random.randint(2, 3))
+        damage_sequence.append(random.randint(1, 2))
+
+        # create random heights for each damage zone
+        zone_heights = []
+        for _ in damage_sequence:
+            height = random.randint(10, 50)
+            zone_heights.append(height)
+
+        # create the damage zones above the 5 damage zone
+        above_zone_y = five_position
+        for i, damage in enumerate(damage_sequence):
+            zone_height = zone_heights[i]
+            zone_position = max(40, above_zone_y - zone_height)
+            actual_zone_height = above_zone_y - zone_position
+            # if the current zone and previous zone have the same damage, merge them
+            if i != 0 and damage_sequence[i-1] == damage:
+                self.actions[0]["zones"][-1]["position"] = zone_position
+                self.actions[0]["zones"][-1]["height"] += actual_zone_height
+            # create a new zone
+            else:
+                self.actions[0]["zones"].append({
+                    "damage": damage,
+                    "position": zone_position,
+                    "height": actual_zone_height
+                })
+            above_zone_y -= zone_height
+            if above_zone_y <= 40:
+                break
+
+        # fill the remaining space at the top with a 1 damage zone
+        if above_zone_y > 40:
+            if damage_sequence[-1] == 1:
+                self.actions[0]["zones"][-1]["position"] = 40
+                self.actions[0]["zones"][-1]["height"] += above_zone_y - 40
+            else:
+                self.actions[0]["zones"].append({
+                    "damage": 1,
+                    "position": 40,
+                    "height": above_zone_y - 40
+                })
+
+        # create the damage zones below the 5 damage zone
+        below_zone_y = five_position + five_height
+        for i, damage in enumerate(damage_sequence):
+            zone_height = zone_heights[i]
+            zone_position = below_zone_y
+            actual_zone_height = min(zone_height, 413 - below_zone_y)
+            # if the current zone and previous zone have the same damage, merge them
+            if i != 0 and damage_sequence[i-1] == damage:
+                self.actions[0]["zones"][-1]["height"] += actual_zone_height
+            # create a new zone
+            else:
+                self.actions[0]["zones"].append({
+                    "damage": damage,
+                    "position": zone_position,
+                    "height": actual_zone_height
+                })
+            below_zone_y += zone_height
+            if below_zone_y >= 413:
+                break
+
+        # fill the remaining space at the bottom with a 1 damage zone
+        if below_zone_y < 413:
+            if damage_sequence[-1] == 1:
+                self.actions[0]["zones"][-1]["height"] += 413 - below_zone_y
+            else:
+                self.actions[0]["zones"].append({
+                    "damage": 1,
+                    "position": below_zone_y,
+                    "height": 413 - below_zone_y
+                })
+
+    def update_gun_aiming(self):
+        # move the marker down
+        if self.actions[0]["marker_y_direction"] == "Down":
+            self.actions[0]["marker_y"] += self.actions[0]["marker_y_speed"]
+            # change marker direction when it reaches the bottom
+            if self.actions[0]["marker_y"] > 413:
+                self.actions[0]["marker_y"] = 413
+                self.actions[0]["marker_y_direction"] = "Up"
+
+        # move the marker up
+        elif self.actions[0]["marker_y_direction"] == "Up":
+            self.actions[0]["marker_y"] -= self.actions[0]["marker_y_speed"]
+            # change marker direction when it reaches the top
+            if self.actions[0]["marker_y"] < 40:
+                self.actions[0]["marker_y"] = 40
+                self.actions[0]["marker_y_direction"] = "Down"
 
 class RicoBot(Bot):
     def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
@@ -475,11 +604,13 @@ gun_bot = GunBot(
     10, # health
     200, 100, # x, y
     (50, 100, 255), # box_background_color
-    "A bot equipped with dual guns.", # description
+    "A bot with dual guns.", # description
     [
         "assets/bots/gun_bot/gun_bot_idle_1.png",
         "assets/bots/gun_bot/gun_bot_idle_2.png",
         "assets/bots/gun_bot/gun_bot_idle_3.png",
+        "assets/bots/gun_bot/gun_bot_idle_4.png",
+        "assets/bots/gun_bot/gun_bot_idle_5.png",
         "assets/bots/gun_bot/gun_bot_idle_4.png",
         "assets/bots/gun_bot/gun_bot_idle_3.png",
         "assets/bots/gun_bot/gun_bot_idle_2.png"

@@ -2,7 +2,7 @@ import pygame
 
 # import game modules
 from .helper import FloatingText, dynamic_text
-from .bots import elemental_bot, lazer_bot
+from .bots import gun_bot, elemental_bot, lazer_bot
 from .shop import all_bots, bot_upgrades
 from .projectiles import (
     LinearProjectile,
@@ -21,7 +21,7 @@ from .projectiles import (
 # UPDATE ANIMATIONS
 # ------------------------------
 
-def update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y):
+def update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y):
     # update characters shake when they are hurt
     for char in player_bots + enemy_goons:
         char.hurt_animations()
@@ -55,6 +55,10 @@ def update_animations(player_bots, enemy_goons, active_effects, battle_state, ac
     menu_scroll_y += (menu_target_scroll_y - menu_scroll_y) * 0.2
     if abs(menu_target_scroll_y - menu_scroll_y) < 0.1:
         menu_scroll_y = menu_target_scroll_y
+
+    # update gun bot aiming marker if it is unlocked and chosen
+    if active_bot and active_bot.name == "Gun Bot" and chosen_action == "Left Gun" and active_bot.actions[0]["aiming_unlocked"]:
+        gun_bot.update_gun_aiming()
 
     return lore_scroll_y, menu_scroll_y
 
@@ -183,6 +187,32 @@ def draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, 
                     pygame.draw.rect(screen, (0, 255, 0), char.rect, 3)
                 elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted and not lazer_bot.actions[0]["movement_mode"]:
                     pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
+
+def draw_gun_aiming(screen, font_cache, active_bot, chosen_action):
+    if active_bot and active_bot.name == "Gun Bot" and chosen_action == "Left Gun" and active_bot.actions[0]["aiming_unlocked"]:
+        # gun bot aiming box background
+        pygame.draw.rect(screen, gun_bot.box_background_color, (20, 20, 105, 413))
+        pygame.draw.rect(screen, (255, 255, 255), (20, 20, 105, 413), 3)
+
+        # colors for each damage zone
+        zone_colors = {
+            1: (150, 200, 255),
+            2: (125, 175, 255),
+            3: (100, 150, 255),
+            4: (75, 125, 255),
+            5: (50, 100, 255)
+        }
+
+        # draw each damage zone
+        for zone in gun_bot.actions[0]["zones"]:
+            pygame.draw.rect(screen, zone_colors[zone["damage"]], (40, zone["position"], 50, zone["height"]))
+            zone_text = dynamic_text(font_cache, f"{zone['damage']}", 50, zone["height"], (255, 255, 255))
+            zone_text_rect = zone_text.get_rect(center=(100, (zone["position"] + zone["height"] // 2) + 1))
+            screen.blit(zone_text, zone_text_rect)
+        pygame.draw.rect(screen, (255, 255, 255), (40, 40, 50, 373), 1)
+
+        # draw marker line
+        pygame.draw.line(screen, (255, 255, 255), (40, gun_bot.actions[0]["marker_y"]), (89, gun_bot.actions[0]["marker_y"]), 3)
 
 # ------------------------------
 # DRAWING SHOP BOX AND MENU
@@ -630,6 +660,9 @@ def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache
 
     # draw bots and goons status effects
     draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, enemy_goons, battle_state)
+
+    # draw gun bot aiming box if it is unlocked and chosen
+    draw_gun_aiming(screen, font_cache, active_bot, chosen_action)
 
     # draw shop box above action box
     draw_shop_box(screen, mouse_pos, regular_font, font_cache, battle_state, active_bot, gears, rounds)
