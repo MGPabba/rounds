@@ -32,6 +32,7 @@ async def main():
     font_cache = {}
     for size in range(10, 31):
         font_cache[size] = pygame.font.SysFont(None, size)
+    text_cache = {}
 
     # slots for enemies to spawn in
     enemy_slots = [
@@ -100,7 +101,7 @@ async def main():
 
         if game_state == "Main Menu":
             # screen for main menu
-            draw_main_menu(screen, title_font, regular_font, font_cache)
+            draw_main_menu(screen, title_font, regular_font, font_cache, text_cache)
 
         elif game_state == "Endless Mode":
             # enemy turn logic
@@ -114,7 +115,7 @@ async def main():
 
             # drawing, animation, and rendering
             lore_height, menu_height = draw_screen(
-                screen, regular_font, floating_font, shop_title_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds)
+                screen, regular_font, floating_font, shop_title_font, font_cache, text_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds)
 
         
         # makes the game run at 60 frames per second

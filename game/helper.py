@@ -45,7 +45,11 @@ def wrap_text(text, regular_font, max_width):
 
     return lines
 
-def dynamic_text(font_cache, text, max_width, max_height, color):
+def dynamic_text(font_cache, text_cache, text, max_width, max_height, color):
+    cache_key = (text, max_width, max_height, color)
+    if cache_key in text_cache:
+        return text_cache[cache_key]
+
     # default font size
     font_size = 30
 
@@ -54,9 +58,14 @@ def dynamic_text(font_cache, text, max_width, max_height, color):
         temp_font = font_cache[font_size]
         text_width, text_height = temp_font.size(text)
         if text_width <= max_width and text_height <= max_height:
-            return temp_font.render(text, True, color)
-        font_size -= 1
+            rendered_text = temp_font.render(text, True, color)
+            text_cache[cache_key] = rendered_text
+            return rendered_text
+        else:
+            font_size -= 1
 
     # use the smallest font if text is too long
     smallest_font = font_cache[10]
-    return smallest_font.render(text, True, color)
+    rendered_text = smallest_font.render(text, True, color)
+    text_cache[cache_key] = rendered_text
+    return rendered_text

@@ -188,7 +188,7 @@ def draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, 
                 elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted and not lazer_bot.actions[0]["movement_mode"]:
                     pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
 
-def draw_gun_aiming(screen, font_cache, active_bot, chosen_action):
+def draw_gun_aiming(screen, font_cache, text_cache, active_bot, chosen_action):
     if active_bot and active_bot.name == "Gun Bot" and chosen_action == "Left Gun" and active_bot.actions[0]["aiming_unlocked"]:
         # gun bot aiming box background
         pygame.draw.rect(screen, gun_bot.box_background_color, (20, 20, 105, 413))
@@ -206,7 +206,7 @@ def draw_gun_aiming(screen, font_cache, active_bot, chosen_action):
         # draw each damage zone
         for zone in gun_bot.actions[0]["zones"]:
             pygame.draw.rect(screen, zone_colors[zone["damage"]], (40, zone["position"], 50, zone["height"]))
-            zone_text = dynamic_text(font_cache, f"{zone['damage']}", 50, zone["height"], (255, 255, 255))
+            zone_text = dynamic_text(font_cache, text_cache, f"{zone['damage']}", 50, zone["height"], (255, 255, 255))
             zone_text_rect = zone_text.get_rect(center=(100, (zone["position"] + zone["height"] // 2) + 1))
             screen.blit(zone_text, zone_text_rect)
         pygame.draw.rect(screen, (255, 255, 255), (40, 40, 50, 373), 1)
@@ -218,7 +218,7 @@ def draw_gun_aiming(screen, font_cache, active_bot, chosen_action):
 # DRAWING SHOP BOX AND MENU
 # ------------------------------
 
-def draw_shop_box(screen, mouse_pos, regular_font, font_cache, battle_state, active_bot, gears, rounds):
+def draw_shop_box(screen, mouse_pos, regular_font, font_cache, text_cache, battle_state, active_bot, gears, rounds):
     # draw shop box background
     if active_bot:
         box_color = active_bot.box_background_color
@@ -248,7 +248,7 @@ def draw_shop_box(screen, mouse_pos, regular_font, font_cache, battle_state, act
         text = "Close Shop"
     else:
         text = "Shop"
-    shop_text = dynamic_text(font_cache, text, 90, 40, (255, 255, 255))
+    shop_text = dynamic_text(font_cache, text_cache, text, 90, 40, (255, 255, 255))
     shop_text_rect = shop_text.get_rect(center=(90, 555))
     screen.blit(shop_text, shop_text_rect)
 
@@ -294,13 +294,13 @@ def draw_shop_bar(screen, mouse_pos, shop_title_font, battle_state):
         # shop nav bar outline
         pygame.draw.rect(screen, (255, 255, 255), (180, 40, 80, 560), 3)
 
-def draw_shop_text(menu_canvas, font_cache, text, max_width, color, center_x, center_y):
+def draw_shop_text(menu_canvas, font_cache, text_cache, text, max_width, color, center_x, center_y):
     # draw text on the shop menu
-    text_label = dynamic_text(font_cache, text, max_width, 40, color)
+    text_label = dynamic_text(font_cache, text_cache, text, max_width, 40, color)
     text_rect = text_label.get_rect(center=(center_x, center_y))
     menu_canvas.blit(text_label, text_rect)
 
-def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state, menu_height, menu_scroll_y, gears, rounds):
+def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, text_cache, battle_state, menu_height, menu_scroll_y, gears, rounds):
     if battle_state == "Shop":
         # get mouse position relative to shop menu
         mouse_pos = (mouse_pos[0] - 257, mouse_pos[1] - 40 + menu_scroll_y)
@@ -334,10 +334,10 @@ def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state,
                 column_top_y = menu_y
 
                 # heading row
-                draw_shop_text(menu_canvas, font_cache, "Action", 180, (255, 255, 255), 95, menu_y + 26)
-                draw_shop_text(menu_canvas, font_cache, "Buff", 180, (255, 255, 255), 285, menu_y + 26)
-                draw_shop_text(menu_canvas, font_cache, "Cost", 180, (255, 255, 255), 475, menu_y + 26)
-                draw_shop_text(menu_canvas, font_cache, "Upgrade", 180, (255, 255, 255), 665, menu_y + 26)
+                draw_shop_text(menu_canvas, font_cache, text_cache, "Action", 180, (255, 255, 255), 95, menu_y + 26)
+                draw_shop_text(menu_canvas, font_cache, text_cache, "Buff", 180, (255, 255, 255), 285, menu_y + 26)
+                draw_shop_text(menu_canvas, font_cache, text_cache, "Cost", 180, (255, 255, 255), 475, menu_y + 26)
+                draw_shop_text(menu_canvas, font_cache, text_cache, "Upgrade", 180, (255, 255, 255), 665, menu_y + 26)
 
                 # line under heading row
                 menu_y += 50
@@ -345,16 +345,16 @@ def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state,
 
                 for upgrade in bot_upgrades[bot["bot"].name]:
                     # upgrade action
-                    draw_shop_text(menu_canvas, font_cache, upgrade["action"], 180, (255, 255, 255), 95, menu_y + 46)
+                    draw_shop_text(menu_canvas, font_cache, text_cache, upgrade["action"], 180, (255, 255, 255), 95, menu_y + 46)
 
                     # upgrade row if not max level
                     if upgrade["level"] < len(upgrade["cost"]):
                         cost_number = upgrade["cost"][upgrade["level"]]
 
                         # upgrade buff and cost
-                        draw_shop_text(menu_canvas, font_cache, upgrade["buff_desc_1"], 180, (255, 255, 255), 285, menu_y + 31)
-                        draw_shop_text(menu_canvas, font_cache, upgrade["buff_desc_2"][upgrade["level"]], 180, (255, 255, 255), 285, menu_y + 61)
-                        draw_shop_text(menu_canvas, font_cache, f"{cost_number} Gears", 180, (255, 255, 255), 475, menu_y + 46)
+                        draw_shop_text(menu_canvas, font_cache, text_cache, upgrade["buff_desc_1"], 180, (255, 255, 255), 285, menu_y + 31)
+                        draw_shop_text(menu_canvas, font_cache, text_cache, upgrade["buff_desc_2"][upgrade["level"]], 180, (255, 255, 255), 285, menu_y + 61)
+                        draw_shop_text(menu_canvas, font_cache, text_cache, f"{cost_number} Gears", 180, (255, 255, 255), 475, menu_y + 46)
 
                         # upgrade button
                         button_rect = pygame.Rect(590, menu_y + 20, 150, 50)
@@ -375,13 +375,13 @@ def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state,
                             button_text = "Confirm Upgrade"
                         else:
                             button_text = "Upgrade"
-                        draw_shop_text(menu_canvas, font_cache, button_text, 140, button_text_color, 665, menu_y + 46)
+                        draw_shop_text(menu_canvas, font_cache, text_cache, button_text, 140, button_text_color, 665, menu_y + 46)
 
                     # upgrade row if max level
                     else:
-                        draw_shop_text(menu_canvas, font_cache, "Max Level", 180, (255, 255, 255), 285, menu_y + 46)
-                        draw_shop_text(menu_canvas, font_cache, "Max Level", 180, (255, 255, 255), 475, menu_y + 46)
-                        draw_shop_text(menu_canvas, font_cache, "Max Level", 180, (255, 255, 255), 665, menu_y + 46)
+                        draw_shop_text(menu_canvas, font_cache, text_cache, "Max Level", 180, (255, 255, 255), 285, menu_y + 46)
+                        draw_shop_text(menu_canvas, font_cache, text_cache, "Max Level", 180, (255, 255, 255), 475, menu_y + 46)
+                        draw_shop_text(menu_canvas, font_cache, text_cache, "Max Level", 180, (255, 255, 255), 665, menu_y + 46)
 
                     # line under upgrade row
                     menu_y += 90
@@ -408,13 +408,13 @@ def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state,
 
                 # show unlock round if not available yet
                 if bot["round"] > rounds:
-                    draw_shop_text(menu_canvas, font_cache, f"Available after round {bot["round"] - 1}", 380, (255, 255, 255), 475, menu_y + 46)
+                    draw_shop_text(menu_canvas, font_cache, text_cache, f"Available after round {bot["round"] - 1}", 380, (255, 255, 255), 475, menu_y + 46)
 
                 # show unlock option if available
                 else:
                     # bot unlock cost
-                    draw_shop_text(menu_canvas, font_cache, "Unlock Cost:", 180, (255, 255, 255), 475, menu_y + 31)
-                    draw_shop_text(menu_canvas, font_cache, f"{bot["cost"]} Gears", 180, (255, 255, 255), 475, menu_y + 61)
+                    draw_shop_text(menu_canvas, font_cache, text_cache, "Unlock Cost:", 180, (255, 255, 255), 475, menu_y + 31)
+                    draw_shop_text(menu_canvas, font_cache, text_cache, f"{bot["cost"]} Gears", 180, (255, 255, 255), 475, menu_y + 61)
 
                     # unlock button
                     button_rect = pygame.Rect(590, menu_y + 20, 150, 50)
@@ -435,7 +435,7 @@ def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state,
                         button_text = "Confirm Unlock"
                     else:
                         button_text = "Unlock"
-                    draw_shop_text(menu_canvas, font_cache, button_text, 140, button_text_color, 665, menu_y + 46)
+                    draw_shop_text(menu_canvas, font_cache, text_cache, button_text, 140, button_text_color, 665, menu_y + 46)
 
                 # line before unlock row
                 menu_y += 90
@@ -454,7 +454,7 @@ def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state,
 # DRAWING ACTION BOX AND BUTTONS
 # ------------------------------
 
-def draw_action_button(screen, mouse_pos, font_cache, battle_state, active_bot, x, y, text, used, chosen):
+def draw_action_button(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, x, y, text, used, chosen):
     # button rectangle
     button_rect = pygame.Rect(x, y, 150, 50)
     
@@ -484,7 +484,7 @@ def draw_action_button(screen, mouse_pos, font_cache, battle_state, active_bot, 
         text_color = active_bot.text_used_color
     
     # dynamically adjust font size to fit the button
-    button_text = dynamic_text(font_cache, text, 140, 40, text_color)
+    button_text = dynamic_text(font_cache, text_cache, text, 140, 40, text_color)
 
     # center the text on the button
     button_text_rect = button_text.get_rect(center=button_rect.center)
@@ -493,7 +493,7 @@ def draw_action_button(screen, mouse_pos, font_cache, battle_state, active_bot, 
     # draw button text
     screen.blit(button_text, button_text_rect)
 
-def draw_action_box(screen, mouse_pos, font_cache, battle_state, active_bot, chosen_action):
+def draw_action_box(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, chosen_action):
     # draw action box background
     if active_bot:
         color = active_bot.box_background_color
@@ -509,7 +509,7 @@ def draw_action_box(screen, mouse_pos, font_cache, battle_state, active_bot, cho
                 x = 120
             else:
                 x = 290
-            draw_action_button(screen, mouse_pos, font_cache, battle_state, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
+            draw_action_button(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
 
 # ------------------------------
 # DRAWING LORE BOX AND TEXT
@@ -648,7 +648,7 @@ def draw_effects(screen, floating_font, active_effects):
 # DRAWING SCREEN AND MAIN MENU
 # ------------------------------
 
-def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds):
+def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache, text_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds):
     # background color
     screen.fill((0, 0, 0))
 
@@ -662,17 +662,17 @@ def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache
     draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, enemy_goons, battle_state)
 
     # draw gun bot aiming box if it is unlocked and chosen
-    draw_gun_aiming(screen, font_cache, active_bot, chosen_action)
+    draw_gun_aiming(screen, font_cache, text_cache, active_bot, chosen_action)
 
     # draw shop box above action box
-    draw_shop_box(screen, mouse_pos, regular_font, font_cache, battle_state, active_bot, gears, rounds)
+    draw_shop_box(screen, mouse_pos, regular_font, font_cache, text_cache, battle_state, active_bot, gears, rounds)
 
     # draw shop bar and menu if opened
     draw_shop_bar(screen, mouse_pos, shop_title_font, battle_state)
-    menu_height = draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, battle_state, menu_height, menu_scroll_y, gears, rounds)
+    menu_height = draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, text_cache, battle_state, menu_height, menu_scroll_y, gears, rounds)
 
     # draw action options based on active bot and chosen action
-    draw_action_box(screen, mouse_pos, font_cache, battle_state, active_bot, chosen_action)
+    draw_action_box(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, chosen_action)
 
     # draw lore box with scrolling
     lore_height = draw_lore_box(screen, regular_font, battle_state, inspecting_character, lore_scroll_y, rounds)
@@ -693,7 +693,7 @@ def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache
 
     return lore_height, menu_height
 
-def draw_main_menu(screen, title_font, regular_font, font_cache):
+def draw_main_menu(screen, title_font, regular_font, font_cache, text_cache):
     # draw main menu background
     screen.fill((10, 10, 25))
 
@@ -718,8 +718,8 @@ def draw_main_menu(screen, title_font, regular_font, font_cache):
 
     # draw story mode button
     pygame.draw.rect(screen, (100, 100, 100), story_button_rect)
-    story_text_1 = dynamic_text(font_cache, "Story Mode", 180, 30, (255, 255, 255))
-    story_text_2 = dynamic_text(font_cache, "(Coming Soon!)", 180, 30, (255, 255, 255))
+    story_text_1 = dynamic_text(font_cache, text_cache, "Story Mode", 180, 30, (255, 255, 255))
+    story_text_2 = dynamic_text(font_cache, text_cache, "(Coming Soon!)", 180, 30, (255, 255, 255))
     story_text_rect_1 = story_text_1.get_rect(center=(600, 360))
     story_text_rect_2 = story_text_2.get_rect(center=(600, 390))
     screen.blit(story_text_1, story_text_rect_1)
@@ -727,6 +727,6 @@ def draw_main_menu(screen, title_font, regular_font, font_cache):
 
     # draw endless mode button
     pygame.draw.rect(screen, button_color, endless_button_rect)
-    endless_text = dynamic_text(font_cache, "Endless Mode", 180, 80, (255, 255, 255))
+    endless_text = dynamic_text(font_cache, text_cache, "Endless Mode", 180, 80, (255, 255, 255))
     endless_text_rect = endless_text.get_rect(center=(600, 540))
     screen.blit(endless_text, endless_text_rect)
