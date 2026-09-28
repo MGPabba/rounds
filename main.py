@@ -74,8 +74,8 @@ async def main():
     menu_target_scroll_y = 0.0
 
     # initial variables for game progression
-    gears = 1000000
-    rounds = 100
+    gears = 0
+    rounds = 1
     max_enemies = 3
     running = True
 
