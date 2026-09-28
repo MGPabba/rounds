@@ -74,8 +74,8 @@ async def main():
     menu_target_scroll_y = 0.0
 
     # initial variables for game progression
-    gears = 0
-    rounds = 1
+    gears = 1000000
+    rounds = 100
     max_enemies = 3
     running = True
 
@@ -121,7 +121,7 @@ async def main():
         # makes the game run at 60 frames per second
         clock.tick(60)
 
-        # prints the current fps for debugging purposes
+        # draws the current fps for debugging purposes
         fps = clock.get_fps()
         fps_text = regular_font.render(f"FPS: {fps:.2f}", True, (255, 255, 255))
         screen.blit(fps_text, (20, 20))

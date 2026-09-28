@@ -46,6 +46,7 @@ def wrap_text(text, regular_font, max_width):
     return lines
 
 def dynamic_text(font_cache, text_cache, text, max_width, max_height, color):
+    # check if the text already exists
     cache_key = (text, max_width, max_height, color)
     if cache_key in text_cache:
         return text_cache[cache_key]
