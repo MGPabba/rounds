@@ -2,8 +2,8 @@ import pygame
 import random
 
 # import game modules
-from .helper import FloatingText, wrap_text
 from .characters import Character, Enemy
+from .helper import FloatingText, wrap_text
 from .projectiles import (
     LinearProjectile,
     ChargeProjectile,

@@ -1,8 +1,8 @@
 import pygame
 
 # import game modules
-from .helper import FloatingText, dynamic_text, render_text
 from .bots import gun_bot, elemental_bot, lazer_bot
+from .helper import FloatingText, dynamic_text, render_text
 from .shop import all_bots, bot_upgrades
 from .projectiles import (
     LinearProjectile,
@@ -645,7 +645,7 @@ def draw_effects(screen, fonts, text_cache, active_effects):
             pygame.draw.circle(screen, effect.color, (int(effect.x), int(effect.y)), 5)
 
 # ------------------------------
-# DRAWING SCREEN AND MAIN MENU
+# DRAWING SCREEN
 # ------------------------------
 
 def draw_screen(screen, fonts, font_cache, text_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds):
@@ -693,40 +693,3 @@ def draw_screen(screen, fonts, font_cache, text_cache, player_bots, enemy_goons,
 
     return lore_height, menu_height
 
-def draw_main_menu(screen, fonts, font_cache, text_cache):
-    # draw main menu background
-    screen.fill((10, 10, 25))
-
-    # draw title text
-    welcome_text = render_text(fonts, text_cache, 24, "Welcome to", (255, 255, 255))
-    welcome_text_rect = welcome_text.get_rect(center=(600, 160))
-    screen.blit(welcome_text, welcome_text_rect)
-    title_text = render_text(fonts, text_cache, 120, "Rounds", (255, 255, 255))
-    title_text_rect = title_text.get_rect(center=(600, 200))
-    screen.blit(title_text, title_text_rect)
-
-    # button rectangles
-    story_button_rect = pygame.Rect(500, 335, 200, 80)
-    endless_button_rect = pygame.Rect(500, 500, 200, 80)
-
-    # change button color based on hover
-    mouse_pos = pygame.mouse.get_pos()
-    if endless_button_rect.collidepoint(mouse_pos):
-        button_color = (150, 150, 255)
-    else:
-        button_color = (100, 100, 255)
-
-    # draw story mode button
-    pygame.draw.rect(screen, (100, 100, 100), story_button_rect)
-    story_text_1 = dynamic_text(font_cache, text_cache, "Story Mode", 180, 30, (255, 255, 255))
-    story_text_2 = dynamic_text(font_cache, text_cache, "(Coming Soon!)", 180, 30, (255, 255, 255))
-    story_text_rect_1 = story_text_1.get_rect(center=(600, 360))
-    story_text_rect_2 = story_text_2.get_rect(center=(600, 390))
-    screen.blit(story_text_1, story_text_rect_1)
-    screen.blit(story_text_2, story_text_rect_2)
-
-    # draw endless mode button
-    pygame.draw.rect(screen, button_color, endless_button_rect)
-    endless_text = dynamic_text(font_cache, text_cache, "Endless Mode", 180, 80, (255, 255, 255))
-    endless_text_rect = endless_text.get_rect(center=(600, 540))
-    screen.blit(endless_text, endless_text_rect)

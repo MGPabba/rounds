@@ -2,23 +2,15 @@ import pygame
 import random
 
 # import game modules
+from .bots import gun_bot, elemental_bot, lazer_bot
+from .characters import Enemy, enemy_catalog
 from .helper import FloatingText
 from .projectiles import LinearProjectile
-from .characters import Enemy, enemy_catalog
 from .shop import all_bots, bot_upgrades
-from .bots import gun_bot, elemental_bot, lazer_bot
 
 # ------------------------------
 # PLAYER TURN
 # ------------------------------
-
-def game_quit(event):
-    # quit game if window is closed or escape key is pressed
-    if event.type == pygame.QUIT:
-        return False
-    if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-        return False
-    return True
 
 def scroll_math(mouse_pos, event, battle_state, lore_height, lore_target_scroll_y, menu_height, menu_target_scroll_y):
     # lore rectangle
@@ -405,37 +397,6 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
                 inspecting_character = None
 
     return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears
-
-def handle_input(running, player_bots, enemy_goons, active_effects, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, rounds, enemy_slots):
-    for event in pygame.event.get():
-        # check for quit events
-        running = game_quit(event)
-        if not running:
-            break
-        
-        # do things based on the mouse
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_pos = pygame.mouse.get_pos()
-            
-            # handle main menu input
-            if game_state == "Main Menu":
-                if event.button == 1:
-                    # check if endless mode button is clicked
-                    endless_button_rect = pygame.Rect(500, 500, 200, 80)
-                    if endless_button_rect.collidepoint(mouse_pos):
-                        game_state = "Endless Mode"
-            
-            # handle battle input
-            elif game_state == "Endless Mode":
-                battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears = player_turn(
-                    event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, rounds, enemy_slots)
-        
-        elif event.type == pygame.KEYDOWN:
-            if battle_state != "Shop" and not lazer_bot.actions[0]["movement_mode"]:
-                # select action if bot is selected based on key press
-                battle_state, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y = select_action(None, event, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y)
-
-    return running, game_state, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears
 
 # ------------------------------
 # ENEMY TURN
