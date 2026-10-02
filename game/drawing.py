@@ -1,7 +1,7 @@
 import pygame
 
 # import game modules
-from .helper import FloatingText, dynamic_text
+from .helper import FloatingText, dynamic_text, render_text
 from .bots import gun_bot, elemental_bot, lazer_bot
 from .shop import all_bots, bot_upgrades
 from .projectiles import (
@@ -66,7 +66,7 @@ def update_animations(player_bots, enemy_goons, active_effects, battle_state, ac
 # DRAWING CHARACTERS AND STATUS EFFECTS
 # ------------------------------
 
-def draw_characters(screen, regular_font, player_bots, enemy_goons, active_bot, chosen_action, inspecting_character):
+def draw_characters(screen, fonts, text_cache, player_bots, enemy_goons, active_bot, chosen_action, inspecting_character):
     for char in player_bots + enemy_goons:
         # dead state
         if char.visual_health <= 0:
@@ -108,10 +108,10 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, active_bot, 
         # draw character image
         screen.blit(current_image, (char.rect.x + char.shake_x, char_y))
 
-        # draw name and health
-        name_text = regular_font.render(char.name, True, (255, 255, 255))
-        health_text = regular_font.render(f"HP: {char.visual_health}", True, (255, 255, 255))
+        # draw character name and health
+        name_text = render_text(fonts, text_cache, 24, char.name, (255, 255, 255))
         screen.blit(name_text, (char.rect.x, char.rect.y - 40))
+        health_text = render_text(fonts, text_cache, 24, f"HP: {char.visual_health}", (255, 255, 255))
         screen.blit(health_text, (char.rect.x, char.rect.y - 20))
 
         # draw small circle next to name if inspecting character
@@ -124,7 +124,7 @@ def draw_characters(screen, regular_font, player_bots, enemy_goons, active_bot, 
                 dot_offset = 0
             pygame.draw.circle(screen, color, (char.rect.x - 10, char.rect.y - 33 - dot_offset), 5)
 
-def draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, enemy_goons, battle_state):
+def draw_character_status_effects(screen, mouse_pos, fonts, text_cache, player_bots, enemy_goons, battle_state):
     for char in player_bots + enemy_goons:
         if char.visual_health > 0:
             # draw overlay on character if frozen or on fire
@@ -139,7 +139,7 @@ def draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, 
 
             # draw number of fire rounds at bottom left of character
             if char.fire_rounds > 0:
-                fire_text = regular_font.render(f"{char.fire_rounds}", True, (255, 0, 0))
+                fire_text = render_text(fonts, text_cache, 24, f"{char.fire_rounds}", (255, 0, 0))
                 screen.blit(fire_text, (char.rect.x + 2, char.rect.bottom - 16))
             
             # draw boxes for number of ice hits and how many needed
@@ -166,7 +166,7 @@ def draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, 
 
             # draw "M" if marked
             if char.marked:
-                mark_text = regular_font.render("M", True, (255, 255, 0))
+                mark_text = render_text(fonts, text_cache, 24, "M", (255, 255, 0))
                 screen.blit(mark_text, (char.rect.x - 16, char.rect.y - 20))
 
             # draw block barrier
@@ -218,7 +218,7 @@ def draw_gun_aiming(screen, font_cache, text_cache, active_bot, chosen_action):
 # DRAWING SHOP BOX AND MENU
 # ------------------------------
 
-def draw_shop_box(screen, mouse_pos, regular_font, font_cache, text_cache, battle_state, active_bot, gears, rounds):
+def draw_shop_box(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, active_bot, gears, rounds):
     # draw shop box background
     if active_bot:
         box_color = active_bot.box_background_color
@@ -257,14 +257,14 @@ def draw_shop_box(screen, mouse_pos, regular_font, font_cache, text_cache, battl
     pygame.draw.rect(screen, (255, 255, 255), (20, 453, 140, 60), 3)
 
     # draw round and gears text
-    round_text = regular_font.render(f"Round: {rounds}", True, (255, 255, 255))
-    gears_text = regular_font.render(f"Gears: {gears}", True, (255, 255, 255))
+    round_text = render_text(fonts, text_cache, 24, f"Round: {rounds}", (255, 255, 255))
     round_text_rect = round_text.get_rect(center=(90, 473))
-    gears_text_rect = gears_text.get_rect(center=(90, 493))
     screen.blit(round_text, round_text_rect)
+    gears_text = render_text(fonts, text_cache, 24, f"Gears: {gears}", (255, 255, 255))
+    gears_text_rect = gears_text.get_rect(center=(90, 493))
     screen.blit(gears_text, gears_text_rect)
 
-def draw_shop_bar(screen, mouse_pos, shop_title_font, battle_state):
+def draw_shop_bar(screen, mouse_pos, fonts, text_cache, battle_state):
     if battle_state == "Shop":
         for i in range(len(all_bots)):
             # draw bot button if unlocked
@@ -279,7 +279,7 @@ def draw_shop_bar(screen, mouse_pos, shop_title_font, battle_state):
                 pygame.draw.rect(screen, button_color, button_rect)
 
                 # bot first letter of name
-                bot_letter_text = shop_title_font.render(all_bots[i]["bot"].name[0], True, (255, 255, 255))
+                bot_letter_text = render_text(fonts, text_cache, 40, all_bots[i]["bot"].name[0], (255, 255, 255))
                 bot_letter_rect = bot_letter_text.get_rect(center=(220, 80 + i * 80))
                 screen.blit(bot_letter_text, bot_letter_rect)
 
@@ -300,7 +300,7 @@ def draw_shop_text(menu_canvas, font_cache, text_cache, text, max_width, color, 
     text_rect = text_label.get_rect(center=(center_x, center_y))
     menu_canvas.blit(text_label, text_rect)
 
-def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, text_cache, battle_state, menu_height, menu_scroll_y, gears, rounds):
+def draw_shop_menu(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, menu_height, menu_scroll_y, gears, rounds):
     if battle_state == "Shop":
         # get mouse position relative to shop menu
         mouse_pos = (mouse_pos[0] - 257, mouse_pos[1] - 40 + menu_scroll_y)
@@ -324,7 +324,7 @@ def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, text_cache, b
                 pygame.draw.rect(menu_canvas, bot["bot"].box_background_color, (0, menu_y, 760, len(bot_upgrades[bot["bot"].name]) * 90 + 100))
 
                 # bot name title
-                bot_name_text = shop_title_font.render(bot["bot"].name, True, (255, 255, 255))
+                bot_name_text = render_text(fonts, text_cache, 40, bot["bot"].name, (255, 255, 255))
                 bot_name_rect = bot_name_text.get_rect(center=(380, menu_y + 26))
                 menu_canvas.blit(bot_name_text, bot_name_rect)
 
@@ -402,19 +402,19 @@ def draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, text_cache, b
                 pygame.draw.rect(menu_canvas, bot["bot"].box_background_color, (0, menu_y, 760, 90))
 
                 # bot name title
-                bot_name_text = shop_title_font.render(bot["bot"].name, True, (255, 255, 255))
+                bot_name_text = render_text(fonts, text_cache, 40, bot["bot"].name, (255, 255, 255))
                 bot_name_rect = bot_name_text.get_rect(center=(190, menu_y + 46))
                 menu_canvas.blit(bot_name_text, bot_name_rect)
 
                 # show unlock round if not available yet
                 if bot["round"] > rounds:
-                    draw_shop_text(menu_canvas, font_cache, text_cache, f"Available after round {bot["round"] - 1}", 380, (255, 255, 255), 475, menu_y + 46)
+                    draw_shop_text(menu_canvas, font_cache, text_cache, f"Available after round {bot['round'] - 1}", 380, (255, 255, 255), 475, menu_y + 46)
 
                 # show unlock option if available
                 else:
                     # bot unlock cost
                     draw_shop_text(menu_canvas, font_cache, text_cache, "Unlock Cost:", 180, (255, 255, 255), 475, menu_y + 31)
-                    draw_shop_text(menu_canvas, font_cache, text_cache, f"{bot["cost"]} Gears", 180, (255, 255, 255), 475, menu_y + 61)
+                    draw_shop_text(menu_canvas, font_cache, text_cache, f"{bot['cost']} Gears", 180, (255, 255, 255), 475, menu_y + 61)
 
                     # unlock button
                     button_rect = pygame.Rect(590, menu_y + 20, 150, 50)
@@ -515,7 +515,7 @@ def draw_action_box(screen, mouse_pos, font_cache, text_cache, battle_state, act
 # DRAWING LORE BOX AND TEXT
 # ------------------------------
 
-def draw_lore_box(screen, regular_font, battle_state, inspecting_character, lore_scroll_y, rounds):
+def draw_lore_box(screen, fonts, text_cache, battle_state, inspecting_character, lore_scroll_y, rounds):
     # draw lore box background
     if inspecting_character:
         color = inspecting_character.box_background_color
@@ -531,7 +531,7 @@ def draw_lore_box(screen, regular_font, battle_state, inspecting_character, lore
         lore.append((f"You have survived for a total of {rounds} rounds.", "normal"))
         lore.append(("Game Over!", "normal"))
     elif inspecting_character:
-        inspecting_character.lore_text(regular_font, lore)
+        inspecting_character.lore_text(fonts, lore)
 
     # calculate lore height
     lore_height = 0
@@ -551,7 +551,7 @@ def draw_lore_box(screen, regular_font, battle_state, inspecting_character, lore
     for line, type in lore:
         if line.startswith("Action:"):
             y_offset += 15
-        lore_text = regular_font.render(line, True, (255, 255, 255))
+        lore_text = render_text(fonts, text_cache, 24, line, (255, 255, 255))
         lore_canvas.blit(lore_text, (0, y_offset))
         if type == "normal":
             y_offset += 25
@@ -592,13 +592,13 @@ def draw_laser(screen, mouse_pos, enemy_goons, battle_state, active_bot):
             # draw the laser beam
             pygame.draw.line(screen, (255, 50, 255), (start_x, start_y), (end_x, end_y), 3)
 
-def draw_effects(screen, floating_font, active_effects):
+def draw_effects(screen, fonts, text_cache, active_effects):
     # draw animation based on its type
     for effect in active_effects:
         # draw floating text
         if isinstance(effect, FloatingText):
-            text = floating_font.render(effect.text, True, effect.color)
-            screen.blit(text, (effect.x, effect.y))
+            floating_text = render_text(fonts, text_cache, 30, effect.text, effect.color)
+            screen.blit(floating_text, (effect.x, effect.y))
 
         # draw laser projectile
         elif isinstance(effect, LaserProjectile):
@@ -648,7 +648,7 @@ def draw_effects(screen, floating_font, active_effects):
 # DRAWING SCREEN AND MAIN MENU
 # ------------------------------
 
-def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache, text_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds):
+def draw_screen(screen, fonts, font_cache, text_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds):
     # background color
     screen.fill((0, 0, 0))
 
@@ -656,32 +656,32 @@ def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache
     mouse_pos = pygame.mouse.get_pos()
 
     # draw bots and goons with animations based on their states and actions
-    draw_characters(screen, regular_font, player_bots, enemy_goons, active_bot, chosen_action, inspecting_character)
+    draw_characters(screen, fonts, text_cache, player_bots, enemy_goons, active_bot, chosen_action, inspecting_character)
 
     # draw bots and goons status effects
-    draw_character_status_effects(screen, mouse_pos, regular_font, player_bots, enemy_goons, battle_state)
+    draw_character_status_effects(screen, mouse_pos, fonts, text_cache, player_bots, enemy_goons, battle_state)
 
     # draw gun bot aiming box if it is unlocked and chosen
     draw_gun_aiming(screen, font_cache, text_cache, active_bot, chosen_action)
 
     # draw shop box above action box
-    draw_shop_box(screen, mouse_pos, regular_font, font_cache, text_cache, battle_state, active_bot, gears, rounds)
+    draw_shop_box(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, active_bot, gears, rounds)
 
     # draw shop bar and menu if opened
-    draw_shop_bar(screen, mouse_pos, shop_title_font, battle_state)
-    menu_height = draw_shop_menu(screen, mouse_pos, shop_title_font, font_cache, text_cache, battle_state, menu_height, menu_scroll_y, gears, rounds)
+    draw_shop_bar(screen, mouse_pos, fonts, text_cache, battle_state)
+    menu_height = draw_shop_menu(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, menu_height, menu_scroll_y, gears, rounds)
 
     # draw action options based on active bot and chosen action
     draw_action_box(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, chosen_action)
 
     # draw lore box with scrolling
-    lore_height = draw_lore_box(screen, regular_font, battle_state, inspecting_character, lore_scroll_y, rounds)
+    lore_height = draw_lore_box(screen, fonts, text_cache, battle_state, inspecting_character, lore_scroll_y, rounds)
 
     # draw laser beam if lazer bot is using its pierce
     draw_laser(screen, mouse_pos, enemy_goons, battle_state, active_bot)
     
     # draw effects damage or heal numbers or projectiles
-    draw_effects(screen, floating_font, active_effects)
+    draw_effects(screen, fonts, text_cache, active_effects)
 
     # temp box
     if active_bot:
@@ -693,15 +693,15 @@ def draw_screen(screen, regular_font, floating_font, shop_title_font, font_cache
 
     return lore_height, menu_height
 
-def draw_main_menu(screen, title_font, regular_font, font_cache, text_cache):
+def draw_main_menu(screen, fonts, font_cache, text_cache):
     # draw main menu background
     screen.fill((10, 10, 25))
 
     # draw title text
-    welcome_text = regular_font.render("Welcome to", True, (255, 255, 255))
+    welcome_text = render_text(fonts, text_cache, 24, "Welcome to", (255, 255, 255))
     welcome_text_rect = welcome_text.get_rect(center=(600, 160))
     screen.blit(welcome_text, welcome_text_rect)
-    title_text = title_font.render("Rounds", True, (255, 255, 255))
+    title_text = render_text(fonts, text_cache, 120, "Rounds", (255, 255, 255))
     title_text_rect = title_text.get_rect(center=(600, 200))
     screen.blit(title_text, title_text_rect)
 

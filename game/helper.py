@@ -23,7 +23,7 @@ class FloatingText:
 # HELPER FUNCTIONS
 # ------------------------------
 
-def wrap_text(text, regular_font, max_width):
+def wrap_text(text, fonts, max_width):
     # split the text into a list of words
     words = text.split(' ')
     lines = []
@@ -32,7 +32,7 @@ def wrap_text(text, regular_font, max_width):
     for word in words:
         # check if adding the next word to the current line exceeds the max width
         test_line = f"{current_line} {word}".strip()
-        if regular_font.size(test_line)[0] <= max_width:
+        if fonts[24].size(test_line)[0] <= max_width:
             current_line = test_line
         else:
             # add the current line to list of lines if its over the max width
@@ -68,5 +68,16 @@ def dynamic_text(font_cache, text_cache, text, max_width, max_height, color):
     # use the smallest font if text is too long
     smallest_font = font_cache[10]
     rendered_text = smallest_font.render(text, True, color)
+    text_cache[cache_key] = rendered_text
+    return rendered_text
+
+def render_text(fonts, text_cache, font_size, text, color):
+    # check if the text already exists
+    cache_key = (font_size, text, color)
+    if cache_key in text_cache:
+        return text_cache[cache_key]
+
+    # render the text and store it in the cache
+    rendered_text = fonts[font_size].render(text, True, color)
     text_cache[cache_key] = rendered_text
     return rendered_text

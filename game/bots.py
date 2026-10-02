@@ -77,16 +77,16 @@ class Bot(Character):
         self.actions[0]["used"] = False
         self.actions[1]["used"] = False
 
-    def lore_text(self, regular_font, lore):
-        super().lore_text(regular_font, lore)
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
         # add bot actions name and description to lore text
         for action in self.actions:
             lore.append((f"Action: {action['name']}", "normal"))
             # show different description for gun bot left gun if aiming is unlocked
             if action["name"] == "Left Gun" and action["aiming_unlocked"]:
-                action_description_lines = wrap_text("Description: An attack that fires at an enemy. The damage is based on the timing of the attack. The marker will go up and down until you attack. The damage is based on where the marker is.", regular_font, 560)
+                action_description_lines = wrap_text("Description: An attack that fires at an enemy. The damage is based on the timing of the attack. The marker will go up and down until you attack. The damage is based on where the marker is.", fonts, 560)
             else:
-                action_description_lines = wrap_text(f"Description: {action['description']}", regular_font, 560)
+                action_description_lines = wrap_text(f"Description: {action['description']}", fonts, 560)
             for i, line in enumerate(action_description_lines):
                 if i == len(action_description_lines) - 1:
                     lore.append((line, "normal"))

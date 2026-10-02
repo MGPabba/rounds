@@ -134,10 +134,10 @@ class Character:
         else:
             self.shake_x = 0
 
-    def lore_text(self, regular_font, lore):
+    def lore_text(self, fonts, lore):
         # add character name and description to lore text
         lore.append((f"Name: {self.name}", "normal"))
-        description_lines = wrap_text(f"Description: {self.description}", regular_font, 560)
+        description_lines = wrap_text(f"Description: {self.description}", fonts, 560)
         for i, line in enumerate(description_lines):
             if i == len(description_lines) - 1:
                 lore.append((line, "normal"))
@@ -178,8 +178,8 @@ class Enemy(Character):
                 elif self.float_offset <= -4:
                     self.float_direction = 2
 
-    def lore_text(self, regular_font, lore):
-        super().lore_text(regular_font, lore)
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
         # add enemy damage to lore text
         lore.append((f"Damage: {self.damage}", "normal"))
 

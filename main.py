@@ -25,10 +25,12 @@ async def main():
     clock = pygame.time.Clock()
 
     # setup fonts
-    title_font = pygame.font.SysFont(None, 120)
-    regular_font = pygame.font.SysFont(None, 24)
-    floating_font = pygame.font.SysFont(None, 30)
-    shop_title_font = pygame.font.SysFont(None, 40)
+    fonts = {
+        24: pygame.font.SysFont(None, 24),
+        30: pygame.font.SysFont(None, 30),
+        40: pygame.font.SysFont(None, 40),
+        120: pygame.font.SysFont(None, 120)
+    }
     font_cache = {}
     for size in range(10, 31):
         font_cache[size] = pygame.font.SysFont(None, size)
@@ -101,7 +103,7 @@ async def main():
 
         if game_state == "Main Menu":
             # screen for main menu
-            draw_main_menu(screen, title_font, regular_font, font_cache, text_cache)
+            draw_main_menu(screen, fonts, font_cache, text_cache)
 
         elif game_state == "Endless Mode":
             # enemy turn logic
@@ -115,7 +117,7 @@ async def main():
 
             # drawing, animation, and rendering
             lore_height, menu_height = draw_screen(
-                screen, regular_font, floating_font, shop_title_font, font_cache, text_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds)
+                screen, fonts, font_cache, text_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds)
 
         
         # makes the game run at 60 frames per second
@@ -123,7 +125,7 @@ async def main():
 
         # draws the current fps for debugging purposes
         fps = clock.get_fps()
-        fps_text = regular_font.render(f"FPS: {fps:.2f}", True, (255, 255, 255))
+        fps_text = fonts[24].render(f"FPS: {fps:.2f}", True, (255, 255, 255))
         screen.blit(fps_text, (20, 20))
 
         # keeps the game from flickering
