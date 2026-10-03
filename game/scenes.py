@@ -4,7 +4,11 @@ import pygame
 from .battle import spawn_initial_enemies, player_turn, select_action, enemy_turn, check_game_over
 from .bots import gun_bot, rico_bot, lazer_bot
 from .drawing import update_animations, draw_screen
-from .helper import dynamic_text, render_text
+from .helper import wrap_text, dynamic_text, render_text
+
+# ------------------------------
+# MAIN MENU
+# ------------------------------
 
 class MainMenuScene():
     def __init__(self, fonts, font_cache):
@@ -32,7 +36,7 @@ class MainMenuScene():
                 for button in self.buttons:
                     if button["rect"].collidepoint(event.pos):
                         if button["text"] == "Story Mode":
-                            return self
+                            return Chapter1CutScene(self.fonts, self.font_cache)
                         elif button["text"] == "Endless Mode":
                             return EndlessModeScene(self.fonts, self.font_cache)
         return self
@@ -78,6 +82,10 @@ class MainMenuScene():
         endless_text = dynamic_text(self.font_cache, self.text_cache, "Endless Mode", 180, 80, (255, 255, 255))
         endless_text_rect = endless_text.get_rect(center=(600, 540))
         screen.blit(endless_text, endless_text_rect)
+
+# ------------------------------
+# ENDLESS MODE
+# ------------------------------
 
 class EndlessModeScene():
     def __init__(self, fonts, font_cache):
@@ -178,3 +186,138 @@ class EndlessModeScene():
             self.inspecting_character, self.lore_scroll_y,
             self.menu_height, self.menu_scroll_y,
             self.gears, self.rounds)
+
+# ------------------------------
+# STORY MODE
+# ------------------------------
+
+class Chapter1CutScene():
+    def __init__(self, fonts, font_cache):
+        # scene texts
+        self.fonts = fonts
+        self.font_cache = font_cache
+        self.text_cache = {}
+
+        # scene buttons
+        self.next_button_rect = pygame.Rect(920, 620, 100, 60)
+
+        # script for the cutscene with images and dialogue lines
+        self.script = [
+            {
+                "image_path": "assets/chapter1/cutscenes/scene1.png",
+                "lines": [
+                    "Long ago ... ",
+                    "... like two months ago ...",
+                    "... the earth was just there."
+                ]
+            },
+            {
+                "image_path": "assets/chapter1/cutscenes/scene2.png",
+                "lines": [
+                    "But then the aliens attacked!",
+                    "Aliens robots with technology much more advanced than humans."
+                ]
+            },
+            {
+                "image_path": "assets/chapter1/cutscenes/scene3.png",
+                "lines": [
+                    "They destroyed many cities and caused much chaos.",
+                    "But all hope was not lost ..."
+                ]
+            },
+            {
+                "image_path": "assets/chapter1/cutscenes/scene4.png",
+                "lines": [
+                    "... as the humans have discovered magic!"
+                ]
+            },
+            {
+                "image_path": "assets/chapter1/cutscenes/scene5.png",
+                "lines": [
+                    "Scientists and engineers have studied and discovered how to infuse magic into technology.",
+                    "With this new technology, humans can create something powerful to fight back!"
+                ]
+            }
+        ]
+
+        # initial variables for cutscene progression
+        self.current_image = 0
+        self.current_line = 0
+
+        # load and scale images for the cutscene
+        self.images = []
+        for scene in self.script:
+            image = pygame.image.load(scene["image_path"]).convert_alpha()
+            scaled_image = pygame.transform.scale_by(image, 2)
+            self.images.append(scaled_image)
+
+    def handle_input(self, events):
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if self.next_button_rect.collidepoint(event.pos):
+                    # advance to the next image if the lines for this image are done
+                    if self.current_line >= len(self.script[self.current_image]["lines"])-1:
+                        self.current_image += 1
+                        self.current_line = 0
+                        # advance to the next scene if the cutscene is done
+                        if self.current_image >= len(self.script):
+                            return BlankScene(self.fonts, self.font_cache)
+                    # advance to the next line
+                    else:
+                        self.current_line += 1
+        return self
+
+    def update(self):
+        pass
+
+    def draw(self, screen):
+        # draw background
+        screen.fill((0, 0, 0))
+        screen.blit(self.images[self.current_image], (0, 0))
+
+        # draw dialogue box
+        pygame.draw.rect(screen, (100, 100, 255), (300, 620, 600, 60))
+        pygame.draw.rect(screen, (255, 255, 255), (300, 620, 600, 60), 3)
+
+        # draw dialogue text
+        dialogue_lines = wrap_text(self.script[self.current_image]["lines"][self.current_line], self.fonts, 580)
+        for i, line in enumerate(dialogue_lines):
+            dialogue_text = render_text(self.fonts, self.text_cache, 24, line, (255, 255, 255))
+            screen.blit(dialogue_text, (310, 630 + i * 25))
+
+        # draw next button
+        mouse_pos = pygame.mouse.get_pos()
+        if self.next_button_rect.collidepoint(mouse_pos):
+            button_color = (150, 150, 255)
+        else:
+            button_color = (100, 100, 255)
+        pygame.draw.rect(screen, button_color, self.next_button_rect)
+        pygame.draw.rect(screen, (255, 255, 255), self.next_button_rect, 3)
+
+        # draw next button text
+        next_text = dynamic_text(self.font_cache, self.text_cache, "Next", 90, 50, (255, 255, 255))
+        next_text_rect = next_text.get_rect(center=self.next_button_rect.center)
+        screen.blit(next_text, next_text_rect)
+
+# ------------------------------
+# BLANK SCENE
+# ------------------------------
+
+class BlankScene():
+    def __init__(self, fonts, font_cache):
+        # scene texts
+        self.fonts = fonts
+        self.font_cache = font_cache
+        self.text_cache = {}
+
+    def handle_input(self, events):
+        return self
+
+    def update(self):
+        pass
+
+    def draw(self, screen):
+        # blank background with text saying more to be added
+        screen.fill((0, 0, 0))
+        text = render_text(self.fonts, self.text_cache, 24, "More To Be Added", (255, 255, 255))
+        screen.blit(text, (200, 200))
