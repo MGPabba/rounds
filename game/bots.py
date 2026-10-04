@@ -23,34 +23,27 @@ from .projectiles import (
 # ------------------------------
 
 class Bot(Character):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description)
+    def __init__(self, x, y):
+        super().__init__(x, y)
         # bot specific info
+        self.real_health = 10
+        self.visual_health = 10
         self.acted = False
         self.current_frame = 0
         
         # images
-        self.idle_images_path = idle_images_path
-        self.active_image_path = active_image_path
-        self.hurt_image_path = hurt_image_path
-        self.dead_image_path = dead_image_path
         self.idle_images = []
         self.active_image = None
         self.hurt_image = None
         self.dead_image = None
-
-        # colors
-        self.button_color = button_color
-        self.button_hover_color = button_hover_color
-        self.text_used_color = text_used_color
     
     def load_images(self):
         # load all different bot images
         for path in self.idle_images_path:
             self.idle_images.append(pygame.image.load(path).convert_alpha())
         self.active_image = pygame.image.load(self.active_image_path).convert_alpha()
-        self.actions[0]["image"] = pygame.image.load(self.actions[0]["image_path"]).convert_alpha()
-        self.actions[1]["image"] = pygame.image.load(self.actions[1]["image_path"]).convert_alpha()
+        for action in self.actions:
+            action["image"] = pygame.image.load(action["image_path"]).convert_alpha()
         self.hurt_image = pygame.image.load(self.hurt_image_path).convert_alpha()
         self.dead_image = pygame.image.load(self.dead_image_path).convert_alpha()
 
@@ -74,8 +67,8 @@ class Bot(Character):
     def reset_actions(self):
         # reset actions for the next turn
         self.acted = False
-        self.actions[0]["used"] = False
-        self.actions[1]["used"] = False
+        for action in self.actions:
+            action["used"] = False
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -95,8 +88,33 @@ class Bot(Character):
             self.lore_stats_text(lore, action)
 
 class GunBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        # gun bot specific info
+        self.name = "Gun Bot"
+        self.description = "A bot with dual guns."
+
+        # colors
+        self.box_background_color = (50, 100, 255)
+        self.button_color = (100, 150, 255)
+        self.button_hover_color = (150, 200, 255)
+        self.text_used_color = (150, 200, 255)
+
+        # images
+        self.idle_images_path = [
+            "assets/bots/gun_bot/gun_bot_idle_1.png",
+            "assets/bots/gun_bot/gun_bot_idle_2.png",
+            "assets/bots/gun_bot/gun_bot_idle_3.png",
+            "assets/bots/gun_bot/gun_bot_idle_4.png",
+            "assets/bots/gun_bot/gun_bot_idle_5.png",
+            "assets/bots/gun_bot/gun_bot_idle_4.png",
+            "assets/bots/gun_bot/gun_bot_idle_3.png",
+            "assets/bots/gun_bot/gun_bot_idle_2.png"
+        ]
+        self.active_image_path = "assets/bots/gun_bot/gun_bot_active.png"
+        self.hurt_image_path = "assets/bots/gun_bot/gun_bot_hurt.png"
+        self.dead_image_path = "assets/bots/gun_bot/gun_bot_dead.png"
+
         # action dictionary
         self.actions = [
             {
@@ -267,8 +285,33 @@ class GunBot(Bot):
                 self.actions[0]["marker_y_direction"] = "Down"
 
 class RicoBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        # rico bot specific info
+        self.name = "Rico Bot"
+        self.description = "A bot that just loves balls."
+
+        # colors
+        self.box_background_color = (50, 200, 50)
+        self.button_color = (100, 230, 100)
+        self.button_hover_color = (150, 250, 150)
+        self.text_used_color = (150, 250, 150)
+
+        # images
+        self.idle_images_path = [
+            "assets/bots/rico_bot/rico_bot_idle_1.png",
+            "assets/bots/rico_bot/rico_bot_idle_2.png",
+            "assets/bots/rico_bot/rico_bot_idle_3.png",
+            "assets/bots/rico_bot/rico_bot_idle_4.png",
+            "assets/bots/rico_bot/rico_bot_idle_5.png",
+            "assets/bots/rico_bot/rico_bot_idle_4.png",
+            "assets/bots/rico_bot/rico_bot_idle_3.png",
+            "assets/bots/rico_bot/rico_bot_idle_2.png"
+        ]
+        self.active_image_path = "assets/bots/rico_bot/rico_bot_active.png"
+        self.hurt_image_path = "assets/bots/rico_bot/rico_bot_hurt.png"
+        self.dead_image_path = "assets/bots/rico_bot/rico_bot_dead.png"
+
         # action dictionary
         self.actions = [
             {
@@ -315,8 +358,33 @@ class RicoBot(Bot):
             lore.append((f"Damage: {action['damage']}", "normal"))
 
 class ModBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        # mod bot specific info
+        self.name = "Mod Bot"
+        self.description = "A bot full of mod power."
+
+        # colors
+        self.box_background_color = (100, 100, 100)
+        self.button_color = (150, 150, 150)
+        self.button_hover_color = (200, 200, 200)
+        self.text_used_color = (190, 190, 190)
+
+        # images
+        self.idle_images_path = [
+            "assets/bots/mod_bot/mod_bot_idle_1.png",
+            "assets/bots/mod_bot/mod_bot_idle_2.png",
+            "assets/bots/mod_bot/mod_bot_idle_3.png",
+            "assets/bots/mod_bot/mod_bot_idle_4.png",
+            "assets/bots/mod_bot/mod_bot_idle_5.png",
+            "assets/bots/mod_bot/mod_bot_idle_4.png",
+            "assets/bots/mod_bot/mod_bot_idle_3.png",
+            "assets/bots/mod_bot/mod_bot_idle_2.png"
+        ]
+        self.active_image_path = "assets/bots/mod_bot/mod_bot_active.png"
+        self.hurt_image_path = "assets/bots/mod_bot/mod_bot_hurt.png"
+        self.dead_image_path = "assets/bots/mod_bot/mod_bot_dead.png"
+        
         # action dictionary
         self.actions = [
             {
@@ -361,8 +429,33 @@ class ModBot(Bot):
             lore.append((f"Damage Reduction: {round((1-action['shield']) * 100)}%", "normal"))
 
 class ElementalBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        # elemental bot specific info
+        self.name = "Elemental Bot"
+        self.description = "A bot that can manipulate the elements."
+
+        # colors
+        self.box_background_color = (150, 0, 150)
+        self.button_color = (200, 50, 200)
+        self.button_hover_color = (250, 100, 250)
+        self.text_used_color = (225, 100, 225)
+
+        # images
+        self.idle_images_path = [
+            "assets/bots/elemental_bot/elemental_bot_idle_1.png",
+            "assets/bots/elemental_bot/elemental_bot_idle_2.png",
+            "assets/bots/elemental_bot/elemental_bot_idle_3.png",
+            "assets/bots/elemental_bot/elemental_bot_idle_4.png",
+            "assets/bots/elemental_bot/elemental_bot_idle_5.png",
+            "assets/bots/elemental_bot/elemental_bot_idle_4.png",
+            "assets/bots/elemental_bot/elemental_bot_idle_3.png",
+            "assets/bots/elemental_bot/elemental_bot_idle_2.png"
+        ]
+        self.active_image_path = "assets/bots/elemental_bot/elemental_bot_active.png"
+        self.hurt_image_path = "assets/bots/elemental_bot/elemental_bot_hurt.png"
+        self.dead_image_path = "assets/bots/elemental_bot/elemental_bot_dead.png"
+
         # action dictionary
         self.actions = [
             {
@@ -406,8 +499,33 @@ class ElementalBot(Bot):
             lore.append((f"Ice Hits Needed: {action['ice_hits_needed']}", "normal"))
 
 class LazerBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        # lazer bot specific info
+        self.name = "Lazer Bot"
+        self.description = "A bot with the coolest laser powers."
+
+        # colors
+        self.box_background_color = (255, 50, 200)
+        self.button_color = (255, 125, 225)
+        self.button_hover_color = (255, 175, 245)
+        self.text_used_color = (255, 175, 225)
+
+        # images
+        self.idle_images_path = [
+            "assets/bots/lazer_bot/lazer_bot_idle_1.png",
+            "assets/bots/lazer_bot/lazer_bot_idle_2.png",
+            "assets/bots/lazer_bot/lazer_bot_idle_3.png",
+            "assets/bots/lazer_bot/lazer_bot_idle_4.png",
+            "assets/bots/lazer_bot/lazer_bot_idle_5.png",
+            "assets/bots/lazer_bot/lazer_bot_idle_4.png",
+            "assets/bots/lazer_bot/lazer_bot_idle_3.png",
+            "assets/bots/lazer_bot/lazer_bot_idle_2.png"
+        ]
+        self.active_image_path = "assets/bots/lazer_bot/lazer_bot_active.png"
+        self.hurt_image_path = "assets/bots/lazer_bot/lazer_bot_hurt.png"
+        self.dead_image_path = "assets/bots/lazer_bot/lazer_bot_dead.png"
+
         # action dictionary
         self.actions = [
             {
@@ -477,8 +595,30 @@ class LazerBot(Bot):
             lore.append((f"Charge Needed: {action['barrage_charge_needed']}", "normal"))
 
 class ChaosBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        # chaos bot specific info
+        self.name = "Chaos Bot"
+        self.description = "A bot full of powerful chaos, use carefully."
+
+        # colors
+        self.box_background_color = (255, 155, 0)
+        self.button_color = (255, 205, 100)
+        self.button_hover_color = (255, 230, 175)
+        self.text_used_color = (255, 230, 175)
+
+        # images
+        self.idle_images_path = [
+            "assets/bots/chaos_bot/chaos_bot_idle_1.png",
+            "assets/bots/chaos_bot/chaos_bot_idle_2.png",
+            "assets/bots/chaos_bot/chaos_bot_idle_3.png",
+            "assets/bots/chaos_bot/chaos_bot_idle_4.png",
+            "assets/bots/chaos_bot/chaos_bot_idle_5.png"
+        ]
+        self.active_image_path = "assets/bots/chaos_bot/chaos_bot_active.png"
+        self.hurt_image_path = "assets/bots/chaos_bot/chaos_bot_hurt.png"
+        self.dead_image_path = "assets/bots/chaos_bot/chaos_bot_dead.png"
+
         # action dictionary
         self.actions = [
             {
@@ -538,8 +678,30 @@ class ChaosBot(Bot):
             lore.append((f"Block Chance: {action['block']}%", "normal"))
 
 class DuploBot(Bot):
-    def __init__(self, name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color):
-        super().__init__(name, health, x, y, box_background_color, description, idle_images_path, active_image_path, hurt_image_path, dead_image_path, button_color, button_hover_color, text_used_color)
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        # duplo bot specific info
+        self.name = "Duplo Bot"
+        self.description = "A bot made of doubling power."
+
+        # colors
+        self.box_background_color = (200, 200, 0)
+        self.button_color = (220, 220, 50)
+        self.button_hover_color = (240, 240, 100)
+        self.text_used_color = (255, 240, 100)
+
+        # images
+        self.idle_images_path = [
+            "assets/bots/duplo_bot/duplo_bot_idle_1.png",
+            "assets/bots/duplo_bot/duplo_bot_idle_2.png",
+            "assets/bots/duplo_bot/duplo_bot_idle_3.png",
+            "assets/bots/duplo_bot/duplo_bot_idle_4.png",
+            "assets/bots/duplo_bot/duplo_bot_idle_5.png"
+        ]
+        self.active_image_path = "assets/bots/duplo_bot/duplo_bot_active.png"
+        self.hurt_image_path = "assets/bots/duplo_bot/duplo_bot_hurt.png"
+        self.dead_image_path = "assets/bots/duplo_bot/duplo_bot_dead.png"
+
         # action dictionary
         self.actions = [
             {
@@ -595,168 +757,61 @@ class DuploBot(Bot):
         elif action["name"] == "Mark":
             lore.append((f"Mark Hits Needed: {action['mark_hits_needed']}", "normal"))
 
-# ------------------------------
-# BOT INSTANCES
-# ------------------------------
+class HealerBot(Bot):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+        # healer bot specific info
+        self.name = "Healer Bot"
+        self.description = "A bot thats been infused with healing magic."
 
-gun_bot = GunBot(
-    "Gun Bot", # name
-    10, # health
-    200, 100, # x, y
-    (50, 100, 255), # box_background_color
-    "A bot with dual guns.", # description
-    [
-        "assets/bots/gun_bot/gun_bot_idle_1.png",
-        "assets/bots/gun_bot/gun_bot_idle_2.png",
-        "assets/bots/gun_bot/gun_bot_idle_3.png",
-        "assets/bots/gun_bot/gun_bot_idle_4.png",
-        "assets/bots/gun_bot/gun_bot_idle_5.png",
-        "assets/bots/gun_bot/gun_bot_idle_4.png",
-        "assets/bots/gun_bot/gun_bot_idle_3.png",
-        "assets/bots/gun_bot/gun_bot_idle_2.png"
-    ], # idle_images_path
-    "assets/bots/gun_bot/gun_bot_active.png", # active_image_path
-    "assets/bots/gun_bot/gun_bot_hurt.png", # hurt_image_path
-    "assets/bots/gun_bot/gun_bot_dead.png", # dead_image_path
-    (100, 150, 255), # button_color
-    (150, 200, 255), # button_hover_color
-    (150, 200, 255) # text_used_color
-)
+        # colors
+        self.box_background_color = (50, 200, 50)
+        self.button_color = (100, 230, 100)
+        self.button_hover_color = (150, 250, 150)
+        self.text_used_color = (150, 250, 150)
 
-rico_bot = RicoBot(
-    "Rico Bot", # name
-    10, # health
-    200, 275, # x, y
-    (50, 200, 50), # box_background_color
-    "A bot that just loves balls.", # description
-    [
-        "assets/bots/rico_bot/rico_bot_idle_1.png",
-        "assets/bots/rico_bot/rico_bot_idle_2.png",
-        "assets/bots/rico_bot/rico_bot_idle_3.png",
-        "assets/bots/rico_bot/rico_bot_idle_4.png",
-        "assets/bots/rico_bot/rico_bot_idle_5.png",
-        "assets/bots/rico_bot/rico_bot_idle_4.png",
-        "assets/bots/rico_bot/rico_bot_idle_3.png",
-        "assets/bots/rico_bot/rico_bot_idle_2.png"
-    ], # idle_images_path
-    "assets/bots/rico_bot/rico_bot_active.png", # active_image_path
-    "assets/bots/rico_bot/rico_bot_hurt.png", # hurt_image_path
-    "assets/bots/rico_bot/rico_bot_dead.png", # dead_image_path
-    (100, 230, 100), # button_color
-    (150, 250, 150), # button_hover_color
-    (150, 250, 150) # text_used_color
-)
+        # images
+        self.idle_images_path = [
+            "assets/bots/healer_bot/healer_bot_idle_1.png",
+            "assets/bots/healer_bot/healer_bot_idle_3.png",
+            "assets/bots/healer_bot/healer_bot_idle_2.png",
+            "assets/bots/healer_bot/healer_bot_idle_3.png",
+            "assets/bots/healer_bot/healer_bot_idle_4.png",
+            "assets/bots/healer_bot/healer_bot_idle_3.png",
+            "assets/bots/healer_bot/healer_bot_idle_5.png",
+            "assets/bots/healer_bot/healer_bot_idle_3.png"
+        ]
+        self.active_image_path = "assets/bots/healer_bot/healer_bot_active.png"
+        self.hurt_image_path = "assets/bots/healer_bot/healer_bot_hurt.png"
+        self.dead_image_path = "assets/bots/healer_bot/healer_bot_dead.png"
 
-elemental_bot = ElementalBot(
-    "Elemental Bot", # name
-    10, # health
-    200, 450, # x, y
-    (150, 0, 150), # box_background_color
-    "A bot that can manipulate the elements.", # description
-    [
-        "assets/bots/elemental_bot/elemental_bot_idle_1.png",
-        "assets/bots/elemental_bot/elemental_bot_idle_2.png",
-        "assets/bots/elemental_bot/elemental_bot_idle_3.png",
-        "assets/bots/elemental_bot/elemental_bot_idle_4.png",
-        "assets/bots/elemental_bot/elemental_bot_idle_5.png",
-        "assets/bots/elemental_bot/elemental_bot_idle_4.png",
-        "assets/bots/elemental_bot/elemental_bot_idle_3.png",
-        "assets/bots/elemental_bot/elemental_bot_idle_2.png"
-    ], # idle_images_path
-    "assets/bots/elemental_bot/elemental_bot_active.png", # active_image_path
-    "assets/bots/elemental_bot/elemental_bot_hurt.png", # hurt_image_path
-    "assets/bots/elemental_bot/elemental_bot_dead.png", # dead_image_path
-    (200, 50, 200), # button_color
-    (250, 100, 250), # button_hover_color
-    (225, 100, 225) # text_used_color
-)
+        # action dictionary
+        self.actions = [
+            {
+                "name": "Heal",
+                "heal": 1,
+                "used": False,
+                "target_state": "Target Bot",
+                "image_path": "assets/bots/healer_bot/healer_bot_heal.png",
+                "image": None,
+                "description": "Heals a friendly bot.",
+                "scroll": 65,
+                "projectile_offset": (0, 0)
+            }
+        ]
 
-mod_bot = ModBot(
-    "Mod Bot", # name
-    10, # health
-    350, 100, # x, y
-    (100, 100, 100), # box_background_color
-    "A bot full of mod power.", # description
-    [
-        "assets/bots/mod_bot/mod_bot_idle_1.png",
-        "assets/bots/mod_bot/mod_bot_idle_2.png",
-        "assets/bots/mod_bot/mod_bot_idle_3.png",
-        "assets/bots/mod_bot/mod_bot_idle_4.png",
-        "assets/bots/mod_bot/mod_bot_idle_5.png",
-        "assets/bots/mod_bot/mod_bot_idle_4.png",
-        "assets/bots/mod_bot/mod_bot_idle_3.png",
-        "assets/bots/mod_bot/mod_bot_idle_2.png"
-    ], # idle_images_path
-    "assets/bots/mod_bot/mod_bot_active.png", # active_image_path
-    "assets/bots/mod_bot/mod_bot_hurt.png", # hurt_image_path
-    "assets/bots/mod_bot/mod_bot_dead.png", # dead_image_path
-    (150, 150, 150), # button_color
-    (200, 200, 200), # button_hover_color
-    (190, 190, 190) # text_used_color
-)
+    def check_actions(self):
+        # check if action is used
+        if self.actions[0]["used"]:
+            self.acted = True
+    
+    def perform_action(self, active_effects, target_char, chosen_action):
+        # perform action on target character based on which action is chosen
+        if chosen_action == "Heal":
+            target_char.real_health += self.actions[0]["heal"]
+            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"]))
 
-chaos_bot = ChaosBot(
-    "Chaos Bot", # name
-    10, # health
-    350, 275, # x, y
-    (255, 155, 0), # box_background_color
-    "A bot full of powerful chaos, use carefully.", # description
-    [
-        "assets/bots/chaos_bot/chaos_bot_idle_1.png",
-        "assets/bots/chaos_bot/chaos_bot_idle_2.png",
-        "assets/bots/chaos_bot/chaos_bot_idle_3.png",
-        "assets/bots/chaos_bot/chaos_bot_idle_4.png",
-        "assets/bots/chaos_bot/chaos_bot_idle_5.png"
-    ], # idle_images_path
-    "assets/bots/chaos_bot/chaos_bot_active.png", # active_image_path
-    "assets/bots/chaos_bot/chaos_bot_hurt.png", # hurt_image_path
-    "assets/bots/chaos_bot/chaos_bot_dead.png", # dead_image_path
-    (255, 205, 100), # button_color
-    (255, 230, 175), # button_hover_color
-    (255, 230, 175) # text_used_color
-)
-
-duplo_bot = DuploBot(
-    "Duplo Bot", # name
-    10, # health
-    350, 450, # x, y
-    (200, 200, 0), # box_background_color
-    "A bot made of doubling power.", # description
-    [
-        "assets/bots/duplo_bot/duplo_bot_idle_1.png",
-        "assets/bots/duplo_bot/duplo_bot_idle_2.png",
-        "assets/bots/duplo_bot/duplo_bot_idle_3.png",
-        "assets/bots/duplo_bot/duplo_bot_idle_4.png",
-        "assets/bots/duplo_bot/duplo_bot_idle_5.png"
-    ], # idle_images_path
-    "assets/bots/duplo_bot/duplo_bot_active.png", # active_image_path
-    "assets/bots/duplo_bot/duplo_bot_hurt.png", # hurt_image_path
-    "assets/bots/duplo_bot/duplo_bot_dead.png", # dead_image_path
-    (220, 220, 50), # button_color
-    (240, 240, 100), # button_hover_color
-    (255, 240, 100) # text_used_color
-)
-
-lazer_bot = LazerBot(
-    "Lazer Bot", # name
-    10, # health
-    480, 300, # x, y
-    (255, 50, 200), # box_background_color
-    "A bot with the coolest laser powers.", # description
-    [
-        "assets/bots/lazer_bot/lazer_bot_idle_1.png",
-        "assets/bots/lazer_bot/lazer_bot_idle_2.png",
-        "assets/bots/lazer_bot/lazer_bot_idle_3.png",
-        "assets/bots/lazer_bot/lazer_bot_idle_4.png",
-        "assets/bots/lazer_bot/lazer_bot_idle_5.png",
-        "assets/bots/lazer_bot/lazer_bot_idle_4.png",
-        "assets/bots/lazer_bot/lazer_bot_idle_3.png",
-        "assets/bots/lazer_bot/lazer_bot_idle_2.png"
-    ], # idle_images_path
-    "assets/bots/lazer_bot/lazer_bot_active.png", # active_image_path
-    "assets/bots/lazer_bot/lazer_bot_hurt.png", # hurt_image_path
-    "assets/bots/lazer_bot/lazer_bot_dead.png", # dead_image_path
-    (255, 125, 225), # button_color
-    (255, 175, 245), # button_hover_color
-    (255, 175, 225) # text_used_color
-)
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Heal":
+            lore.append((f"Heal: {action['heal']}", "normal"))

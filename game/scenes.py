@@ -2,7 +2,7 @@ import pygame
 
 # import game modules
 from .battle import spawn_initial_enemies, player_turn, select_action, enemy_turn, check_game_over
-from .bots import gun_bot, rico_bot, lazer_bot
+from .bots import GunBot, RicoBot, ModBot, ElementalBot, LazerBot, ChaosBot, DuploBot
 from .drawing import update_animations, draw_screen
 from .helper import wrap_text, dynamic_text, render_text
 
@@ -94,6 +94,231 @@ class EndlessModeScene():
         self.font_cache = font_cache
         self.text_cache = {}
 
+        # create player bots
+        self.gun_bot = GunBot(200, 100)
+        self.rico_bot = RicoBot(200, 275)
+        self.mod_bot = ModBot(350, 100)
+        self.elemental_bot = ElementalBot(200, 450)
+        self.lazer_bot = LazerBot(480, 300)
+        self.chaos_bot = ChaosBot(350, 275)
+        self.duplo_bot = DuploBot(350, 450)
+
+        # all bots and their unlock conditions
+        self.all_bots = [
+            {"bot": self.gun_bot,        "cost": 0,  "round": 1, "confirm": False, "unlocked": True},
+            {"bot": self.rico_bot,       "cost": 0,  "round": 1, "confirm": False, "unlocked": True},
+            {"bot": self.mod_bot,        "cost": 10, "round": 3, "confirm": False, "unlocked": False},
+            {"bot": self.elemental_bot,  "cost": 20, "round": 4, "confirm": False, "unlocked": False},
+            {"bot": self.lazer_bot,      "cost": 30, "round": 5, "confirm": False, "unlocked": False},
+            {"bot": self.chaos_bot,      "cost": 40, "round": 6, "confirm": False, "unlocked": False},
+            {"bot": self.duplo_bot,      "cost": 50, "round": 7, "confirm": False, "unlocked": False}
+        ]
+
+        # all bot upgrades and their costs
+        self.bot_upgrades = {
+            "Gun Bot": [
+                {
+                    "action": "Left Gun",
+                    "action_number": 0,
+                    "stat": "aiming_unlocked",
+                    "level": 0,
+                    "buff_desc_1": "Unlock Aiming",
+                    "buff_desc_2": ["Locked -> Unlocked"],
+                    "amount": [True],
+                    "cost": [100],
+                    "confirm": False
+                },
+                {
+                    "action": "Right Gun",
+                    "action_number": 1,
+                    "stat": "damage",
+                    "level": 0,
+                    "buff_desc_1": "+1 damage",
+                    "buff_desc_2": ["Damage: 1 -> 2", "Damage: 2 -> 3", "Damage: 3 -> 4", "Damage: 4 -> 5"],
+                    "amount": [2, 3, 4, 5],
+                    "cost": [5, 10, 15, 20],
+                    "confirm": False
+                }
+            ],
+            "Rico Bot": [
+                {
+                    "action": "Heal",
+                    "action_number": 0,
+                    "stat": "heal",
+                    "level": 0,
+                    "buff_desc_1": "+1 heal",
+                    "buff_desc_2": ["Heal: 1 -> 2", "Heal: 2 -> 3", "Heal: 3 -> 4", "Heal: 4 -> 5"],
+                    "amount": [2, 3, 4, 5],
+                    "cost": [5, 10, 15, 20],
+                    "confirm": False
+                },
+                {
+                    "action": "Bounce",
+                    "action_number": 1,
+                    "stat": "damage",
+                    "level": 0,
+                    "buff_desc_1": "+1 damage",
+                    "buff_desc_2": ["Damage: 1 -> 2", "Damage: 2 -> 3", "Damage: 3 -> 4", "Damage: 4 -> 5"],
+                    "amount": [2, 3, 4, 5],
+                    "cost": [5, 10, 15, 20],
+                    "confirm": False
+                },
+                {
+                    "action": "Bounce",
+                    "action_number": 1,
+                    "stat": "bounce_amount",
+                    "level": 0,
+                    "buff_desc_1": "+1 bounce",
+                    "buff_desc_2": ["Bounces: 2 -> 3", "Bounces: 3 -> 4", "Bounces: 4 -> 5", "Bounces: 5 -> 6"],
+                    "amount": [3, 4, 5, 6],
+                    "cost": [10, 25, 40, 55],
+                    "confirm": False
+                }
+            ],
+            "Mod Bot": [
+                {
+                    "action": "Percentage",
+                    "action_number": 0,
+                    "stat": "damage",
+                    "level": 0,
+                    "buff_desc_1": "+10% damage",
+                    "buff_desc_2": ["Damage: 10% -> 20%", "Damage: 20% -> 30%", "Damage: 30% -> 40%", "Damage: 40% -> 50%"],
+                    "amount": [0.2, 0.3, 0.4, 0.5],
+                    "cost": [20, 30, 40, 50],
+                    "confirm": False
+                },
+                {
+                    "action": "Shield",
+                    "action_number": 1,
+                    "stat": "shield",
+                    "level": 0,
+                    "buff_desc_1": "+10% reduction",
+                    "buff_desc_2": ["Reduction: 10% -> 20%", "Reduction: 20% -> 30%", "Reduction: 30% -> 40%", "Reduction: 40% -> 50%"],
+                    "amount": [0.8, 0.7, 0.6, 0.5],
+                    "cost": [20, 30, 40, 50],
+                    "confirm": False
+                }
+            ],
+            "Elemental Bot": [
+                {
+                    "action": "Fire",
+                    "action_number": 0,
+                    "stat": "damage",
+                    "level": 0,
+                    "buff_desc_1": "+1 damage",
+                    "buff_desc_2": ["Damage: 1 -> 2", "Damage: 2 -> 3", "Damage: 3 -> 4", "Damage: 4 -> 5"],
+                    "amount": [2, 3, 4, 5],
+                    "cost": [10, 20, 30, 40],
+                    "confirm": False
+                },
+                {
+                    "action": "Fire",
+                    "action_number": 0,
+                    "stat": "fire_rounds_amount",
+                    "level": 0,
+                    "buff_desc_1": "+1 round",
+                    "buff_desc_2": ["Round: 2 -> 3", "Round: 3 -> 4", "Round: 4 -> 5"],
+                    "amount": [3, 4, 5],
+                    "cost": [10, 20, 30],
+                    "confirm": False
+                },
+                {
+                    "action": "Ice",
+                    "action_number": 1,
+                    "stat": "ice_hits_needed",
+                    "level": 0,
+                    "buff_desc_1": "-1 freeze hit needed",
+                    "buff_desc_2": ["Hits Needed: 3 -> 2", "Hits Needed: 2 -> 1"],
+                    "amount": [2, 1],
+                    "cost": [25, 50],
+                    "confirm": False
+                }
+            ],
+            "Lazer Bot": [
+                {
+                    "action": "Pierce",
+                    "action_number": 0,
+                    "stat": "damage",
+                    "level": 0,
+                    "buff_desc_1": "+1 damage",
+                    "buff_desc_2": ["Damage: 1 -> 2", "Damage: 2 -> 3", "Damage: 3 -> 4", "Damage: 4 -> 5"],
+                    "amount": [2, 3, 4, 5],
+                    "cost": [10, 20, 30, 40],
+                    "confirm": False
+                },
+                {
+                    "action": "Barrage",
+                    "action_number": 1,
+                    "stat": "damage",
+                    "level": 0,
+                    "buff_desc_1": "+1 damage",
+                    "buff_desc_2": ["Damage: 1 -> 2", "Damage: 2 -> 3", "Damage: 3 -> 4", "Damage: 4 -> 5"],
+                    "amount": [2, 3, 4, 5],
+                    "cost": [10, 20, 30, 40],
+                    "confirm": False
+                },
+                {
+                    "action": "Barrage",
+                    "action_number": 1,
+                    "stat": "barrage_charge_needed",
+                    "level": 0,
+                    "buff_desc_1": "-5 barrage charge",
+                    "buff_desc_2": ["Charge Needed: 20 -> 15", "Charge Needed: 15 -> 10", "Charge Needed: 10 -> 5"],
+                    "amount": [15, 10, 5],
+                    "cost": [10, 30, 50],
+                    "confirm": False
+                }
+            ],
+            "Chaos Bot": [
+                {
+                    "action": "Random",
+                    "action_number": 0,
+                    "stat": "min_power",
+                    "level": 0,
+                    "buff_desc_1": "+1 min power",
+                    "buff_desc_2": ["Min Power: 1 -> 2", "Min Power: 2 -> 3", "Min Power: 3 -> 4", "Min Power: 4 -> 5"],
+                    "amount": [2, 3, 4, 5],
+                    "cost": [10, 20, 30, 40],
+                    "confirm": False
+                },
+                {
+                    "action": "Random",
+                    "action_number": 0,
+                    "stat": "max_power",
+                    "level": 0,
+                    "buff_desc_1": "+1 max power",
+                    "buff_desc_2": ["Max Power: 5 -> 6", "Max Power: 6 -> 7", "Max Power: 7 -> 8", "Max Power: 8 -> 9", "Max Power: 9 -> 10"],
+                    "amount": [6, 7, 8, 9, 10],
+                    "cost": [10, 20, 30, 40, 50],
+                    "confirm": False
+                },
+                {
+                    "action": "Barrier",
+                    "action_number": 1,
+                    "stat": "block",
+                    "level": 0,
+                    "buff_desc_1": "+10% block",
+                    "buff_desc_2": ["Block: 10% -> 20%", "Block: 20% -> 30%", "Block: 30% -> 40%", "Block: 40% -> 50%"],
+                    "amount": [20, 30, 40, 50],
+                    "cost": [20, 30, 40, 50],
+                    "confirm": False
+                }
+            ],
+            "Duplo Bot": [
+                {
+                    "action": "Mark",
+                    "action_number": 1,
+                    "stat": "mark_hits_needed",
+                    "level": 0,
+                    "buff_desc_1": "-1 mark hit needed",
+                    "buff_desc_2": ["Hits Needed: 2 -> 1"],
+                    "amount": [1],
+                    "cost": [50],
+                    "confirm": False
+                }
+            ]
+        }
+
         # slots for enemies to spawn in
         self.enemy_slots = [
             {"x": 600, "y": 0, "occupied": False}, # front, top
@@ -107,8 +332,23 @@ class EndlessModeScene():
             {"x": 1000, "y": 400, "occupied": False} # back, bottom
         ]
 
+        # catalog of different enemy types
+        self.enemy_catalog = {
+            "basic_goon": {
+                "name": "Basic Goon",
+                "health": 5,
+                "damage": 1,
+                "min_gears": 1,
+                "max_gears": 5,
+                "description": "A simple enemy goon that deals damage to a single target.",
+                "idle_image_path": "assets/enemies/basic_goon/basic_goon_idle.png",
+                "hurt_image_path": "assets/enemies/basic_goon/basic_goon_hurt.png",
+                "dead_image_path": "assets/enemies/basic_goon/basic_goon_dead.png"
+            }
+        }
+
         # initial list of characters and effects
-        self.player_bots = [gun_bot, rico_bot]
+        self.player_bots = [self.gun_bot, self.rico_bot]
         self.enemy_goons = []
         self.active_effects = []
     
@@ -134,27 +374,37 @@ class EndlessModeScene():
         self.rounds = 1
         self.max_enemies = 3
 
+        # load initial character images
+        for char in self.all_bots:
+            char["bot"].load_images()
+        for enemy, stats in self.enemy_catalog.items():
+            stats["idle_image"] = pygame.image.load(stats["idle_image_path"]).convert_alpha()
+            stats["hurt_image"] = pygame.image.load(stats["hurt_image_path"]).convert_alpha()
+            stats["dead_image"] = pygame.image.load(stats["dead_image_path"]).convert_alpha()
+
         # setup for the first round of endless mode
-        spawn_initial_enemies(self.enemy_goons, self.enemy_slots)
-        gun_bot.reset_gun_aiming()
+        spawn_initial_enemies(self.enemy_slots, self.enemy_catalog, self.enemy_goons)
+        self.gun_bot.reset_gun_aiming()
 
     def handle_input(self, events):
         for event in events:
 
             # handles mouse clicks
             if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = pygame.mouse.get_pos()
+                mouse_pos = event.pos
                 self.battle_state, self.previous_battle_state, self.active_bot, self.chosen_action, self.inspecting_character, self.lore_scroll_y, self.lore_target_scroll_y, self.menu_scroll_y, self.menu_target_scroll_y, self.gears = player_turn(
                     event, mouse_pos,
+                    self.all_bots, self.bot_upgrades, self.enemy_slots,
                     self.player_bots, self.enemy_goons, self.active_effects,
                     self.battle_state, self.previous_battle_state, self.active_bot, self.chosen_action,
                     self.inspecting_character, self.lore_height, self.lore_scroll_y, self.lore_target_scroll_y,
                     self.menu_height, self.menu_scroll_y, self.menu_target_scroll_y,
-                    self.gears, self.rounds, self.enemy_slots)
+                    self.gears, self.rounds,
+                    self.lazer_bot)
 
             # handles key presses
             elif event.type == pygame.KEYDOWN:
-                if self.battle_state != "Shop" and not lazer_bot.actions[0]["movement_mode"]:
+                if self.battle_state != "Shop" and not self.lazer_bot.actions[0]["movement_mode"]:
                     # select action if bot is selected based on key press
                     self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll_y, self.lore_target_scroll_y = select_action(None, event,
                         self.battle_state, self.active_bot, self.chosen_action,
@@ -165,7 +415,11 @@ class EndlessModeScene():
     def update(self):
         # enemy turn logic
         self.battle_state, self.gears, self.rounds, self.max_enemies = enemy_turn(
-            self.player_bots, self.enemy_goons, self.active_effects, self.battle_state, self.gears, self.rounds, self.max_enemies, self.enemy_slots)
+            self.enemy_slots, self.enemy_catalog,
+            self.player_bots, self.enemy_goons, self.active_effects,
+            self.battle_state,
+            self.gears, self.rounds, self.max_enemies,
+            self.gun_bot, self.elemental_bot)
 
         # check if game is over
         self.battle_state, self.lore_scroll_y, self.lore_target_scroll_y = check_game_over(self.player_bots, self.battle_state, self.lore_scroll_y, self.lore_target_scroll_y)
@@ -175,17 +429,20 @@ class EndlessModeScene():
             self.player_bots, self.enemy_goons, self.active_effects,
             self.battle_state, self.active_bot, self.chosen_action,
             self.lore_scroll_y, self.lore_target_scroll_y,
-            self.menu_scroll_y, self.menu_target_scroll_y)
+            self.menu_scroll_y, self.menu_target_scroll_y,
+            self.gun_bot)
 
     def draw(self, screen):
         # drawing and animation
         self.lore_height, self.menu_height = draw_screen(screen,
             self.fonts, self.font_cache, self.text_cache,
+            self.all_bots, self.bot_upgrades,
             self.player_bots, self.enemy_goons, self.active_effects,
             self.battle_state, self.active_bot, self.chosen_action,
             self.inspecting_character, self.lore_scroll_y,
             self.menu_height, self.menu_scroll_y,
-            self.gears, self.rounds)
+            self.gears, self.rounds,
+            self.gun_bot, self.elemental_bot, self.lazer_bot)
 
 # ------------------------------
 # STORY MODE

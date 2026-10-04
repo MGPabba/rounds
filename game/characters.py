@@ -10,14 +10,9 @@ from .helper import FloatingText, wrap_text
 # ------------------------------
 
 class Character:
-    def __init__(self, name, health, x, y, box_background_color, description):
+    def __init__(self, x, y):
         # basic character info
-        self.name = name
-        self.real_health = health
-        self.visual_health = health
         self.rect = pygame.Rect(x, y, 100, 100)
-        self.box_background_color = box_background_color
-        self.description = description
 
         # status effects
         self.fire_rounds = 0
@@ -149,13 +144,20 @@ class Character:
 # ------------------------------
 
 class Enemy(Character):
-    def __init__(self, name, health, damage, min_gears, max_gears, slot_id, x, y, box_background_color, description, idle_image, hurt_image, dead_image):
-        super().__init__(name, health, x, y, box_background_color, description)
+    def __init__(self, x, y, name, health, damage, description, min_gears, max_gears, slot_id, idle_image, hurt_image, dead_image):
+        super().__init__(x, y)
         # enemy specific info
+        self.name = name
+        self.real_health = health
+        self.visual_health = health
         self.damage = damage
+        self.description = description
         self.min_gears = min_gears
         self.max_gears = max_gears
         self.slot_id = slot_id
+
+        # colors
+        self.box_background_color = (255, 75, 75)
 
         # images
         self.idle_image = idle_image
@@ -182,19 +184,3 @@ class Enemy(Character):
         super().lore_text(fonts, lore)
         # add enemy damage to lore text
         lore.append((f"Damage: {self.damage}", "normal"))
-
-# catalog of different enemy types
-enemy_catalog = {
-    "basic_goon": {
-        "name": "Basic Goon",
-        "health": 5,
-        "damage": 1,
-        "min_gears": 1,
-        "max_gears": 5,
-        "box_background_color": (255, 75, 75),
-        "description": "A simple enemy goon that deals damage to a single target.",
-        "idle_image_path": "assets/enemies/basic_goon/basic_goon_idle.png",
-        "hurt_image_path": "assets/enemies/basic_goon/basic_goon_hurt.png",
-        "dead_image_path": "assets/enemies/basic_goon/basic_goon_dead.png"
-    }
-}

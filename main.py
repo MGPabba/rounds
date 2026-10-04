@@ -6,9 +6,7 @@ pygame.init()
 pygame.font.init()
 
 # import game modules
-from game.characters import enemy_catalog
 from game.scenes import MainMenuScene
-from game.shop import all_bots
 
 # ------------------------------
 # MAIN
@@ -32,14 +30,6 @@ async def main():
     font_cache = {}
     for size in range(10, 31):
         font_cache[size] = pygame.font.SysFont(None, size)
-
-    # load initial character images
-    for char in all_bots:
-        char["bot"].load_images()
-    for enemy, stats in enemy_catalog.items():
-        stats["idle_image"] = pygame.image.load(stats["idle_image_path"]).convert_alpha()
-        stats["hurt_image"] = pygame.image.load(stats["hurt_image_path"]).convert_alpha()
-        stats["dead_image"] = pygame.image.load(stats["dead_image_path"]).convert_alpha()
 
     # initalize the first scene
     current_scene = MainMenuScene(fonts, font_cache)

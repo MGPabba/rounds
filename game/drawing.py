@@ -1,9 +1,7 @@
 import pygame
 
 # import game modules
-from .bots import gun_bot, elemental_bot, lazer_bot
 from .helper import FloatingText, dynamic_text, render_text
-from .shop import all_bots, bot_upgrades
 from .projectiles import (
     LinearProjectile,
     ChargeProjectile,
@@ -21,7 +19,7 @@ from .projectiles import (
 # UPDATE ANIMATIONS
 # ------------------------------
 
-def update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y):
+def update_animations(player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gun_bot):
     # update characters shake when they are hurt
     for char in player_bots + enemy_goons:
         char.hurt_animations()
@@ -124,7 +122,7 @@ def draw_characters(screen, fonts, text_cache, player_bots, enemy_goons, active_
                 dot_offset = 0
             pygame.draw.circle(screen, color, (char.rect.x - 10, char.rect.y - 33 - dot_offset), 5)
 
-def draw_character_status_effects(screen, mouse_pos, fonts, text_cache, player_bots, enemy_goons, battle_state):
+def draw_character_status_effects(screen, mouse_pos, fonts, text_cache, player_bots, enemy_goons, battle_state, elemental_bot, lazer_bot):
     for char in player_bots + enemy_goons:
         if char.visual_health > 0:
             # draw overlay on character if frozen or on fire
@@ -188,7 +186,7 @@ def draw_character_status_effects(screen, mouse_pos, fonts, text_cache, player_b
                 elif char in player_bots and battle_state not in ["Game Over", "Shop"] and not char.acted and not lazer_bot.actions[0]["movement_mode"]:
                     pygame.draw.rect(screen, (0, 0, 255), char.rect, 3)
 
-def draw_gun_aiming(screen, font_cache, text_cache, active_bot, chosen_action):
+def draw_gun_aiming(screen, font_cache, text_cache, active_bot, chosen_action, gun_bot):
     if active_bot and active_bot.name == "Gun Bot" and chosen_action == "Left Gun" and active_bot.actions[0]["aiming_unlocked"]:
         # gun bot aiming box background
         pygame.draw.rect(screen, gun_bot.box_background_color, (20, 20, 105, 413))
@@ -218,7 +216,7 @@ def draw_gun_aiming(screen, font_cache, text_cache, active_bot, chosen_action):
 # DRAWING SHOP BOX AND MENU
 # ------------------------------
 
-def draw_shop_box(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, active_bot, gears, rounds):
+def draw_shop_box(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, active_bot, gears, rounds, lazer_bot):
     # draw shop box background
     if active_bot:
         box_color = active_bot.box_background_color
@@ -264,7 +262,7 @@ def draw_shop_box(screen, mouse_pos, fonts, font_cache, text_cache, battle_state
     gears_text_rect = gears_text.get_rect(center=(90, 493))
     screen.blit(gears_text, gears_text_rect)
 
-def draw_shop_bar(screen, mouse_pos, fonts, text_cache, battle_state):
+def draw_shop_bar(screen, mouse_pos, fonts, text_cache, all_bots, battle_state):
     if battle_state == "Shop":
         for i in range(len(all_bots)):
             # draw bot button if unlocked
@@ -300,7 +298,7 @@ def draw_shop_text(menu_canvas, font_cache, text_cache, text, max_width, color, 
     text_rect = text_label.get_rect(center=(center_x, center_y))
     menu_canvas.blit(text_label, text_rect)
 
-def draw_shop_menu(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, menu_height, menu_scroll_y, gears, rounds):
+def draw_shop_menu(screen, mouse_pos, fonts, font_cache, text_cache, all_bots, bot_upgrades, battle_state, menu_height, menu_scroll_y, gears, rounds):
     if battle_state == "Shop":
         # get mouse position relative to shop menu
         mouse_pos = (mouse_pos[0] - 257, mouse_pos[1] - 40 + menu_scroll_y)
@@ -454,7 +452,7 @@ def draw_shop_menu(screen, mouse_pos, fonts, font_cache, text_cache, battle_stat
 # DRAWING ACTION BOX AND BUTTONS
 # ------------------------------
 
-def draw_action_button(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, x, y, text, used, chosen):
+def draw_action_button(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, x, y, text, used, chosen, lazer_bot):
     # button rectangle
     button_rect = pygame.Rect(x, y, 150, 50)
     
@@ -493,7 +491,7 @@ def draw_action_button(screen, mouse_pos, font_cache, text_cache, battle_state, 
     # draw button text
     screen.blit(button_text, button_text_rect)
 
-def draw_action_box(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, chosen_action):
+def draw_action_box(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, chosen_action, lazer_bot):
     # draw action box background
     if active_bot:
         color = active_bot.box_background_color
@@ -509,7 +507,7 @@ def draw_action_box(screen, mouse_pos, font_cache, text_cache, battle_state, act
                 x = 120
             else:
                 x = 290
-            draw_action_button(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"])
+            draw_action_button(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, x, 640, action["name"], action["used"], chosen_action == action["name"], lazer_bot)
 
 # ------------------------------
 # DRAWING LORE BOX AND TEXT
@@ -648,7 +646,7 @@ def draw_effects(screen, fonts, text_cache, active_effects):
 # DRAWING SCREEN
 # ------------------------------
 
-def draw_screen(screen, fonts, font_cache, text_cache, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds):
+def draw_screen(screen, fonts, font_cache, text_cache, all_bots, bot_upgrades, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, menu_height, menu_scroll_y, gears, rounds, gun_bot, elemental_bot, lazer_bot):
     # background color
     screen.fill((0, 0, 0))
 
@@ -659,20 +657,20 @@ def draw_screen(screen, fonts, font_cache, text_cache, player_bots, enemy_goons,
     draw_characters(screen, fonts, text_cache, player_bots, enemy_goons, active_bot, chosen_action, inspecting_character)
 
     # draw bots and goons status effects
-    draw_character_status_effects(screen, mouse_pos, fonts, text_cache, player_bots, enemy_goons, battle_state)
+    draw_character_status_effects(screen, mouse_pos, fonts, text_cache, player_bots, enemy_goons, battle_state, elemental_bot, lazer_bot)
 
     # draw gun bot aiming box if it is unlocked and chosen
-    draw_gun_aiming(screen, font_cache, text_cache, active_bot, chosen_action)
+    draw_gun_aiming(screen, font_cache, text_cache, active_bot, chosen_action, gun_bot)
 
     # draw shop box above action box
-    draw_shop_box(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, active_bot, gears, rounds)
+    draw_shop_box(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, active_bot, gears, rounds, lazer_bot)
 
     # draw shop bar and menu if opened
-    draw_shop_bar(screen, mouse_pos, fonts, text_cache, battle_state)
-    menu_height = draw_shop_menu(screen, mouse_pos, fonts, font_cache, text_cache, battle_state, menu_height, menu_scroll_y, gears, rounds)
+    draw_shop_bar(screen, mouse_pos, fonts, text_cache, all_bots, battle_state)
+    menu_height = draw_shop_menu(screen, mouse_pos, fonts, font_cache, text_cache, all_bots, bot_upgrades, battle_state, menu_height, menu_scroll_y, gears, rounds)
 
     # draw action options based on active bot and chosen action
-    draw_action_box(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, chosen_action)
+    draw_action_box(screen, mouse_pos, font_cache, text_cache, battle_state, active_bot, chosen_action, lazer_bot)
 
     # draw lore box with scrolling
     lore_height = draw_lore_box(screen, fonts, text_cache, battle_state, inspecting_character, lore_scroll_y, rounds)
@@ -692,4 +690,3 @@ def draw_screen(screen, fonts, font_cache, text_cache, player_bots, enemy_goons,
     pygame.draw.rect(screen, (255, 255, 255), (20, 620, 60, 90), 3)
 
     return lore_height, menu_height
-

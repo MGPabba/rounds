@@ -2,11 +2,9 @@ import pygame
 import random
 
 # import game modules
-from .bots import gun_bot, elemental_bot, lazer_bot
-from .characters import Enemy, enemy_catalog
+from .characters import Enemy
 from .helper import FloatingText
 from .projectiles import LinearProjectile
-from .shop import all_bots, bot_upgrades
 
 # ------------------------------
 # PLAYER TURN
@@ -42,27 +40,27 @@ def scroll_math(mouse_pos, event, battle_state, lore_height, lore_target_scroll_
     
     return lore_target_scroll_y, menu_target_scroll_y
 
-def reset_shop_confirmations():
+def reset_shop_confirmations(all_bots, bot_upgrades):
     # reset all unlock and upgrades confirmations
     for bot in all_bots:
         bot["confirm"] = False
         for upgrade in bot_upgrades[bot["bot"].name]:
             upgrade["confirm"] = False
 
-def open_shop(mouse_pos, battle_state, previous_battle_state):
+def open_shop(mouse_pos, all_bots, bot_upgrades, battle_state, previous_battle_state, lazer_bot):
     # shop button rectangle
     shop_button_rect = pygame.Rect(40, 530, 100, 50)
     # open shop if button is clicked and close shop if button is clicked again
     if shop_button_rect.collidepoint(mouse_pos) and not lazer_bot.actions[0]["movement_mode"]:
         if battle_state == "Shop":
-            reset_shop_confirmations()
+            reset_shop_confirmations(all_bots, bot_upgrades)
             battle_state = previous_battle_state
         else:
             previous_battle_state = battle_state
             battle_state = "Shop"
     return battle_state, previous_battle_state
 
-def shop_bar_navigation(mouse_pos, menu_height, menu_target_scroll_y):
+def shop_bar_navigation(mouse_pos, all_bots, bot_upgrades, menu_height, menu_target_scroll_y):
     for i in range(len(all_bots)):
         # bar bot rectangle
         bar_bot_rect = pygame.Rect(180, 40 + i * 80, 80, 80)
@@ -80,7 +78,7 @@ def shop_bar_navigation(mouse_pos, menu_height, menu_target_scroll_y):
 
     return menu_target_scroll_y
 
-def shop_upgrade(mouse_pos, player_bots, enemy_goons, active_effects, previous_battle_state, menu_scroll_y, gears, rounds):
+def shop_upgrade(mouse_pos, all_bots, bot_upgrades, player_bots, enemy_goons, active_effects, previous_battle_state, menu_scroll_y, gears, rounds):
     # ignore clicks outside of the shop menu
     menu_rect = pygame.Rect(257, 40, 760, 560)
     if menu_rect.collidepoint(mouse_pos):
@@ -141,7 +139,7 @@ def shop_upgrade(mouse_pos, player_bots, enemy_goons, active_effects, previous_b
 
                             # set confirm to true if not confirmed yet
                             else:
-                                reset_shop_confirmations()
+                                reset_shop_confirmations(all_bots, bot_upgrades)
                                 upgrade["confirm"] = True
                             
                             return previous_battle_state, gears
@@ -163,14 +161,14 @@ def shop_upgrade(mouse_pos, player_bots, enemy_goons, active_effects, previous_b
 
                     # set confirm to true if not confirmed yet
                     else:
-                        reset_shop_confirmations()
+                        reset_shop_confirmations(all_bots, bot_upgrades)
                         bot["confirm"] = True
 
                     return previous_battle_state, gears
 
     return previous_battle_state, gears
 
-def harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots):
+def harvest_gears(mouse_pos, enemy_slots, enemy_goons, active_effects, gears):
     for i in range(len(enemy_goons) - 1, -1, -1):
         # harvest gears from dead enemies if clicked and remove them from the game
         enemy = enemy_goons[i]
@@ -243,7 +241,7 @@ def select_action(mouse_pos, event, battle_state, active_bot, chosen_action, ins
                 lore_scroll_y = active_bot.actions[0]["scroll"]
                 inspecting_character = active_bot
 
-        elif (mouse_pos and (right_button_rect.collidepoint(mouse_pos)) or (event and event.key == pygame.K_2)) and not active_bot.actions[1]["used"]:
+        elif len(active_bot.actions) > 1 and (mouse_pos and (right_button_rect.collidepoint(mouse_pos)) or (event and event.key == pygame.K_2)) and not active_bot.actions[1]["used"]:
             if chosen_action == active_bot.actions[1]["name"]:
                 chosen_action = None
                 battle_state = "Player Turn"
@@ -335,7 +333,7 @@ def execute_action(mouse_pos, player_bots, enemy_goons, characters, active_effec
             return check_bot_turn(player_bots, enemy_goons), active_bot, chosen_action, inspecting_character
     return battle_state, active_bot, chosen_action, inspecting_character
 
-def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, rounds, enemy_slots):
+def player_turn(event, mouse_pos, all_bots, bot_upgrades, enemy_slots, player_bots, enemy_goons, active_effects, battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_height, lore_scroll_y, lore_target_scroll_y, menu_height, menu_scroll_y, menu_target_scroll_y, gears, rounds, lazer_bot):
     # if game is over, dont allow any more actions
     if battle_state == "Game Over":
         return battle_state, previous_battle_state, active_bot, chosen_action, inspecting_character, lore_scroll_y, lore_target_scroll_y, menu_scroll_y, menu_target_scroll_y, gears
@@ -347,18 +345,18 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
     # handle player actions based on battle state and mouse clicks
     elif event.button == 1:
         # open or close shop
-        battle_state, previous_battle_state = open_shop(mouse_pos, battle_state, previous_battle_state)
+        battle_state, previous_battle_state = open_shop(mouse_pos, all_bots, bot_upgrades, battle_state, previous_battle_state, lazer_bot)
 
         # upgrade bot actions if shop is open
         if battle_state == "Shop":
-            menu_target_scroll_y = shop_bar_navigation(mouse_pos, menu_height, menu_target_scroll_y)
-            previous_battle_state, gears = shop_upgrade(mouse_pos, player_bots, enemy_goons, active_effects, previous_battle_state, menu_scroll_y, gears, rounds)
+            menu_target_scroll_y = shop_bar_navigation(mouse_pos, all_bots, bot_upgrades, menu_height, menu_target_scroll_y)
+            previous_battle_state, gears = shop_upgrade(mouse_pos, all_bots, bot_upgrades, player_bots, enemy_goons, active_effects, previous_battle_state, menu_scroll_y, gears, rounds)
 
         else:
             # if lazer bot is in movement mode, other actions are disabled
             if not lazer_bot.actions[0]["movement_mode"]:
                 # harvest gears
-                gears = harvest_gears(mouse_pos, enemy_goons, active_effects, gears, enemy_slots)
+                gears = harvest_gears(mouse_pos, enemy_slots, enemy_goons, active_effects, gears)
 
                 # inspect enemy if not targeting enemy
                 if battle_state not in ["Target Enemy", "Target Enemy or Self", "Target Any"]:
@@ -384,7 +382,7 @@ def player_turn(event, mouse_pos, player_bots, enemy_goons, active_effects, batt
     # right click to close shop or cancel action or bot
     elif event.button == 3:
         if battle_state == "Shop":
-            reset_shop_confirmations()
+            reset_shop_confirmations(all_bots, bot_upgrades)
             battle_state = previous_battle_state
         elif not lazer_bot.actions[0]["movement_mode"]:
             if chosen_action:
@@ -423,7 +421,7 @@ def enemy_attacks(player_bots, enemy_goons, active_effects, battle_state):
         battle_state = "Enemy Turn Over"
     return battle_state
 
-def round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rounds):
+def round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rounds, gun_bot, elemental_bot):
     # does fire damage to characters on fire
     for char in player_bots + enemy_goons:
         if char.real_health > 0 and char.fire_rounds > 0:
@@ -464,7 +462,7 @@ def round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rou
 
     return battle_state, gears, rounds
 
-def spawn_enemy(x, y, slot_id):
+def spawn_enemy(enemy_catalog, x, y, slot_id):
     # randomize the enemy spawn position within a range
     x_offset = random.randint(0, 100)
     y_offset = random.randint(40, 100)
@@ -472,23 +470,22 @@ def spawn_enemy(x, y, slot_id):
     # create a new enemy
     stats = enemy_catalog["basic_goon"]
     new_enemy = Enemy(
+        x + x_offset,
+        y + y_offset,
         stats["name"],
         stats["health"],
         stats["damage"],
+        stats["description"],
         stats["min_gears"],
         stats["max_gears"],
         slot_id,
-        x + x_offset,
-        y + y_offset,
-        stats["box_background_color"],
-        stats["description"],
         stats["idle_image"],
         stats["hurt_image"],
         stats["dead_image"],
     )
     return new_enemy
 
-def spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_slots):
+def spawn_state(enemy_slots, enemy_catalog, enemy_goons, active_effects, gears, rounds, max_enemies):
     # determine how many enemies to spawn based on the round
     spawns = 0
     if rounds <= 10:
@@ -522,13 +519,13 @@ def spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_s
             if empty_slots:
                 slot_id = random.choice(empty_slots)
                 slot = enemy_slots[slot_id]
-                new_enemy = spawn_enemy(slot["x"], slot["y"], slot_id)
+                new_enemy = spawn_enemy(enemy_catalog, slot["x"], slot["y"], slot_id)
                 enemy_goons.append(new_enemy)
                 slot["occupied"] = True
     
     return gears, max_enemies
 
-def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, rounds, max_enemies, enemy_slots):
+def enemy_turn(enemy_slots, enemy_catalog, player_bots, enemy_goons, active_effects, battle_state, gears, rounds, max_enemies, gun_bot, elemental_bot):
     # change to enemy turn if player turn is over and all projectiles have reached their target
     if battle_state == "Player Turn Over":
         projectiles_effects_active = False
@@ -554,10 +551,10 @@ def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, ro
 
     if battle_state == "Round End":
         # end of round logic
-        battle_state, gears, rounds = round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rounds)
+        battle_state, gears, rounds = round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rounds, gun_bot, elemental_bot)
 
         # spawn new enemies based on the round and max enemies
-        gears, max_enemies = spawn_state(enemy_goons, active_effects, gears, rounds, max_enemies, enemy_slots)
+        gears, max_enemies = spawn_state(enemy_slots, enemy_catalog, enemy_goons, active_effects, gears, rounds, max_enemies)
     
     return battle_state, gears, rounds, max_enemies
 
@@ -565,7 +562,7 @@ def enemy_turn(player_bots, enemy_goons, active_effects, battle_state, gears, ro
 # GAME BEGINNING AND ENDING
 # ------------------------------
 
-def spawn_initial_enemies(enemy_goons, enemy_slots):
+def spawn_initial_enemies(enemy_slots, enemy_catalog, enemy_goons):
     # spawn two basic goons at the start of the game in random empty slots
     for _ in range(2):
         empty_slots = []
@@ -574,7 +571,7 @@ def spawn_initial_enemies(enemy_goons, enemy_slots):
                 empty_slots.append(i)
         slot_id = random.choice(empty_slots)
         slot = enemy_slots[slot_id]
-        new_enemy = spawn_enemy(slot["x"], slot["y"], slot_id)
+        new_enemy = spawn_enemy(enemy_catalog, slot["x"], slot["y"], slot_id)
         enemy_goons.append(new_enemy)
         slot["occupied"] = True
 
