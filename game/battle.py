@@ -1,8 +1,9 @@
+# battle.py
+
 import pygame
 import random
 
 # import game modules
-from .characters import Enemy
 from .helper import FloatingText
 from .projectiles import LinearProjectile
 
@@ -415,9 +416,7 @@ def enemy_attacks(player_bots, enemy_goons, active_effects, battle_state):
                         bots_alive.append(bot)
                 if bots_alive:
                     target = random.choice(bots_alive)
-                    damage, reduction = target.damage_amount(enemy.damage)
-                    target.real_health -= damage
-                    active_effects.append(LinearProjectile((255, 0, 0), enemy, target, (-50, -50), damage, reduction, "Damage"))
+                    enemy.perform_attack(active_effects, target)
         battle_state = "Enemy Turn Over"
     return battle_state
 
@@ -462,30 +461,7 @@ def round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rou
 
     return battle_state, gears, rounds
 
-def spawn_enemy(enemy_catalog, x, y, slot_id):
-    # randomize the enemy spawn position within a range
-    x_offset = random.randint(0, 100)
-    y_offset = random.randint(40, 100)
-
-    # create a new enemy
-    stats = enemy_catalog["basic_goon"]
-    new_enemy = Enemy(
-        x + x_offset,
-        y + y_offset,
-        stats["name"],
-        stats["health"],
-        stats["damage"],
-        stats["description"],
-        stats["min_gears"],
-        stats["max_gears"],
-        slot_id,
-        stats["idle_image"],
-        stats["hurt_image"],
-        stats["dead_image"],
-    )
-    return new_enemy
-
-def spawn_state(enemy_slots, enemy_catalog, enemy_goons, active_effects, gears, rounds, max_enemies):
+def spawn_state(enemy_slots, enemy_types, enemy_goons, active_effects, gears, rounds, max_enemies):
     # determine how many enemies to spawn based on the round
     spawns = 0
     if rounds <= 10:
@@ -512,20 +488,35 @@ def spawn_state(enemy_slots, enemy_catalog, enemy_goons, active_effects, gears, 
         
         # spawn new enemies if there are empty slots
         if len(enemy_goons) < max_enemies:
+
+            # find empty slots
             empty_slots = []
             for i, slot in enumerate(enemy_slots):
                 if not slot["occupied"]:
                     empty_slots.append(i)
+            
             if empty_slots:
+                # choose a random empty slot
                 slot_id = random.choice(empty_slots)
                 slot = enemy_slots[slot_id]
-                new_enemy = spawn_enemy(enemy_catalog, slot["x"], slot["y"], slot_id)
-                enemy_goons.append(new_enemy)
                 slot["occupied"] = True
+
+                # random offsets for the goon spawn position
+                x_offset = random.randint(0, 100)
+                y_offset = random.randint(40, 100)
+
+                # spawn a random goon
+                random_type = random.randint(0, len(enemy_types) - 1)
+                enemy_type = enemy_types[random_type]
+                new_enemy = enemy_type(
+                    slot["x"] + x_offset,
+                    slot["y"] + y_offset,
+                    slot_id)
+                enemy_goons.append(new_enemy)
     
     return gears, max_enemies
 
-def enemy_turn(enemy_slots, enemy_catalog, player_bots, enemy_goons, active_effects, battle_state, gears, rounds, max_enemies, gun_bot, elemental_bot):
+def enemy_turn(enemy_slots, enemy_types, player_bots, enemy_goons, active_effects, battle_state, gears, rounds, max_enemies, gun_bot, elemental_bot):
     # change to enemy turn if player turn is over and all projectiles have reached their target
     if battle_state == "Player Turn Over":
         projectiles_effects_active = False
@@ -554,26 +545,9 @@ def enemy_turn(enemy_slots, enemy_catalog, player_bots, enemy_goons, active_effe
         battle_state, gears, rounds = round_end(player_bots, enemy_goons, active_effects, battle_state, gears, rounds, gun_bot, elemental_bot)
 
         # spawn new enemies based on the round and max enemies
-        gears, max_enemies = spawn_state(enemy_slots, enemy_catalog, enemy_goons, active_effects, gears, rounds, max_enemies)
+        gears, max_enemies = spawn_state(enemy_slots, enemy_types, enemy_goons, active_effects, gears, rounds, max_enemies)
     
     return battle_state, gears, rounds, max_enemies
-
-# ------------------------------
-# GAME BEGINNING AND ENDING
-# ------------------------------
-
-def spawn_initial_enemies(enemy_slots, enemy_catalog, enemy_goons):
-    # spawn two basic goons at the start of the game in random empty slots
-    for _ in range(2):
-        empty_slots = []
-        for i, slot in enumerate(enemy_slots):
-            if not slot["occupied"]:
-                empty_slots.append(i)
-        slot_id = random.choice(empty_slots)
-        slot = enemy_slots[slot_id]
-        new_enemy = spawn_enemy(enemy_catalog, slot["x"], slot["y"], slot_id)
-        enemy_goons.append(new_enemy)
-        slot["occupied"] = True
 
 def check_game_over(player_bots, battle_state, lore_scroll_y, lore_target_scroll_y):
     # check if battle state is already game over

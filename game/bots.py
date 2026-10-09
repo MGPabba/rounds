@@ -1,8 +1,10 @@
+# bots.py
+
 import pygame
 import random
 
 # import game modules
-from .characters import Character, Enemy
+from .characters import Character
 from .helper import FloatingText, wrap_text
 from .projectiles import (
     LinearProjectile,
@@ -659,13 +661,14 @@ class ChaosBot(Bot):
         if chosen_action == "Random":
             # damage enemy or heal bot
             random_amount = random.randint(self.actions[0]["min_power"], self.actions[0]["max_power"])
-            if isinstance(target_char, Enemy):
+            if isinstance(target_char, Bot):
+                target_char.real_health += random_amount
+                active_effects.append(GlitchyHealProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], random_amount))
+            else:
                 damage, reduction = target_char.damage_amount(random_amount)
                 target_char.real_health -= damage
                 active_effects.append(GlitchyDamageProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], damage, reduction))
-            else:
-                target_char.real_health += random_amount
-                active_effects.append(GlitchyHealProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], random_amount))
+                
         elif chosen_action == "Barrier":
             active_effects.append(GlitchyBlockProjectile((255, 155, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["block"]))
 

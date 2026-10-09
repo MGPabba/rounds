@@ -1,9 +1,13 @@
+# scenes.py
+
 import pygame
+import random
 
 # import game modules
-from .battle import spawn_initial_enemies, player_turn, select_action, enemy_turn, check_game_over
+from .battle import player_turn, select_action, enemy_turn, check_game_over
 from .bots import GunBot, RicoBot, ModBot, ElementalBot, LazerBot, ChaosBot, DuploBot
 from .drawing import update_animations, draw_screen
+from .goons import BasicGoon, TankyGoon, PowerfulGoon
 from .helper import wrap_text, dynamic_text, render_text
 
 # ------------------------------
@@ -332,20 +336,8 @@ class EndlessModeScene():
             {"x": 1000, "y": 400, "occupied": False} # back, bottom
         ]
 
-        # catalog of different enemy types
-        self.enemy_catalog = {
-            "basic_goon": {
-                "name": "Basic Goon",
-                "health": 5,
-                "damage": 1,
-                "min_gears": 1,
-                "max_gears": 5,
-                "description": "A simple enemy goon that deals damage to a single target.",
-                "idle_image_path": "assets/enemies/basic_goon/basic_goon_idle.png",
-                "hurt_image_path": "assets/enemies/basic_goon/basic_goon_hurt.png",
-                "dead_image_path": "assets/enemies/basic_goon/basic_goon_dead.png"
-            }
-        }
+        # different types of enemy
+        self.enemy_types = [BasicGoon, TankyGoon, PowerfulGoon]
 
         # initial list of characters and effects
         self.player_bots = [self.gun_bot, self.rico_bot]
@@ -377,14 +369,36 @@ class EndlessModeScene():
         # load initial character images
         for char in self.all_bots:
             char["bot"].load_images()
-        for enemy, stats in self.enemy_catalog.items():
-            stats["idle_image"] = pygame.image.load(stats["idle_image_path"]).convert_alpha()
-            stats["hurt_image"] = pygame.image.load(stats["hurt_image_path"]).convert_alpha()
-            stats["dead_image"] = pygame.image.load(stats["dead_image_path"]).convert_alpha()
+        for enemy in self.enemy_types:
+            enemy.load_images()
 
-        # setup for the first round of endless mode
-        spawn_initial_enemies(self.enemy_slots, self.enemy_catalog, self.enemy_goons)
+        # inital gun bot aiming setup
         self.gun_bot.reset_gun_aiming()
+
+        # spawn two basic goons at the start of the game in random empty slots
+        for _ in range(2):
+
+            # find empty slots
+            empty_slots = []
+            for i, slot in enumerate(self.enemy_slots):
+                if not slot["occupied"]:
+                    empty_slots.append(i)
+
+            # choose a random empty slot
+            slot_id = random.choice(empty_slots)
+            slot = self.enemy_slots[slot_id]
+            slot["occupied"] = True
+
+            # random offsets for the goon spawn position
+            x_offset = random.randint(0, 100)
+            y_offset = random.randint(40, 100)
+
+            # spawn a basic goon
+            new_enemy = self.enemy_types[0](
+                slot["x"] + x_offset,
+                slot["y"] + y_offset,
+                slot_id)
+            self.enemy_goons.append(new_enemy)
 
     def handle_input(self, events):
         for event in events:
@@ -415,7 +429,7 @@ class EndlessModeScene():
     def update(self):
         # enemy turn logic
         self.battle_state, self.gears, self.rounds, self.max_enemies = enemy_turn(
-            self.enemy_slots, self.enemy_catalog,
+            self.enemy_slots, self.enemy_types,
             self.player_bots, self.enemy_goons, self.active_effects,
             self.battle_state,
             self.gears, self.rounds, self.max_enemies,

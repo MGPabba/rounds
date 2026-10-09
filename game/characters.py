@@ -1,3 +1,5 @@
+# characters.py
+
 import pygame
 import math
 import random
@@ -138,49 +140,3 @@ class Character:
                 lore.append((line, "normal"))
             else:
                 lore.append((line, "less"))
-
-# ------------------------------
-# ENEMY CLASS AND CATALOG
-# ------------------------------
-
-class Enemy(Character):
-    def __init__(self, x, y, name, health, damage, description, min_gears, max_gears, slot_id, idle_image, hurt_image, dead_image):
-        super().__init__(x, y)
-        # enemy specific info
-        self.name = name
-        self.real_health = health
-        self.visual_health = health
-        self.damage = damage
-        self.description = description
-        self.min_gears = min_gears
-        self.max_gears = max_gears
-        self.slot_id = slot_id
-
-        # colors
-        self.box_background_color = (255, 75, 75)
-
-        # images
-        self.idle_image = idle_image
-        self.hurt_image = hurt_image
-        self.dead_image = dead_image
-
-        # animation
-        self.float_direction = 2
-        self.float_offset = random.choice([-4, -2, 0, 2, 4])
-
-    def update_idle_animation(self):
-        # move enemy up and down when alive and not hurt
-        if self.visual_health > 0 and self.hurt_timer == 0:
-            self.animation_timer += 1
-            if self.animation_timer >= self.animation_speed:
-                self.animation_timer = 0
-                self.float_offset += self.float_direction
-                if self.float_offset >= 4:
-                    self.float_direction = -2
-                elif self.float_offset <= -4:
-                    self.float_direction = 2
-
-    def lore_text(self, fonts, lore):
-        super().lore_text(fonts, lore)
-        # add enemy damage to lore text
-        lore.append((f"Damage: {self.damage}", "normal"))
