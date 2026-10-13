@@ -4,11 +4,11 @@ import pygame
 import random
 
 # import game modules
-from .battle import player_turn, select_action, enemy_turn, check_game_over
 from .bots import GunBot, RicoBot, ModBot, ElementalBot, LazerBot, ChaosBot, DuploBot
-from .drawing import update_animations, draw_screen
 from .goons import BasicGoon, TankyGoon, PowerfulGoon
 from .helper import wrap_text, dynamic_text, render_text
+from .battle import ActionBox, LoreBox, ShopBox, ShopBar, ShopMenu, PlayerZone, EnemyZone, Execution
+from .effects import FloatingText, BounceProjectile, LaserProjectile, GlitchyBlockProjectile, ShieldProjectile
 
 # ------------------------------
 # MAIN MENU
@@ -97,6 +97,16 @@ class EndlessModeScene():
         self.fonts = fonts
         self.font_cache = font_cache
         self.text_cache = {}
+
+        # create game elements
+        self.action_box = ActionBox()
+        self.lore_box = LoreBox()
+        self.shop_box = ShopBox()
+        self.shop_bar = ShopBar()
+        self.shop_menu = ShopMenu()
+        self.player_zone = PlayerZone()
+        self.enemy_zone = EnemyZone()
+        self.execution = Execution()
 
         # create player bots
         self.gun_bot = GunBot(200, 100)
@@ -353,13 +363,13 @@ class EndlessModeScene():
         # initial variables related to lore box
         self.inspecting_character = None
         self.lore_height = 0
-        self.lore_scroll_y = 0.0
-        self.lore_target_scroll_y = 0.0
+        self.lore_scroll = 0.0
+        self.lore_target_scroll = 0.0
     
         # initial variables related to shop
         self.menu_height = 0
-        self.menu_scroll_y = 0.0
-        self.menu_target_scroll_y = 0.0
+        self.menu_scroll = 0.0
+        self.menu_target_scroll = 0.0
     
         # initial variables for game progression
         self.gears = 0
@@ -401,62 +411,202 @@ class EndlessModeScene():
             self.enemy_goons.append(new_enemy)
 
     def handle_input(self, events):
+        # dont allow any input if the game is over
+        if self.battle_state == "Game Over":
+            return self
+
         for event in events:
 
             # handles mouse clicks
             if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = event.pos
-                self.battle_state, self.previous_battle_state, self.active_bot, self.chosen_action, self.inspecting_character, self.lore_scroll_y, self.lore_target_scroll_y, self.menu_scroll_y, self.menu_target_scroll_y, self.gears = player_turn(
-                    event, mouse_pos,
-                    self.all_bots, self.bot_upgrades, self.enemy_slots,
-                    self.player_bots, self.enemy_goons, self.active_effects,
-                    self.battle_state, self.previous_battle_state, self.active_bot, self.chosen_action,
-                    self.inspecting_character, self.lore_height, self.lore_scroll_y, self.lore_target_scroll_y,
-                    self.menu_height, self.menu_scroll_y, self.menu_target_scroll_y,
-                    self.gears, self.rounds,
-                    self.lazer_bot)
+
+                # update target scroll based on mouse scroll
+                self.lore_target_scroll = self.lore_box.handle_event(event, self.lore_height, self.lore_target_scroll)
+                self.menu_target_scroll = self.shop_menu.handle_event_scroll(event, self.battle_state, self.menu_height, self.menu_target_scroll)
+
+                # handle left mouse clicks
+                if event.button == 1:
+
+                    # handle shop box events
+                    self.battle_state, self.previous_battle_state = self.shop_box.handle_event(event, self.all_bots, self.bot_upgrades, self.battle_state, self.previous_battle_state)
+
+                    # handle shop bar and menu events when shop is open
+                    if self.battle_state == "Shop":
+                        self.menu_target_scroll = self.shop_bar.handle_event(event, self.all_bots, self.bot_upgrades, self.menu_height, self.menu_target_scroll)
+                        self.previous_battle_state, self.gears = self.shop_menu.handle_event_click(event,
+                            self.all_bots, self.bot_upgrades,
+                            self.player_bots, self.enemy_goons, self.active_effects,
+                            self.previous_battle_state,
+                            self.menu_scroll,
+                            self.gears, self.rounds)
+
+                    # handle other events when shop is closed
+                    else:
+
+                        # handle player zone, enemy zone, and action box events
+                        if self.battle_state != "Lazer Movement":
+                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event,
+                                self.enemy_slots,
+                                self.enemy_goons, self.active_effects,
+                                self.battle_state,
+                                self.inspecting_character, self.lore_scroll, self.lore_target_scroll,
+                                self.gears)
+                            self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.player_zone.handle_event(event,
+                                self.player_bots,
+                                self.battle_state, self.active_bot, self.chosen_action,
+                                self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
+                            self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
+                                self.battle_state, self.active_bot, self.chosen_action,
+                                self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
+
+                        # execute the chosen action
+                        self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_action(event,
+                            self.player_bots, self.enemy_goons, self.active_effects,
+                            self.battle_state, self.active_bot, self.chosen_action,
+                            self.inspecting_character)
+                        self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_laser_action(event,
+                            self.player_bots, self.enemy_goons, self.active_effects,
+                            self.battle_state, self.active_bot, self.chosen_action,
+                            self.inspecting_character)
+
+                # handle right mouse clicks
+                elif event.button == 3:
+
+                    # close shop
+                    if self.battle_state == "Shop":
+                        self.battle_state = self.previous_battle_state
+
+                        # reset all unlock and upgrades confirmations
+                        for b in self.all_bots:
+                            b["confirm"] = False
+                            for u in self.bot_upgrades[b["bot"].name]:
+                                u["confirm"] = False
+
+                    # deselect action, bot, or inspected character
+                    elif self.battle_state != "Lazer Movement":
+                        if self.chosen_action:
+                            self.chosen_action = None
+                            self.battle_state = "Player Turn"
+                        elif self.active_bot:
+                            self.inspecting_character = None
+                            self.active_bot = None
+                        elif self.inspecting_character:
+                            self.inspecting_character = None
 
             # handles key presses
             elif event.type == pygame.KEYDOWN:
-                if self.battle_state != "Shop" and not self.lazer_bot.actions[0]["movement_mode"]:
-                    # select action if bot is selected based on key press
-                    self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll_y, self.lore_target_scroll_y = select_action(None, event,
+
+                # handle action box events
+                if self.battle_state not in ["Shop", "Lazer Movement"]:
+                    self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
                         self.battle_state, self.active_bot, self.chosen_action,
-                        self.inspecting_character, self.lore_scroll_y, self.lore_target_scroll_y)
+                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
 
         return self
 
     def update(self):
-        # enemy turn logic
-        self.battle_state, self.gears, self.rounds, self.max_enemies = enemy_turn(
-            self.enemy_slots, self.enemy_types,
-            self.player_bots, self.enemy_goons, self.active_effects,
-            self.battle_state,
-            self.gears, self.rounds, self.max_enemies,
-            self.gun_bot, self.elemental_bot)
+        # change to player turn over if all enemies are dead
+        enemies_alive = False
+        for enemy in self.enemy_goons:
+            if enemy.real_health > 0:
+                enemies_alive = True
+                break
+        if not enemies_alive:
+            self.battle_state = "Player Turn Over"
+        
+        # change to enemy turn if player turn is over and all projectiles have reached their target
+        if self.battle_state == "Player Turn Over":
+            projectiles_effects_active = False
+            for effect in self.active_effects:
+                if not isinstance(effect, FloatingText):
+                    projectiles_effects_active = True
+                    break
+            if not projectiles_effects_active:
+                self.battle_state = "Enemy Turn"
+
+        # execute enemy attacks
+        self.battle_state = self.execution.execute_enemy_attacks(self.player_bots, self.enemy_goons, self.active_effects, self.battle_state)
+
+        # change to round end if enemy turn is over and all projectiles have reached their target
+        if self.battle_state == "Enemy Turn Over":
+            projectiles_effects_active = False
+            for effect in self.active_effects:
+                if not isinstance(effect, FloatingText):
+                    projectiles_effects_active = True
+                    break
+            if not projectiles_effects_active:
+                self.battle_state = "Round End"
+
+        # handle round end and spawn new goons
+        if self.battle_state == "Round End":
+            self.battle_state, self.gears, self.rounds = self.execution.round_end(self.player_bots, self.enemy_goons, self.active_effects, self.battle_state, self.gears, self.rounds, self.gun_bot, self.elemental_bot)
+            self.gears, self.max_enemies = self.enemy_zone.spawn_goons(self.enemy_slots, self.enemy_types, self.enemy_goons, self.active_effects, self.gears, self.rounds, self.max_enemies)
 
         # check if game is over
-        self.battle_state, self.lore_scroll_y, self.lore_target_scroll_y = check_game_over(self.player_bots, self.battle_state, self.lore_scroll_y, self.lore_target_scroll_y)
+        game_end = True
+        for bot in self.player_bots:
+            if bot.real_health > 0:
+                game_end = False
+                break
+        if game_end:
+            self.lore_target_scroll = 0
+            self.lore_scroll = 0
+            self.battle_state = "Game Over"
 
-        # update animations
-        self.lore_scroll_y, self.menu_scroll_y = update_animations(
-            self.player_bots, self.enemy_goons, self.active_effects,
-            self.battle_state, self.active_bot, self.chosen_action,
-            self.lore_scroll_y, self.lore_target_scroll_y,
-            self.menu_scroll_y, self.menu_target_scroll_y,
-            self.gun_bot)
+        # update character animations
+        self.player_zone.update(self.player_bots, self.battle_state, self.active_bot, self.chosen_action)
+        self.enemy_zone.update(self.enemy_goons)
+
+        # update and remove effects
+        for effect in self.active_effects[:]:
+            if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile) or isinstance(effect, GlitchyBlockProjectile) or isinstance(effect, ShieldProjectile):
+                effect.update()
+            elif isinstance(effect, BounceProjectile):
+                effect.update(self.enemy_goons, self.active_effects)
+            else:
+                effect.update(self.active_effects)
+            if not effect.active:
+                self.active_effects.remove(effect)
+
+        # update scrolling positions
+        self.lore_scroll = self.lore_box.update(self.lore_scroll, self.lore_target_scroll)
+        self.menu_scroll = self.shop_menu.update(self.menu_scroll, self.menu_target_scroll)
 
     def draw(self, screen):
-        # drawing and animation
-        self.lore_height, self.menu_height = draw_screen(screen,
-            self.fonts, self.font_cache, self.text_cache,
-            self.all_bots, self.bot_upgrades,
-            self.player_bots, self.enemy_goons, self.active_effects,
-            self.battle_state, self.active_bot, self.chosen_action,
-            self.inspecting_character, self.lore_scroll_y,
-            self.menu_height, self.menu_scroll_y,
-            self.gears, self.rounds,
-            self.gun_bot, self.elemental_bot, self.lazer_bot)
+        # background color
+        screen.fill((0, 0, 0))
+
+        # draw player and enemy zones
+        self.player_zone.draw(screen, self.fonts, self.text_cache, self.player_bots, self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character)
+        self.enemy_zone.draw(screen, self.fonts, self.text_cache, self.enemy_goons, self.battle_state, self.inspecting_character, self.elemental_bot)
+
+        # draw shop stuff
+        self.shop_box.draw(screen, self.fonts, self.font_cache, self.text_cache, self.battle_state, self.active_bot, self.gears, self.rounds)
+        self.shop_bar.draw(screen, self.fonts, self.text_cache, self.all_bots, self.battle_state)
+        self.menu_height = self.shop_menu.draw(screen, self.fonts, self.font_cache, self.text_cache, self.all_bots, self.bot_upgrades, self.battle_state, self.menu_height, self.menu_scroll, self.gears, self.rounds)
+
+        # draw bottom boxes
+        self.action_box.draw(screen, self.font_cache, self.text_cache, self.battle_state, self.active_bot, self.chosen_action)
+        self.lore_height = self.lore_box.draw(screen, self.fonts, self.text_cache, self.battle_state, self.inspecting_character, self.lore_height, self.lore_scroll, self.rounds)
+
+        # draw all active effects
+        for effect in self.active_effects:
+            if isinstance(effect, FloatingText):
+                effect.draw(screen, self.fonts, self.text_cache)
+            else:
+                effect.draw(screen)
+
+        # draw bot action indicators if active
+        self.gun_bot.draw_gun_aiming(screen, self.font_cache, self.text_cache, self.active_bot, self.chosen_action)
+        self.lazer_bot.draw_laser(screen, self.enemy_goons, self.battle_state)
+
+        # temp box
+        if self.active_bot:
+            temp_box_color = self.active_bot.box_background_color
+        else:
+            temp_box_color = (50, 50, 50)
+        pygame.draw.rect(screen, temp_box_color, (20, 620, 60, 90))
+        pygame.draw.rect(screen, (255, 255, 255), (20, 620, 60, 90), 3)
 
 # ------------------------------
 # STORY MODE

@@ -1,27 +1,6 @@
 # helper.py
 
 # ------------------------------
-# FLOATING TEXT CLASS
-# ------------------------------
-
-class FloatingText:
-    def __init__(self, color, x, y, text):
-        # floating text info
-        self.color = color
-        self.x = x
-        self.y = y
-        self.text = text
-        self.timer = 120
-        self.active = True
-    
-    def update(self):
-        # move text up and decrease timer, disappear when timer runs out
-        self.y -= 1
-        self.timer -= 1
-        if self.timer <= 0:
-            self.active = False
-
-# ------------------------------
 # HELPER FUNCTIONS
 # ------------------------------
 

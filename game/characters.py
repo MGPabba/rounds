@@ -1,11 +1,12 @@
 # characters.py
 
 import pygame
-import math
 import random
+import math
 
 # import game modules
-from .helper import FloatingText, wrap_text
+from .helper import wrap_text, render_text
+from .effects import FloatingText
 
 # ------------------------------
 # CHARACTER CLASS
@@ -140,3 +141,47 @@ class Character:
                 lore.append((line, "normal"))
             else:
                 lore.append((line, "less"))
+
+    def draw(self, screen, fonts, text_cache):
+        # draw character name
+        name_text = render_text(fonts, text_cache, 24, self.name, (255, 255, 255))
+        screen.blit(name_text, (self.rect.x, self.rect.y - 40))
+
+        # draw character health
+        health_text = render_text(fonts, text_cache, 24, f"HP: {self.visual_health}", (255, 255, 255))
+        screen.blit(health_text, (self.rect.x, self.rect.y - 20))
+
+        # draw character status effects
+        if self.visual_health > 0:
+
+            # draw overlay on character if frozen
+            if self.frozen:
+                overlay = pygame.Surface((100, 100), pygame.SRCALPHA)
+                overlay.fill((0, 255, 255, 100))
+                screen.blit(overlay, self.rect)
+
+            # draw overlay on character if on fire
+            elif self.fire_rounds > 0:
+                overlay = pygame.Surface((100, 100), pygame.SRCALPHA)
+                overlay.fill((255, 0, 0, 100))
+                screen.blit(overlay, self.rect)
+
+            # draw number of fire rounds at bottom left of character
+            if self.fire_rounds > 0:
+                fire_text = render_text(fonts, text_cache, 24, f"{self.fire_rounds}", (255, 0, 0))
+                screen.blit(fire_text, (self.rect.x + 2, self.rect.bottom - 16))
+
+            # draw "M" if marked
+            if self.marked:
+                mark_text = render_text(fonts, text_cache, 24, "M", (255, 255, 0))
+                screen.blit(mark_text, (self.rect.x - 16, self.rect.y - 20))
+
+            # draw block barrier if having a barrier
+            if self.block > 0:
+                pygame.draw.rect(screen, (255, 155, 0), (self.rect.x -10, self.rect.y, 110, 110), 3)
+                pygame.draw.rect(screen, (255, 155, 0), (self.rect.x, self.rect.y - 5, 105, 105), 3)
+                pygame.draw.rect(screen, (255, 155, 0), (self.rect.x, self.rect.y, 120, 120), 3)
+
+            # draw shield if having a shield
+            if self.shield > 0:
+                pygame.draw.circle(screen, (200, 200, 200), (self.rect.centerx, self.rect.centery), 55, 3)

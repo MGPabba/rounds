@@ -5,8 +5,9 @@ import random
 
 # import game modules
 from .characters import Character
-from .helper import FloatingText, wrap_text
-from .projectiles import (
+from .helper import dynamic_text, wrap_text
+from .effects import (
+    FloatingText,
     LinearProjectile,
     ChargeProjectile,
     MarkProjectile,
@@ -89,6 +90,51 @@ class Bot(Character):
                     lore.append((line, "less"))
             self.lore_stats_text(lore, action)
 
+    def draw(self, screen, fonts, text_cache, battle_state, active_bot, chosen_action, inspecting_character):
+        # dead image
+        if self.visual_health <= 0:
+            current_image = self.dead_image
+            current_image.set_alpha(50)
+
+        # hurt image
+        elif self.hurt_timer > 0:
+            current_image = self.hurt_image
+
+        # action chosen image
+        elif self == active_bot and chosen_action:
+            for action in self.actions:
+                if chosen_action == action["name"]:
+                    current_image = action["image"]
+
+        # active image
+        elif self == active_bot:
+            current_image = self.active_image
+
+        # idle image
+        else:
+            current_image = self.idle_images[self.current_frame]
+            if self.acted:
+                current_image.set_alpha(150)
+            else:
+                current_image.set_alpha(255)
+
+        # draw bot image
+        screen.blit(current_image, (self.rect.x + self.shake_x, self.rect.y))
+
+        super().draw(screen, fonts, text_cache)
+
+        # draw small circle next to name if inspecting bot
+        if self == inspecting_character:
+            pygame.draw.circle(screen, (0, 0, 255), (self.rect.x - 10, self.rect.y - 32), 5)
+        
+        # draw highlight around bot
+        mouse_pos = pygame.mouse.get_pos()
+        if self.rect.collidepoint(mouse_pos) and self.real_health > 0:
+            if (battle_state in ["Target Bot", "Target Any"]) or (self.name == "Lazer Bot" and battle_state in ["Target Line", "Lazer Movement"]) or (self.name == "Duplo Bot" and battle_state == "Target Enemy or Self"):
+                pygame.draw.rect(screen, (0, 255, 0), self.rect, 3)
+            elif battle_state not in ["Game Over", "Shop", "Lazer Movement"] and not self.acted:
+                pygame.draw.rect(screen, (0, 0, 255), self.rect, 3)
+
 class GunBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
@@ -123,9 +169,9 @@ class GunBot(Bot):
                 "name": "Left Gun",
                 "damage": 1,
                 "aiming_unlocked": False,
-                "marker_y": 40,
-                "marker_y_direction": "Down",
-                "marker_y_speed": 10,
+                "marker_pos": 40,
+                "marker_direction": "Down",
+                "marker_speed": 10,
                 "zones": [],
                 "used": False,
                 "target_state": "Target Enemy",
@@ -154,10 +200,10 @@ class GunBot(Bot):
             # if aiming is unlocked, find the damage
             if self.actions[0]["aiming_unlocked"]:
                 for zone in self.actions[0]["zones"]:
-                    if zone["position"] <= self.actions[0]["marker_y"] < zone["position"] + zone["height"]:
+                    if zone["position"] <= self.actions[0]["marker_pos"] < zone["position"] + zone["height"]:
                         self.actions[0]["damage"] = zone["damage"]
                         break
-                active_effects.append(FloatingText((50, 100, 255), 50, self.actions[0]["marker_y"], f"{self.actions[0]['damage']}"))
+                active_effects.append(FloatingText((50, 100, 255), 50, self.actions[0]["marker_pos"], f"{self.actions[0]['damage']}"))
             
             damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
             target_char.real_health -= damage
@@ -177,8 +223,8 @@ class GunBot(Bot):
     def reset_gun_aiming(self):
         # reset damage
         self.actions[0]["damage"] = 1
-        self.actions[0]["marker_y"] = 40
-        self.actions[0]["marker_y_direction"] = "Down"
+        self.actions[0]["marker_pos"] = 40
+        self.actions[0]["marker_direction"] = "Down"
         self.actions[0]["zones"] = []
 
         # randomize the position and height of the 5 damage zone
@@ -269,22 +315,55 @@ class GunBot(Bot):
                     "height": 413 - below_zone_y
                 })
 
-    def update_gun_aiming(self):
-        # move the marker down
-        if self.actions[0]["marker_y_direction"] == "Down":
-            self.actions[0]["marker_y"] += self.actions[0]["marker_y_speed"]
-            # change marker direction when it reaches the bottom
-            if self.actions[0]["marker_y"] > 413:
-                self.actions[0]["marker_y"] = 413
-                self.actions[0]["marker_y_direction"] = "Up"
+    def update_gun_aiming(self, active_bot, chosen_action):
+        if self == active_bot and chosen_action == "Left Gun" and self.actions[0]["aiming_unlocked"]:
 
-        # move the marker up
-        elif self.actions[0]["marker_y_direction"] == "Up":
-            self.actions[0]["marker_y"] -= self.actions[0]["marker_y_speed"]
-            # change marker direction when it reaches the top
-            if self.actions[0]["marker_y"] < 40:
-                self.actions[0]["marker_y"] = 40
-                self.actions[0]["marker_y_direction"] = "Down"
+            # move the marker down
+            if self.actions[0]["marker_direction"] == "Down":
+                self.actions[0]["marker_pos"] += self.actions[0]["marker_speed"]
+                # change marker direction when it reaches the bottom
+                if self.actions[0]["marker_pos"] > 413:
+                    self.actions[0]["marker_pos"] = 413
+                    self.actions[0]["marker_direction"] = "Up"
+
+            # move the marker up
+            elif self.actions[0]["marker_direction"] == "Up":
+                self.actions[0]["marker_pos"] -= self.actions[0]["marker_speed"]
+                # change marker direction when it reaches the top
+                if self.actions[0]["marker_pos"] < 40:
+                    self.actions[0]["marker_pos"] = 40
+                    self.actions[0]["marker_direction"] = "Down"
+
+    def draw_gun_aiming(self, screen, font_cache, text_cache, active_bot, chosen_action):
+        if self == active_bot and chosen_action == "Left Gun" and self.actions[0]["aiming_unlocked"]:
+
+            # draw aiming box background
+            pygame.draw.rect(screen, self.box_background_color, (20, 20, 105, 413))
+            pygame.draw.rect(screen, (255, 255, 255), (20, 20, 105, 413), 3)
+    
+            # colors for each damage zone
+            zone_colors = {
+                1: (150, 200, 255),
+                2: (125, 175, 255),
+                3: (100, 150, 255),
+                4: (75, 125, 255),
+                5: (50, 100, 255)
+            }
+    
+            # draw each damage zone
+            for zone in self.actions[0]["zones"]:
+                pygame.draw.rect(screen, zone_colors[zone["damage"]], (40, zone["position"], 50, zone["height"]))
+                zone_text = dynamic_text(font_cache, text_cache, f"{zone['damage']}", 50, zone["height"], (255, 255, 255))
+                zone_text_rect = zone_text.get_rect(center=(100, (zone["position"] + zone["height"] // 2) + 1))
+                screen.blit(zone_text, zone_text_rect)
+            pygame.draw.rect(screen, (255, 255, 255), (40, 40, 50, 373), 1)
+    
+            # draw marker line
+            pygame.draw.line(screen, (255, 255, 255), (40, self.actions[0]["marker_pos"]), (89, self.actions[0]["marker_pos"]), 3)
+
+# ------------------------------
+# ENDLESS BOT CLASSES
+# ------------------------------
 
 class RicoBot(Bot):
     def __init__(self, x, y):
@@ -596,6 +675,28 @@ class LazerBot(Bot):
             lore.append((f"Current Charge: {action['barrage_charge']}", "normal"))
             lore.append((f"Charge Needed: {action['barrage_charge_needed']}", "normal"))
 
+    def draw_laser(self, screen, enemy_goons, battle_state):
+        # draw the laser if lazer bot is not moving and mouse is to the right of lazer bot
+        mouse_pos = pygame.mouse.get_pos()
+        if battle_state == "Target Line" and mouse_pos[0] > self.rect.centerx + self.actions[0]["projectile_offset"][0]:
+
+            # calculate the start position, end position, and direction of the laser beam based on the mouse position and lazer bot's position
+            start_x = self.rect.centerx + self.actions[0]["projectile_offset"][0]
+            start_y = self.rect.centery + self.actions[0]["projectile_offset"][1]
+            direction_x = mouse_pos[0] - start_x
+            direction_y = mouse_pos[1] - start_y
+            length = (direction_x ** 2 + direction_y ** 2) ** 0.5
+            end_x = start_x + direction_x / length * 1000
+            end_y = start_y + direction_y / length * 1000
+
+            # draw highlight over all enemies being hit by the laser
+            for enemy in enemy_goons:
+                if enemy.real_health > 0 and enemy.rect.clipline(start_x, start_y, end_x, end_y):
+                    pygame.draw.rect(screen, (255, 0, 0), enemy.rect, 3)
+
+            # draw the laser beam
+            pygame.draw.line(screen, (255, 50, 255), (start_x, start_y), (end_x, end_y), 3)
+
 class ChaosBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
@@ -759,6 +860,10 @@ class DuploBot(Bot):
             lore.append((f"Damage: {action['damage']}", "normal"))
         elif action["name"] == "Mark":
             lore.append((f"Mark Hits Needed: {action['mark_hits_needed']}", "normal"))
+
+# ------------------------------
+# STORY BOT CLASSES
+# ------------------------------
 
 class HealerBot(Bot):
     def __init__(self, x, y):

@@ -1,11 +1,11 @@
 # goons.py
 
-import random
 import pygame
+import random
 
 # import game modules
 from .characters import Character
-from .projectiles import LinearProjectile
+from .effects import LinearProjectile
 
 # ------------------------------
 # GOON CLASSES
@@ -40,6 +40,63 @@ class Goon(Character):
                     self.float_direction = -2
                 elif self.float_offset <= -4:
                     self.float_direction = 2
+
+    def draw(self, screen, fonts, text_cache, battle_state, inspecting_character, elemental_bot):
+        # dead image
+        if self.visual_health <= 0:
+            current_image = self.dead_image
+
+        # hurt image
+        elif self.hurt_timer > 0:
+            current_image = self.hurt_image
+
+        # idle image        
+        else:
+            current_image = self.idle_image
+
+        # move up and down
+        char_y = self.rect.y
+        if not self.frozen:
+            char_y += self.float_offset
+
+        # draw goon image
+        screen.blit(current_image, (self.rect.x + self.shake_x, char_y))
+
+        super().draw(screen, fonts, text_cache)
+
+        # draw small circle next to name if inspecting goon
+        if self == inspecting_character:
+            pygame.draw.circle(screen, (255, 0, 0), (self.rect.x - 10, self.rect.y - 33), 5)
+
+        # draw highlight around goon
+        mouse_pos = pygame.mouse.get_pos()
+        if self.rect.collidepoint(mouse_pos) and self.real_health > 0 and battle_state in ["Target Enemy", "Target Enemy or Self", "Target Any"]:
+            pygame.draw.rect(screen, (255, 0, 0), self.rect, 3)
+        
+        # draw character status effects
+        if self.visual_health > 0:
+
+            # draw boxes for number of ice hits and how many needed
+            if self.ice_hits > 0:
+                for i in range(elemental_bot.actions[1]["ice_hits_needed"]):
+                    if elemental_bot.actions[1]["ice_hits_needed"] == 3:
+                        box_x_offset = 28
+                    elif elemental_bot.actions[1]["ice_hits_needed"] == 2:
+                        box_x_offset = 19
+                    box_rect = pygame.Rect(self.rect.right - box_x_offset + (i * 9), self.rect.y - 11, 10, 10)
+                    if i < self.ice_hits:
+                        pygame.draw.rect(screen, (0, 255, 255), box_rect)
+                    else:
+                        pygame.draw.rect(screen, (0, 255, 255), box_rect, 1)
+            
+            # draw boxes for number of mark hits and how many needed
+            if self.mark_hits > 0:
+                for i in range(2):
+                    box_rect = pygame.Rect(self.rect.right - 19 + (i * 9), self.rect.y - 21, 10, 10)
+                    if i < self.mark_hits:
+                        pygame.draw.rect(screen, (255, 255, 0), box_rect)
+                    else:
+                        pygame.draw.rect(screen, (255, 255, 0), box_rect, 1)
 
 class BasicGoon(Goon):
     # basic goon info

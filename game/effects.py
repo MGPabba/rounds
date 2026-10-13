@@ -1,7 +1,41 @@
-# projectiles.py
+# effects.py
 
-import math
+import pygame
 import random
+import math
+
+# import game modules
+from .helper import render_text
+
+# ------------------------------
+# FLOATING TEXT CLASS
+# ------------------------------
+
+class FloatingText:
+    def __init__(self, color, x, y, text):
+        # floating text info
+        self.color = color
+        self.x = x
+        self.y = y
+        self.text = text
+        self.timer = 120
+        self.active = True
+    
+    def update(self):
+        # move text up and decrease timer, disappear when timer runs out
+        self.y -= 1
+        self.timer -= 1
+        if self.timer <= 0:
+            self.active = False
+
+    def draw(self, screen, fonts, text_cache):
+        # draw the floating text that floats up and disappears
+        floating_text = render_text(fonts, text_cache, 30, self.text, self.color)
+        screen.blit(floating_text, (self.x, self.y))
+
+# ------------------------------
+# PROJECTILE CLASS
+# ------------------------------
 
 class Projectile:
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
@@ -55,6 +89,13 @@ class LinearProjectile(Projectile):
             elif self.projectile_type == "Mark":
                 self.target_char.apply_mark(active_effects, self.amount)
 
+    def draw(self, screen):
+        # draw a rectangle or ellipse projectile that moves straight towards target
+        if self.projectile_type == "Damage":
+            pygame.draw.rect(screen, self.color, (self.x, self.y, 10, 5))
+        else:
+            pygame.draw.ellipse(screen, self.color, (int(self.x), int(self.y), 10, 5))
+
 # ------------------------------
 # PROJECTILE CLASSES FOR DUPLO BOT
 # ------------------------------
@@ -84,6 +125,11 @@ class ChargeProjectile(LinearProjectile):
                 if self.border <= 0:
                     self.border_phase = "Grow"
 
+    def draw(self, screen):
+        # draw a circle projectile with border which changes size that moves straight towards target
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), self.current_radius)
+        pygame.draw.circle(screen, (150, 150, 0), (int(self.x), int(self.y)), self.current_radius, self.border)
+
 class MarkProjectile(LinearProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type):
         super().__init__(color, source_char, target_char, projectile_offset, amount, reduction, projectile_type)
@@ -95,6 +141,10 @@ class MarkProjectile(LinearProjectile):
         super().update(active_effects)
         # rotate projectile as it moves towards target
         self.angle -= self.rotation_speed
+
+    def draw(self, screen):
+        # draw a rotating arc projectile that moves straight towards target
+        pygame.draw.arc(screen, self.color, (self.x-5, self.y-5, 10, 10), self.angle, self.angle + 3.14, 2)
 
 # ------------------------------
 # PROJECTILE CLASSES FOR MOD BOT
@@ -125,6 +175,11 @@ class PercentageProjectile(LinearProjectile):
         self.line_two_x2 = self.x - math.cos(self.line_two_angle) * 10
         self.line_two_y2 = self.y - math.sin(self.line_two_angle) * 5
 
+    def draw(self, screen):
+        # draw two rotating lines projectile that moves straight towards target
+        pygame.draw.line(screen, self.color, (self.line_one_x1, self.line_one_y1), (self.line_one_x2, self.line_one_y2), 2)
+        pygame.draw.line(screen, self.color, (self.line_two_x1, self.line_two_y1), (self.line_two_x2, self.line_two_y2), 2)
+
 class ShieldProjectile(Projectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
@@ -152,6 +207,10 @@ class ShieldProjectile(Projectile):
             self.active = False
             self.target_char.shield = self.amount
 
+    def draw(self, screen):
+        # draw a hollow circle projectile that moves in a curve
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), 5, 2)
+
 # ------------------------------
 # PROJECTILE CLASSES FOR RICO BOT
 # ------------------------------
@@ -171,6 +230,10 @@ class ArcProjectile(Projectile):
         self.base_x = self.source_x + self.distance_x * self.progress
         self.base_y = self.source_y + self.distance_y * self.progress
         self.curve_y = math.sin(self.progress * math.pi) * self.arc
+
+    def draw(self, screen):
+        # draw a circle projectile that moves in an arc
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), 5)
 
 class HealProjectile(ArcProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
@@ -268,6 +331,10 @@ class GlitchyDamageProjectile(GlitchyProjectile):
             self.active = False
             self.target_char.take_damage(active_effects, self.amount, self.reduction)
 
+    def draw(self, screen):
+        # draw a rectangle projectile that shakes
+        pygame.draw.rect(screen, self.color, (self.x + self.shake_x, self.y + self.shake_y, 10, 10))
+
 class GlitchyHealProjectile(GlitchyProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
@@ -306,6 +373,10 @@ class GlitchyHealProjectile(GlitchyProjectile):
                 self.active = False
                 self.target_char.take_heal(active_effects, self.amount)
 
+    def draw(self, screen):
+        # draw a rectangle projectile that shakes
+        pygame.draw.rect(screen, self.color, (self.x + self.shake_x, self.y + self.shake_y, 10, 10))
+
 class GlitchyBlockProjectile(GlitchyProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
@@ -337,6 +408,10 @@ class GlitchyBlockProjectile(GlitchyProjectile):
                 self.active = False
                 self.target_char.block = self.amount
 
+    def draw(self, screen):
+        # draw a hollow rectangle projectile that shakes
+        pygame.draw.rect(screen, self.color, (self.x + self.shake_x, self.y + self.shake_y, 10, 10), 2)
+
 # ------------------------------
 # PROJECTILE CLASSES FOR LAZER BOT
 # ------------------------------
@@ -357,3 +432,12 @@ class LaserProjectile():
             self.alpha = int((self.timer / 20) * 255)
         if self.timer <= 0:
             self.active = False
+
+    def draw(self, screen):
+        # draw a laser beam with fading effect
+        laser_surface = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+        if self.timer > 20:
+            pygame.draw.line(laser_surface, (255, 50, 255, 255), self.start_pos, self.end_pos, 7)
+        else:
+            pygame.draw.line(laser_surface, (255, 50, 255, self.alpha), self.start_pos, self.end_pos, 3)
+        screen.blit(laser_surface, (0, 0))
