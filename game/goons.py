@@ -1,5 +1,6 @@
 # goons.py
 
+# import libraries
 import pygame
 import random
 
@@ -14,6 +15,7 @@ from .effects import LinearProjectile
 class Goon(Character):
     def __init__(self, x, y, slot_id):
         super().__init__(x, y)
+
         # goon specific info
         self.slot_id = slot_id
         self.box_background_color = (255, 75, 75)
@@ -116,6 +118,7 @@ class BasicGoon(Goon):
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
+
         # basic goon specific info
         self.real_health = 5
         self.visual_health = 5
@@ -129,6 +132,7 @@ class BasicGoon(Goon):
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
+
         # add action stats to lore text
         lore.append((f"Damage: {self.damage}", "normal"))
 
@@ -150,7 +154,8 @@ class TankyGoon(Goon):
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
-        # basic goon specific info
+
+        # tanky goon specific info
         self.real_health = 10
         self.visual_health = 10
         self.damage = 1
@@ -163,6 +168,7 @@ class TankyGoon(Goon):
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
+
         # add action stats to lore text
         lore.append((f"Damage: {self.damage}", "normal"))
 
@@ -184,7 +190,8 @@ class PowerfulGoon(Goon):
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
-        # basic goon specific info
+
+        # powerful goon specific info
         self.real_health = 5
         self.visual_health = 5
         self.damage = 2
@@ -197,5 +204,6 @@ class PowerfulGoon(Goon):
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
+
         # add action stats to lore text
         lore.append((f"Damage: {self.damage}", "normal"))

@@ -1,5 +1,6 @@
 # scenes.py
 
+# import libraries
 import pygame
 import random
 
@@ -676,13 +677,16 @@ class Chapter1CutScene():
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if self.next_button_rect.collidepoint(event.pos):
+
                     # advance to the next image if the lines for this image are done
                     if self.current_line >= len(self.script[self.current_image]["lines"])-1:
                         self.current_image += 1
                         self.current_line = 0
+
                         # advance to the next scene if the cutscene is done
                         if self.current_image >= len(self.script):
                             return BlankScene(self.fonts, self.font_cache)
+                        
                     # advance to the next line
                     else:
                         self.current_line += 1

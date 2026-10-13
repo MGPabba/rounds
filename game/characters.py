@@ -1,5 +1,6 @@
 # characters.py
 
+# import libraries
 import pygame
 import random
 import math

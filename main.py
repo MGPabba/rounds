@@ -1,5 +1,6 @@
 # main.py
 
+# import libraries
 import asyncio
 import pygame
 
@@ -17,8 +18,10 @@ from game.scenes import MainMenuScene
 async def main():
     # screen settings
     screen = pygame.display.set_mode((1200, 730))
+
     # title
     pygame.display.set_caption("Rounds")
+    
     # setup timer to control game speed
     clock = pygame.time.Clock()
 
@@ -61,6 +64,7 @@ async def main():
 
         # keeps the game from flickering
         pygame.display.flip()
+
         # prevents freezing in the web
         await asyncio.sleep(0)
     

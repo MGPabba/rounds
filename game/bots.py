@@ -1,5 +1,6 @@
 # bots.py
 
+# import libraries
 import pygame
 import random
 
@@ -28,6 +29,7 @@ from .effects import (
 class Bot(Character):
     def __init__(self, x, y):
         super().__init__(x, y)
+
         # bot specific info
         self.real_health = 10
         self.visual_health = 10
@@ -75,12 +77,15 @@ class Bot(Character):
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
+
         # add bot actions name and description to lore text
         for action in self.actions:
             lore.append((f"Action: {action['name']}", "normal"))
+
             # show different description for gun bot left gun if aiming is unlocked
             if action["name"] == "Left Gun" and action["aiming_unlocked"]:
                 action_description_lines = wrap_text("Description: An attack that fires at an enemy. The damage is based on the timing of the attack. The marker will go up and down until you attack. The damage is based on where the marker is.", fonts, 560)
+            
             else:
                 action_description_lines = wrap_text(f"Description: {action['description']}", fonts, 560)
             for i, line in enumerate(action_description_lines):
@@ -138,6 +143,7 @@ class Bot(Character):
 class GunBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
+
         # gun bot specific info
         self.name = "Gun Bot"
         self.description = "A bot with dual guns."
@@ -197,6 +203,7 @@ class GunBot(Bot):
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Left Gun":
+
             # if aiming is unlocked, find the damage
             if self.actions[0]["aiming_unlocked"]:
                 for zone in self.actions[0]["zones"]:
@@ -208,6 +215,7 @@ class GunBot(Bot):
             damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
             target_char.real_health -= damage
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage"))
+            
         elif chosen_action == "Right Gun":
             damage, reduction = target_char.damage_amount(self.actions[1]["damage"])
             target_char.real_health -= damage
@@ -257,10 +265,12 @@ class GunBot(Bot):
             zone_height = zone_heights[i]
             zone_position = max(40, above_zone_y - zone_height)
             actual_zone_height = above_zone_y - zone_position
+
             # if the current zone and previous zone have the same damage, merge them
             if i != 0 and damage_sequence[i-1] == damage:
                 self.actions[0]["zones"][-1]["position"] = zone_position
                 self.actions[0]["zones"][-1]["height"] += actual_zone_height
+
             # create a new zone
             else:
                 self.actions[0]["zones"].append({
@@ -290,9 +300,11 @@ class GunBot(Bot):
             zone_height = zone_heights[i]
             zone_position = below_zone_y
             actual_zone_height = min(zone_height, 413 - below_zone_y)
+
             # if the current zone and previous zone have the same damage, merge them
             if i != 0 and damage_sequence[i-1] == damage:
                 self.actions[0]["zones"][-1]["height"] += actual_zone_height
+
             # create a new zone
             else:
                 self.actions[0]["zones"].append({
@@ -368,6 +380,7 @@ class GunBot(Bot):
 class RicoBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
+
         # rico bot specific info
         self.name = "Rico Bot"
         self.description = "A bot that just loves balls."
@@ -441,6 +454,7 @@ class RicoBot(Bot):
 class ModBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
+
         # mod bot specific info
         self.name = "Mod Bot"
         self.description = "A bot full of mod power."
@@ -512,6 +526,7 @@ class ModBot(Bot):
 class ElementalBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
+
         # elemental bot specific info
         self.name = "Elemental Bot"
         self.description = "A bot that can manipulate the elements."
@@ -582,6 +597,7 @@ class ElementalBot(Bot):
 class LazerBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
+
         # lazer bot specific info
         self.name = "Lazer Bot"
         self.description = "A bot with the coolest laser powers."
@@ -644,6 +660,7 @@ class LazerBot(Bot):
     def perform_action(self, active_effects, target_list, chosen_action, laser_end):
         # perform action on target characters based on which action is chosen
         if chosen_action == "Pierce":
+
             # create laser projectile and damage all enemies hit by the laser
             active_effects.append(LaserProjectile((self.rect.centerx + self.actions[0]["projectile_offset"][0], self.rect.centery + self.actions[0]["projectile_offset"][1]), laser_end))
             for enemy in target_list:
@@ -651,12 +668,14 @@ class LazerBot(Bot):
                 enemy.real_health -= damage
                 enemy.take_damage(active_effects, damage, reduction)
                 self.actions[1]["barrage_charge"] += 1
+
             # check if barrage is charged and reset used status if it is
             if self.actions[1]["barrage_charge"] >= self.actions[1]["barrage_charge_needed"] and self.actions[1]["used"]:
                 self.actions[1]["used"] = False
                 active_effects.append(FloatingText((255, 50, 255), self.rect.x, self.rect.top - 20, "Barrage Ready!"))
         
         elif chosen_action == "Barrage":
+
             # damage all enemies on the field and reset barrage charge
             self.actions[1]["barrage_charge"] -= self.actions[1]["barrage_charge_needed"]
             for enemy in target_list:
@@ -700,6 +719,7 @@ class LazerBot(Bot):
 class ChaosBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
+
         # chaos bot specific info
         self.name = "Chaos Bot"
         self.description = "A bot full of powerful chaos, use carefully."
@@ -760,6 +780,7 @@ class ChaosBot(Bot):
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Random":
+
             # damage enemy or heal bot
             random_amount = random.randint(self.actions[0]["min_power"], self.actions[0]["max_power"])
             if isinstance(target_char, Bot):
@@ -784,6 +805,7 @@ class ChaosBot(Bot):
 class DuploBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
+
         # duplo bot specific info
         self.name = "Duplo Bot"
         self.description = "A bot made of doubling power."
@@ -836,6 +858,7 @@ class DuploBot(Bot):
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Charge":
+
             # if target character is self, increase damage
             if target_char == self:
                 self.actions[0]["damage"] *= 2
@@ -844,6 +867,7 @@ class DuploBot(Bot):
                 text_width = len(text) * 10
                 text_x = random.randint(self.rect.left, self.rect.right - text_width)
                 active_effects.append(FloatingText((255, 255, 0), text_x, self.rect.top + 10, text))
+
             # if target character is an enemy, deal damage and reset damage
             else:
                 damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
@@ -851,6 +875,7 @@ class DuploBot(Bot):
                 active_effects.append(ChargeProjectile((255, 255, 0), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage", self.actions[0]["projectile_radius"]))
                 self.actions[0]["damage"] = 1
                 self.actions[0]["projectile_radius"] = 2
+
         elif chosen_action == "Mark":
             active_effects.append(MarkProjectile((255, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["mark_hits_needed"], 0, "Mark"))
 
@@ -868,6 +893,7 @@ class DuploBot(Bot):
 class HealerBot(Bot):
     def __init__(self, x, y):
         super().__init__(x, y)
+
         # healer bot specific info
         self.name = "Healer Bot"
         self.description = "A bot thats been infused with healing magic."

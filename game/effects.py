@@ -1,5 +1,6 @@
 # effects.py
 
+# import libraries
 import pygame
 import random
 import math
@@ -64,6 +65,7 @@ class Projectile:
 class LinearProjectile(Projectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
+
         # linear projectile specific info
         self.reduction = reduction
         self.projectile_type = projectile_type
@@ -103,6 +105,7 @@ class LinearProjectile(Projectile):
 class ChargeProjectile(LinearProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type, max_radius):
         super().__init__(color, source_char, target_char, projectile_offset, amount, reduction, projectile_type)
+
         # charge projectile specific info
         self.max_radius = max_radius
         self.current_radius = 0
@@ -113,8 +116,10 @@ class ChargeProjectile(LinearProjectile):
         # projectile grows based on amount of charge
         if self.current_radius < self.max_radius:
             self.current_radius += 1
+
         else:
             super().update(active_effects)
+
             # border grows and shrinks as projectile moves towards target
             if self.border_phase == "Grow":
                 self.border += 1
@@ -133,12 +138,14 @@ class ChargeProjectile(LinearProjectile):
 class MarkProjectile(LinearProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type):
         super().__init__(color, source_char, target_char, projectile_offset, amount, reduction, projectile_type)
+
         # mark projectile specific info
         self.angle = 0
         self.rotation_speed = 0.5
     
     def update(self, active_effects):
         super().update(active_effects)
+
         # rotate projectile as it moves towards target
         self.angle -= self.rotation_speed
 
@@ -153,6 +160,7 @@ class MarkProjectile(LinearProjectile):
 class PercentageProjectile(LinearProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type):
         super().__init__(color, source_char, target_char, projectile_offset, amount, reduction, projectile_type)
+
         # percentage projectile specific info
         self.line_one_angle = 0
         self.line_two_angle = 0
@@ -183,6 +191,7 @@ class PercentageProjectile(LinearProjectile):
 class ShieldProjectile(Projectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
+
         # shield projectile specific info
         self.progress = 0
         self.control_x = 800
@@ -218,6 +227,7 @@ class ShieldProjectile(Projectile):
 class ArcProjectile(Projectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
+
         # arc projectile specific info
         self.frames = 80
         self.current_frame = 0
@@ -242,6 +252,7 @@ class HealProjectile(ArcProjectile):
     def update(self, active_effects):
         # move projectile in an arc towards target
         super().update()
+
         if self.target_char.name == "Rico Bot":
             max_x = math.sin(self.progress * math.pi) * (self.arc*0.5)
             curve_x = math.sin((self.progress**2) * math.pi) * (self.arc*0.5)
@@ -259,6 +270,7 @@ class HealProjectile(ArcProjectile):
 class BounceProjectile(ArcProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, base_amount, bounce_amount, enemies_hit):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
+
         # bounce projectile specific info
         self.reduction = reduction
         self.base_amount = base_amount
@@ -268,6 +280,7 @@ class BounceProjectile(ArcProjectile):
     def update(self, enemy_goons, active_effects):
         # move projectile in an arc towards target
         super().update()
+
         if len(self.enemies_hit) == 0:
             self.x = self.base_x + self.curve_y
             self.y = self.base_y - self.curve_y
@@ -298,6 +311,7 @@ class BounceProjectile(ArcProjectile):
 class GlitchyProjectile(Projectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
+
         # glitchy projectile specific info
         self.shake_x = 0
         self.shake_y = 0
@@ -312,6 +326,7 @@ class GlitchyProjectile(Projectile):
 class GlitchyDamageProjectile(GlitchyProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
+
         # glitchy damage projectile specific info
         self.reduction = reduction
         self.speed = 10
@@ -338,6 +353,7 @@ class GlitchyDamageProjectile(GlitchyProjectile):
 class GlitchyHealProjectile(GlitchyProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
+
         # glitchy heal projectile specific info
         self.movement = "Forward"
         self.speed = 7
@@ -380,6 +396,7 @@ class GlitchyHealProjectile(GlitchyProjectile):
 class GlitchyBlockProjectile(GlitchyProjectile):
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
+        
         # glitchy block projectile specific info
         self.movement = "Forward"
         self.speed = 20

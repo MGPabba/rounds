@@ -1,8 +1,10 @@
 # battle.py
 
+# import libraries
 import pygame
 import random
 
+# import game modules
 from .helper import dynamic_text, render_text
 from .effects import FloatingText
 
@@ -174,7 +176,7 @@ class LoreBox:
         return lore_height
 
 # ------------------------------
-# SHOP
+# SHOP STUFF
 # ------------------------------
 
 class ShopBox:
@@ -591,7 +593,7 @@ class ShopMenu:
         return menu_height
 
 # ------------------------------
-# CHARACTERS
+# CHARACTER ZONES
 # ------------------------------
 
 class PlayerZone:
