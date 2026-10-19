@@ -64,10 +64,20 @@ class Bot(Character):
                 self.animation_timer = 0
                 self.current_frame = (self.current_frame + 1) % len(self.idle_images)
 
-    def check_actions(self):
+    def check_actions(self, chosen_action):
+        # set the chosen action to used
+        for action in self.actions:
+            if chosen_action == action["name"]:
+                action["used"] = True
+                break
+
         # check if both actions are used
-        if self.actions[0]["used"] and self.actions[1]["used"]:
-            self.acted = True
+        if len(self.actions) > 1:
+            if self.actions[0]["used"] and self.actions[1]["used"]:
+                self.acted = True
+        else:
+            if self.actions[0]["used"]:
+                self.acted = True
     
     def reset_actions(self):
         # reset actions for the next turn
@@ -934,11 +944,6 @@ class HealerBot(Bot):
             }
         ]
 
-    def check_actions(self):
-        # check if action is used
-        if self.actions[0]["used"]:
-            self.acted = True
-    
     def perform_action(self, active_effects, target_char, chosen_action):
         # perform action on target character based on which action is chosen
         if chosen_action == "Heal":

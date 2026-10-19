@@ -778,15 +778,9 @@ class Execution:
                     active_bot.perform_action(active_effects, enemy_goons, chosen_action, None)
                 else:
                     active_bot.perform_action(active_effects, char, chosen_action)
-
-                # check if active bot used both actions
-                for action in active_bot.actions:
-                    if action["name"] == chosen_action:
-                        action["used"] = True
-                        break
-                active_bot.check_actions()
                 
                 # reset for next action
+                active_bot.check_actions(chosen_action)
                 active_bot = None
                 chosen_action = None
                 inspecting_character = None
@@ -827,11 +821,8 @@ class Execution:
                     enemies_hit.append(enemy)
             active_bot.perform_action(active_effects, enemies_hit, chosen_action, (end_x, end_y))
 
-            # check if active bot used both actions
-            active_bot.actions[0]["used"] = True
-            active_bot.check_actions()
-
             # reset for next action
+            active_bot.check_actions(chosen_action)
             active_bot = None
             chosen_action = None
             inspecting_character = None

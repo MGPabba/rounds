@@ -514,6 +514,10 @@ class EndlessModeScene():
                 break
         if not enemies_alive:
             self.battle_state = "Player Turn Over"
+            for bot in self.player_bots:
+                bot.acted = True
+                for action in bot.actions:
+                    action["used"] = True
         
         # change to enemy turn if player turn is over and all projectiles have reached their target
         if self.battle_state == "Player Turn Over":
@@ -829,6 +833,21 @@ class BattleScene():
         return self
 
     def update(self):
+        # change to game over if all enemies are dead
+        if self.battle_state != "Victory":
+            enemies_alive = False
+            for enemy in self.enemy_goons:
+                if enemy.real_health > 0:
+                    enemies_alive = True
+                    break
+            if not enemies_alive:
+                self.battle_state = "Victory"
+                self.active_effects.append(FloatingText((255, 255, 255), 460, 300, "Victory!"))
+                for bot in self.player_bots:
+                    bot.acted = False
+                    for action in bot.actions:
+                        action["used"] = False
+
         # change to enemy turn if player turn is over and all projectiles have reached their target
         if self.battle_state == "Player Turn Over":
             projectiles_effects_active = False
