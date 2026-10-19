@@ -253,11 +253,14 @@ class HealProjectile(ArcProjectile):
         # move projectile in an arc towards target
         super().update()
 
-        if self.target_char.name == "Rico Bot":
+        # move projectile in a different arc if target is self
+        if self.target_char.name in ["Rico Bot", "Healer Bot"]:
             max_x = math.sin(self.progress * math.pi) * (self.arc*0.5)
             curve_x = math.sin((self.progress**2) * math.pi) * (self.arc*0.5)
             self.x = self.base_x + (max_x + (max_x - curve_x))
             self.y = self.base_y - self.curve_y
+
+        # move projectile in an arc
         else:
             self.x = self.base_x + self.curve_y
             self.y = self.base_y - self.curve_y

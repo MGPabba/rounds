@@ -100,6 +100,10 @@ class Goon(Character):
                     else:
                         pygame.draw.rect(screen, (255, 255, 0), box_rect, 1)
 
+# ------------------------------
+# ENDLESS GOON CLASSES
+# ------------------------------
+
 class BasicGoon(Goon):
     # basic goon info
     name = "Basic Goon"
@@ -195,6 +199,46 @@ class PowerfulGoon(Goon):
         self.real_health = 5
         self.visual_health = 5
         self.damage = 2
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        damage, reduction = target.damage_amount(self.damage)
+        target.real_health -= damage
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Damage: {self.damage}", "normal"))
+
+# ------------------------------
+# STORY GOON CLASSES
+# ------------------------------
+
+class DummyGoon(Goon):
+    # dummy goon info
+    name = "Dummy Goon"
+    description = "A dummy robot that is used for testing purposes."
+    projectile_offset = (-40, -40)
+    min_gears = 5
+    max_gears = 5
+
+    # images
+    idle_image_path = "assets/goons/dummy_goon/dummy_goon_idle.png"
+    hurt_image_path = "assets/goons/dummy_goon/dummy_goon_hurt.png"
+    dead_image_path = "assets/goons/dummy_goon/dummy_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # dummy goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.damage = 1
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
