@@ -3,8 +3,10 @@
 # import libraries
 import pygame
 import random
+import math
 
 # import game modules
+from .abilities import MetalObject
 from .bots import GunBot, RicoBot, ModBot, ElementalBot, LazerBot, ChaosBot, DuploBot, HealerBot
 from .goons import BasicGoon, TankyGoon, PowerfulGoon, DummyGoon
 from .helper import wrap_text, dynamic_text, render_text
@@ -1104,6 +1106,8 @@ class TutorialBattleScene(BattleScene):
     def handle_input(self, events):
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN:
+
+                # get current tutorial step
                 step = self.tutorial_steps[self.current_step]
 
                 # update target scroll based on mouse scroll
@@ -1148,7 +1152,7 @@ class TutorialBattleScene(BattleScene):
 
                             # advance to the next scene if tutorial is done
                             if self.current_step >= len(self.tutorial_steps):
-                                return BlankScene(self.fonts, self.font_cache)
+                                return LabScene(self.fonts, self.font_cache, self.player_bots, self.gears)
 
                         # handle player zone events for bot selecting steps
                         elif step["next"] in ["select_gun_bot", "select_healer_bot"]:
@@ -1222,6 +1226,7 @@ class TutorialBattleScene(BattleScene):
     def update(self):
         super().update()
 
+        # get current tutorial step
         step = self.tutorial_steps[self.current_step]
 
         # advance to the next step if the round is finished in the finish round step
@@ -1266,6 +1271,7 @@ class TutorialBattleScene(BattleScene):
         # draw the sciengineer image
         screen.blit(self.sciengineer_image, (400, 80))
 
+        # get current tutorial step
         step = self.tutorial_steps[self.current_step]
 
         # draw dialogue box
@@ -1294,6 +1300,486 @@ class TutorialBattleScene(BattleScene):
             next_text = dynamic_text(self.font_cache, self.text_cache, "Next", 90, 50, (255, 255, 255))
             next_text_rect = next_text.get_rect(center=step["input_box"].center)
             screen.blit(next_text, next_text_rect)
+
+class AdventureScene():
+    def __init__(self, fonts, font_cache, player_bots, gears):
+        # scene texts
+        self.fonts = fonts
+        self.font_cache = font_cache
+        self.text_cache = {}
+
+        # get player bots and gears from previous scene
+        self.player_bots = player_bots
+        self.gears = gears
+
+        # initial list of effects
+        self.active_effects = []
+
+        # initial variables for party selection
+        self.party_selected = "All Bots"
+        self.party_menu_open = False
+
+        # initial variables for bots movement
+        self.speed = 5
+        self.moving = False
+
+        # all bots menu rectangle
+        self.all_bots_menu_rect = pygame.Rect(330, 200, 120, 150)
+
+        # load stuff for debugging
+        #self.gun_bot = GunBot(250, 150)
+        #self.healer_bot = HealerBot(250, 350)
+        #self.player_bots = [self.gun_bot, self.healer_bot]
+        #for bot in self.player_bots:
+        #    bot.load_images()
+
+    def handle_input(self, events):
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+
+                # handle party menu selection
+                if self.party_menu_open:
+
+                    # handle selection of All Bots
+                    if self.all_bots_menu_rect.collidepoint(event.pos):
+                        self.party_selected = "All Bots"
+                        self.party_rect.width = 100
+                        self.party_menu_open = False
+                        self.moving = True
+
+                        # check if the bots are stuck in a wall and move them left a bit
+                        for wall in self.walls:
+                            if self.party_rect.clipline(wall):
+                                self.party_rect.x -= 50
+                                break
+
+                        # check if the bots are still stuck in a wall and reset their position
+                        for wall in self.walls:
+                            if self.party_rect.clipline(wall):
+                                self.party_rect.topleft = self.starting_position
+
+                                # text animation to let the player know the bots were stuck
+                                text = "Stuck! Resetting position!"
+                                text_width = self.fonts[24].size(text)[0]
+                                text_height = self.fonts[24].size(text)[1]
+                                text_x = self.party_rect.centerx - text_width // 2
+                                text_y = self.party_rect.centery - text_height // 2
+                                self.active_effects.append(FloatingText((255, 150, 150), text_x, text_y, text))
+                                break
+
+                        return True
+                    
+                    # handle selection of individual bots
+                    for i, bot in enumerate(self.player_bots):
+                        bot_menu_rect = pygame.Rect(470 + i * 140, 200, 120, 150)
+                        if bot_menu_rect.collidepoint(event.pos):
+                            self.party_selected = bot.name
+                            self.party_rect.width = 50
+                            self.party_menu_open = False
+                            self.moving = True
+                            return True
+
+                # open part menu when clicked on the bots
+                elif self.party_rect.collidepoint(event.pos):
+                    self.party_menu_open = True
+                    self.moving = False
+                    return True
+            
+        return False
+
+    def update(self):
+        # calculate movement towards mouse position
+        mouse_pos = pygame.mouse.get_pos()
+        dx = mouse_pos[0] - self.party_rect.centerx
+        dy = mouse_pos[1] - self.party_rect.centery
+        distance = math.hypot(dx, dy)
+        speed = min(self.speed, distance)
+
+        # move the bots towards the mouse position when moving is enabled
+        if self.moving and distance > 0:
+            move_x = dx / distance * speed
+            move_y = dy / distance * speed
+            
+            # check for wall collisions and adjust position accordingly for x
+            self.party_rect.x += move_x
+            for wall in self.walls:
+                if self.party_rect.clipline(wall):
+                    self.party_rect.x -= move_x
+
+            # check for wall collisions and adjust position accordingly for y
+            self.party_rect.y += move_y
+            for wall in self.walls:
+                if self.party_rect.clipline(wall):
+                    self.party_rect.y -= move_y
+
+        # update and remove effects
+        for effect in self.active_effects[:]:
+            effect.update()
+            if not effect.active:
+                self.active_effects.remove(effect)
+
+    def draw(self, screen):
+        mouse_pos = pygame.mouse.get_pos()
+
+        # draw mouse position for debugging
+        #text = render_text(self.fonts, self.text_cache, 24, f"Mouse: {mouse_pos}", (255, 255, 255))
+        #screen.blit(text, (500, 100))
+
+        # draw all bots if it is selected
+        if self.party_selected == "All Bots":
+            bot_image_rect_1 = self.player_bots[0].mini_image.get_rect(center=(self.party_rect.centerx - 25, self.party_rect.centery))
+            bot_image_rect_2 = self.player_bots[1].mini_image.get_rect(center=(self.party_rect.centerx + 25, self.party_rect.centery))
+            screen.blit(self.player_bots[0].mini_image, bot_image_rect_1)
+            screen.blit(self.player_bots[1].mini_image, bot_image_rect_2)
+
+        # draw individual bot based on the selected bot
+        else:
+            for bot in self.player_bots:
+                if bot.name == self.party_selected:
+                    bot_image_rect = bot.mini_image.get_rect(center=self.party_rect.center)
+                    screen.blit(bot.mini_image, bot_image_rect)
+                    break
+
+        # draw party menu if it is open
+        if self.party_menu_open:
+
+            # draw party menu box
+            pygame.draw.rect(screen, (0, 0, 0), (310, 180, 580, 360), 0, 10)
+            pygame.draw.rect(screen, (5, 220, 255), (310, 180, 580, 360), 3, 10)
+
+            # draw all bots menu box
+            if self.all_bots_menu_rect.collidepoint(mouse_pos):
+                menu_color = (100, 100, 100)
+            else:
+                menu_color = (50, 50, 50)
+            pygame.draw.rect(screen, menu_color, self.all_bots_menu_rect, 0, 10)
+            pygame.draw.rect(screen, (5, 220, 255), self.all_bots_menu_rect, 3, 10)
+
+            # draw all bots menu text
+            menu_text = dynamic_text(self.font_cache, self.text_cache, "All Bots", 100, 30, (255, 255, 255))
+            menu_text_rect = menu_text.get_rect(center=(self.all_bots_menu_rect.centerx, self.all_bots_menu_rect.y + 25))
+            screen.blit(menu_text, menu_text_rect)
+
+            # draw all bots images
+            bot_image_rect_1 = self.player_bots[0].mini_image.get_rect(center=(self.all_bots_menu_rect.centerx - 20, self.all_bots_menu_rect.y + 85))
+            bot_image_rect_2 = self.player_bots[1].mini_image.get_rect(center=(self.all_bots_menu_rect.centerx + 20, self.all_bots_menu_rect.y + 85))
+            screen.blit(self.player_bots[0].mini_image, bot_image_rect_1)
+            screen.blit(self.player_bots[1].mini_image, bot_image_rect_2)
+
+            # draw individual bot menu boxes
+            for i, bot in enumerate(self.player_bots):
+
+                # draw bot menu box
+                bot_menu_rect = pygame.Rect(470 + i * 140, 200, 120, 150)
+                if bot_menu_rect.collidepoint(mouse_pos):
+                    menu_color = bot.button_hover_color
+                else:
+                    menu_color = bot.button_color
+                pygame.draw.rect(screen, menu_color, bot_menu_rect, 0, 10)
+                pygame.draw.rect(screen, (5, 220, 255), bot_menu_rect, 3, 10)
+
+                # draw bot menu text
+                bot_text = dynamic_text(self.font_cache, self.text_cache, bot.name, 100, 30, (255, 255, 255))
+                bot_text_rect = bot_text.get_rect(center=(bot_menu_rect.centerx, bot_menu_rect.y + 25))
+                screen.blit(bot_text, bot_text_rect)
+
+                # draw bot image
+                bot_image_rect = bot.idle_images[2].get_rect(center=(bot_menu_rect.centerx, bot_menu_rect.y + 85))
+                screen.blit(bot.idle_images[2], bot_image_rect)
+
+        # draw all active effects
+        for effect in self.active_effects:
+            effect.draw(screen, self.fonts, self.text_cache)
+
+class LabScene(AdventureScene):
+    def __init__(self, fonts, font_cache, player_bots, gears):
+        super().__init__(fonts, font_cache, player_bots, gears)
+
+        # load images for the lab scene
+        self.background_image = pygame.image.load("assets/chapter1/lab/background.png").convert_alpha()
+        self.background_image = pygame.transform.scale_by(self.background_image, 2)
+        self.sciengineer_image = pygame.image.load("assets/chapter1/lab/sciengineer.png").convert_alpha()
+        self.box_gears_image = pygame.image.load("assets/chapter1/lab/box_gears.png").convert_alpha()
+        self.box_empty_image = pygame.image.load("assets/chapter1/lab/box_empty.png").convert_alpha()
+
+        # bots movement rectangle
+        self.starting_position = (400, 200)
+        self.party_rect = pygame.Rect(400, 200, 100, 50)
+
+        # create walls for the lab scene to prevent the player from moving through them
+        self.walls = [
+            # (x1, y1, x2, y2)
+
+            # room walls
+            (0, 45, 1200, 45),      # top wall
+            (0, 680, 1200, 680),    # bottom wall
+            (35, 0, 35, 730),       # left wall
+            (1155, 0, 1155, 730),   # right wall
+
+            # bottom left table sides
+            (135, 460, 380, 470),   # top side
+            (115, 560, 355, 565),   # bottom side
+            (135, 460, 115, 560),   # left side
+            (380, 470, 355, 565),   # right side
+            (375, 490, 375, 550),   # right top leg
+            (345, 565, 345, 625),   # right bottom leg
+            (155, 565, 155, 580),   # left top leg
+            (125, 565, 125, 615),   # left bottom leg
+
+            # bottom right table sides
+            (520, 470, 1125, 475),  # top side
+            (500, 580, 1130, 595),  # bottom side
+            (520, 470, 500, 580),   # left side
+            (1125, 475, 1130, 595), # right side
+            (1105, 595, 1125, 605), # right top leg
+            (1130, 595, 1125, 660), # right bottom leg
+            (540, 580, 540, 595),   # left top leg
+            (515, 580, 500, 640),   # left bottom leg
+
+            # top left table sides
+            (120, 75, 320, 75),     # top side
+            (95, 140, 295, 140),    # bottom side
+            (120, 75, 95, 140),     # left side
+            (320, 75, 295, 140),    # right side
+            (315, 90, 320, 135),    # right top leg
+            (285, 140, 285, 180),   # right bottom leg
+            (130, 135, 130, 150),   # left top leg
+            (105, 140, 105, 185)    # left bottom leg
+        ]
+
+        # gears box rectangle and state
+        self.gears_box_rect = pygame.Rect(240, 70, 50, 50)
+        self.box_gears_taken = False
+
+        # metal door rectangle and health
+        self.door = MetalObject(pygame.Rect(1005, 0, 150, 50), "Metal Door", 5, [
+            "assets/chapter1/lab/door_1.png",
+            "assets/chapter1/lab/door_2.png",
+            "assets/chapter1/lab/door_3.png",
+            "assets/chapter1/lab/door_4.png",
+            "assets/chapter1/lab/door_5.png"
+        ])
+
+        # tutorial steps rectangles
+        self.dialogue_box_rect = pygame.Rect(100, 300, 400, 60)
+        self.next_button_rect = pygame.Rect(510, 300, 100, 60)
+
+        # initial variables for tutorial steps
+        self.current_step = 0
+        self.current_line = 0
+
+        # tutorial steps with instructions
+        self.tutorial_steps = [
+            {
+                "lines": [
+                    "Welcome to my lab.",
+                    "I think you are ready to start your journey.",
+                    "Go out there, defend our world.",
+                    "Find more bots to help you on your journey.",
+                    "I'm sure other sciengineers have been working on some cool tech.",
+                    "I think I have some extra gears by my table."
+                ],
+                "next": "next"
+            },
+            {
+                "lines": [
+                    "Grab them, they can help probably."
+                ],
+                "next": "take_gears"
+            },
+            {
+                "lines": [
+                    "Great!",
+                    "You have to break the metal door to get out though.",
+                    "I built it so no enemies could come in here.",
+                    "I think gun bot is powerful enough to break it."
+                ],
+                "next": "next"
+            },
+            {
+                "lines": [
+                    "Click on your bots and select gun bot, go near it, and break it."
+                ],
+                "next": "break_door"
+            },
+            {
+                "lines": [
+                    "Nice!",
+                    "I just realized that the aliens could have done the same thing and broken in.",
+                    "I guess I got lucky.",
+                    "But not everyone's as fortunate."
+                ],
+                "next": "next"
+            },
+            {
+                "lines": [
+                    "Good luck!"
+                ],
+                "next": "exit"
+            }
+        ]
+
+    def handle_input(self, events):
+        # get current tutorial step
+        step = self.tutorial_steps[self.current_step]
+
+        # if parent class handles input, don't handle the input here
+        if step["next"] in ["take_gears", "break_door", "exit"]:
+            clicked = super().handle_input(events)
+            if clicked:
+                return self
+
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.party_menu_open:
+
+                # handle tutorial steps based on the next action
+                if self.next_button_rect.collidepoint(event.pos) and step["next"] == "next":
+                    
+                    # advance to the next line
+                    self.current_line += 1
+
+                    # advance to the next step if the lines for this step are done
+                    if self.current_line >= len(step["lines"]):
+                        self.current_line = 0
+                        self.current_step += 1
+                        self.moving = True
+
+                # handle tutorial steps for taking gears
+                elif self.gears_box_rect.collidepoint(event.pos) and step["next"] == "take_gears":
+
+                    # check if the bots are close enough
+                    distance = math.hypot(self.party_rect.centerx - self.gears_box_rect.centerx, self.party_rect.centery - self.gears_box_rect.centery)
+                    if distance > 150:
+                        text = "Too Far"
+
+                    # take the gears
+                    else:
+                        text = "+10 Gears"
+                        self.gears += 10
+                        self.box_gears_taken = True
+                        self.current_step += 1
+                        self.moving = False
+
+                    # text animation
+                    text_width = self.fonts[24].size(text)[0]
+                    text_x = event.pos[0] - text_width // 2
+                    self.active_effects.append(FloatingText((150, 150, 150), text_x, event.pos[1], text))
+
+                # handle tutorial steps for breaking the door
+                elif self.door.rect.collidepoint(event.pos) and step["next"] == "break_door":
+                    self.door.take_damage(self.fonts, self.party_rect, self.party_selected, self.active_effects)
+
+                    # advance to the next step if the door is destroyed
+                    if self.door.destroyed:
+                        self.current_step += 1
+                        self.moving = False
+
+                # handle tutorial steps for exiting the lab
+                elif self.door.rect.collidepoint(event.pos) and step["next"] == "exit":
+
+                    # check if the bots are close enough
+                    distance = math.hypot(self.party_rect.centerx - self.door.rect.centerx, self.party_rect.centery - self.door.rect.centery)
+                    if distance > 150:
+                        text = "Too Far"
+                        text_width = self.fonts[24].size(text)[0]
+                        text_x = event.pos[0] - text_width // 2
+                        self.active_effects.append(FloatingText((150, 150, 150), text_x, event.pos[1], text))
+
+                    # check if all bots are selected
+                    elif self.party_selected != "All Bots":
+                        text = "All bots are needed to exit"
+                        text_width = self.fonts[24].size(text)[0]
+                        text_x = event.pos[0] - text_width // 2
+                        self.active_effects.append(FloatingText((150, 150, 150), text_x, event.pos[1], text))
+
+                    # exit the lab
+                    else:
+                        return BlankScene(self.fonts, self.font_cache)
+
+        return self
+
+    def draw(self, screen):
+        # draw background
+        screen.fill((0, 0, 0))
+        screen.blit(self.background_image, (0, 0))
+        mouse_pos = pygame.mouse.get_pos()
+
+        # draw box with gears taken or empty
+        if not self.box_gears_taken:
+            screen.blit(self.box_gears_image, self.gears_box_rect)
+        else:
+            screen.blit(self.box_empty_image, self.gears_box_rect)
+
+        # draw hover text for gears box
+        if self.gears_box_rect.collidepoint(mouse_pos):
+            text = "Gears Box"
+
+            # draw gears box hover box
+            text_width = self.fonts[15].size(text)[0]
+            hover_rect = pygame.Rect(0, 0, text_width + 10, 14)
+            hover_rect.left = mouse_pos[0]
+            hover_rect.bottom = mouse_pos[1]
+            pygame.draw.rect(screen, (0, 0, 0), hover_rect)
+            pygame.draw.rect(screen, (255, 255, 255), hover_rect, 1)
+
+            # draw gears box hover text
+            hover_text = render_text(self.fonts, self.text_cache, 15, text, (255, 255, 255))
+            hover_text_rect = hover_text.get_rect(center=hover_rect.center)
+            screen.blit(hover_text, hover_text_rect)
+
+        # draw door
+        self.door.draw(screen, self.fonts, self.text_cache)
+
+        # draw hover text for exit
+        if self.door.rect.collidepoint(mouse_pos) and self.door.destroyed:
+            text = "Exit"
+
+            # draw door hover box
+            text_width = self.fonts[15].size(text)[0]
+            hover_rect = pygame.Rect(0, 0, text_width + 10, 14)
+            hover_rect.left = mouse_pos[0]
+            hover_rect.bottom = mouse_pos[1]
+            pygame.draw.rect(screen, (0, 0, 0), hover_rect)
+            pygame.draw.rect(screen, (255, 255, 255), hover_rect, 1)
+
+            # draw door hover text
+            hover_text = render_text(self.fonts, self.text_cache, 15, text, (255, 255, 255))
+            hover_text_rect = hover_text.get_rect(center=hover_rect.center)
+            screen.blit(hover_text, hover_text_rect)
+
+        # draw sciengineer
+        screen.blit(self.sciengineer_image, (100, 200))
+
+        # draw dialogue box
+        pygame.draw.rect(screen, (100, 100, 255), self.dialogue_box_rect)
+        pygame.draw.rect(screen, (255, 255, 255), self.dialogue_box_rect, 3)
+
+        # get current tutorial step
+        step = self.tutorial_steps[self.current_step]
+        
+        # draw dialogue text
+        dialogue_lines = wrap_text(step["lines"][self.current_line], self.fonts, self.dialogue_box_rect.width - 20)
+        for i, line in enumerate(dialogue_lines):
+            dialogue_text = render_text(self.fonts, self.text_cache, 24, line, (255, 255, 255))
+            screen.blit(dialogue_text, (self.dialogue_box_rect.x + 10, self.dialogue_box_rect.y + 10 + i * 25))
+
+        # draw next button if the step is a next step
+        if step["next"] == "next":
+
+            # draw next button
+            if self.next_button_rect.collidepoint(mouse_pos):
+                button_color = (150, 150, 255)
+            else:
+                button_color = (100, 100, 255)
+            pygame.draw.rect(screen, button_color, self.next_button_rect)
+            pygame.draw.rect(screen, (255, 255, 255), self.next_button_rect, 3)
+
+            # draw next button text
+            next_text = dynamic_text(self.font_cache, self.text_cache, "Next", 90, 50, (255, 255, 255))
+            next_text_rect = next_text.get_rect(center=self.next_button_rect.center)
+            screen.blit(next_text, next_text_rect)
+
+        super().draw(screen)
 
 # ------------------------------
 # BLANK SCENE

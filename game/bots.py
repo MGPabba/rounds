@@ -150,7 +150,25 @@ class Bot(Character):
             elif battle_state not in ["Game Over", "Shop", "Lazer Movement"] and not self.acted:
                 pygame.draw.rect(screen, (0, 0, 255), self.rect, 3)
 
-class GunBot(Bot):
+# ------------------------------
+# STORY BOT CLASSES
+# ------------------------------
+
+class StoryBot(Bot):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+
+        # images
+        self.mini_image = None
+
+    def load_images(self):
+        super().load_images()
+
+        # load bot mini image
+        non_mini_image = pygame.image.load(self.mini_image_path).convert_alpha()
+        self.mini_image = pygame.transform.scale_by(non_mini_image, 0.5)
+
+class GunBot(StoryBot):
     def __init__(self, x, y):
         super().__init__(x, y)
 
@@ -178,6 +196,7 @@ class GunBot(Bot):
         self.active_image_path = "assets/bots/gun_bot/gun_bot_active.png"
         self.hurt_image_path = "assets/bots/gun_bot/gun_bot_hurt.png"
         self.dead_image_path = "assets/bots/gun_bot/gun_bot_dead.png"
+        self.mini_image_path = "assets/bots/gun_bot/gun_bot_idle_3.png"
 
         # action dictionary
         self.actions = [
@@ -382,6 +401,62 @@ class GunBot(Bot):
     
             # draw marker line
             pygame.draw.line(screen, (255, 255, 255), (40, self.actions[0]["marker_pos"]), (89, self.actions[0]["marker_pos"]), 3)
+
+class HealerBot(StoryBot):
+    def __init__(self, x, y):
+        super().__init__(x, y)
+
+        # healer bot specific info
+        self.name = "Healer Bot"
+        self.description = "A bot thats been infused with healing magic."
+
+        # colors
+        self.box_background_color = (50, 200, 50)
+        self.button_color = (100, 230, 100)
+        self.button_hover_color = (150, 250, 150)
+        self.text_used_color = (150, 250, 150)
+
+        # images
+        self.idle_images_path = [
+            "assets/bots/healer_bot/healer_bot_idle_1.png",
+            "assets/bots/healer_bot/healer_bot_idle_3.png",
+            "assets/bots/healer_bot/healer_bot_idle_2.png",
+            "assets/bots/healer_bot/healer_bot_idle_3.png",
+            "assets/bots/healer_bot/healer_bot_idle_4.png",
+            "assets/bots/healer_bot/healer_bot_idle_3.png",
+            "assets/bots/healer_bot/healer_bot_idle_5.png",
+            "assets/bots/healer_bot/healer_bot_idle_3.png"
+        ]
+        self.active_image_path = "assets/bots/healer_bot/healer_bot_active.png"
+        self.hurt_image_path = "assets/bots/healer_bot/healer_bot_hurt.png"
+        self.dead_image_path = "assets/bots/healer_bot/healer_bot_dead.png"
+        self.mini_image_path = "assets/bots/healer_bot/healer_bot_idle_3.png"
+
+        # action dictionary
+        self.actions = [
+            {
+                "name": "Heal",
+                "heal": 1,
+                "used": False,
+                "target_state": "Target Bot",
+                "image_path": "assets/bots/healer_bot/healer_bot_heal.png",
+                "image": None,
+                "description": "Heals a friendly bot.",
+                "scroll": 65,
+                "projectile_offset": (0, 0)
+            }
+        ]
+
+    def perform_action(self, active_effects, target_char, chosen_action):
+        # perform action on target character based on which action is chosen
+        if chosen_action == "Heal":
+            target_char.real_health += self.actions[0]["heal"]
+            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"]))
+
+    def lore_stats_text(self, lore, action):
+        # add action stats to lore text
+        if action["name"] == "Heal":
+            lore.append((f"Heal: {action['heal']}", "normal"))
 
 # ------------------------------
 # ENDLESS BOT CLASSES
@@ -895,62 +970,3 @@ class DuploBot(Bot):
             lore.append((f"Damage: {action['damage']}", "normal"))
         elif action["name"] == "Mark":
             lore.append((f"Mark Hits Needed: {action['mark_hits_needed']}", "normal"))
-
-# ------------------------------
-# STORY BOT CLASSES
-# ------------------------------
-
-class HealerBot(Bot):
-    def __init__(self, x, y):
-        super().__init__(x, y)
-
-        # healer bot specific info
-        self.name = "Healer Bot"
-        self.description = "A bot thats been infused with healing magic."
-
-        # colors
-        self.box_background_color = (50, 200, 50)
-        self.button_color = (100, 230, 100)
-        self.button_hover_color = (150, 250, 150)
-        self.text_used_color = (150, 250, 150)
-
-        # images
-        self.idle_images_path = [
-            "assets/bots/healer_bot/healer_bot_idle_1.png",
-            "assets/bots/healer_bot/healer_bot_idle_3.png",
-            "assets/bots/healer_bot/healer_bot_idle_2.png",
-            "assets/bots/healer_bot/healer_bot_idle_3.png",
-            "assets/bots/healer_bot/healer_bot_idle_4.png",
-            "assets/bots/healer_bot/healer_bot_idle_3.png",
-            "assets/bots/healer_bot/healer_bot_idle_5.png",
-            "assets/bots/healer_bot/healer_bot_idle_3.png"
-        ]
-        self.active_image_path = "assets/bots/healer_bot/healer_bot_active.png"
-        self.hurt_image_path = "assets/bots/healer_bot/healer_bot_hurt.png"
-        self.dead_image_path = "assets/bots/healer_bot/healer_bot_dead.png"
-
-        # action dictionary
-        self.actions = [
-            {
-                "name": "Heal",
-                "heal": 1,
-                "used": False,
-                "target_state": "Target Bot",
-                "image_path": "assets/bots/healer_bot/healer_bot_heal.png",
-                "image": None,
-                "description": "Heals a friendly bot.",
-                "scroll": 65,
-                "projectile_offset": (0, 0)
-            }
-        ]
-
-    def perform_action(self, active_effects, target_char, chosen_action):
-        # perform action on target character based on which action is chosen
-        if chosen_action == "Heal":
-            target_char.real_health += self.actions[0]["heal"]
-            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"]))
-
-    def lore_stats_text(self, lore, action):
-        # add action stats to lore text
-        if action["name"] == "Heal":
-            lore.append((f"Heal: {action['heal']}", "normal"))

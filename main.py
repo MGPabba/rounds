@@ -27,6 +27,7 @@ async def main():
 
     # setup fonts
     fonts = {
+        15: pygame.font.SysFont(None, 15),
         24: pygame.font.SysFont(None, 24),
         30: pygame.font.SysFont(None, 30),
         40: pygame.font.SysFont(None, 40),
@@ -59,7 +60,7 @@ async def main():
 
         # draws the current fps for debugging purposes
         fps = clock.get_fps()
-        fps_text = fonts[24].render(f"FPS: {fps:.2f}", True, (255, 255, 255))
+        fps_text = fonts[24].render(f"FPS: {fps:.2f}", True, (200, 200, 200))
         screen.blit(fps_text, (20, 20))
 
         # keeps the game from flickering
