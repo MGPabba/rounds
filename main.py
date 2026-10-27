@@ -9,11 +9,7 @@ pygame.init()
 pygame.font.init()
 
 # import game modules
-from game.scenes import MainMenuScene
-
-# ------------------------------
-# MAIN
-# ------------------------------
+from game.scenes import MainMenuScene, LabScene
 
 async def main():
     # screen settings
@@ -38,7 +34,7 @@ async def main():
         font_cache[size] = pygame.font.SysFont(None, size)
 
     # initalize the first scene
-    current_scene = MainMenuScene(fonts, font_cache)
+    current_scene = LabScene(fonts, font_cache, [], 0)
     running = True
 
     while running:

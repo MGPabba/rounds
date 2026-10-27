@@ -1327,11 +1327,11 @@ class AdventureScene():
         self.all_bots_menu_rect = pygame.Rect(330, 200, 120, 150)
 
         # load stuff for debugging
-        #self.gun_bot = GunBot(250, 150)
-        #self.healer_bot = HealerBot(250, 350)
-        #self.player_bots = [self.gun_bot, self.healer_bot]
-        #for bot in self.player_bots:
-        #    bot.load_images()
+        self.gun_bot = GunBot(250, 150)
+        self.healer_bot = HealerBot(250, 350)
+        self.player_bots = [self.gun_bot, self.healer_bot]
+        for bot in self.player_bots:
+            bot.load_images()
 
     def handle_input(self, events):
         for event in events:
@@ -1397,20 +1397,22 @@ class AdventureScene():
 
         # move the bots towards the mouse position when moving is enabled
         if self.moving and distance > 0:
-            move_x = dx / distance * speed
-            move_y = dy / distance * speed
+            move_x = round(dx / distance * speed)
+            move_y = round(dy / distance * speed)
             
             # check for wall collisions and adjust position accordingly for x
             self.party_rect.x += move_x
             for wall in self.walls:
                 if self.party_rect.clipline(wall):
                     self.party_rect.x -= move_x
+                    break
 
             # check for wall collisions and adjust position accordingly for y
             self.party_rect.y += move_y
             for wall in self.walls:
                 if self.party_rect.clipline(wall):
                     self.party_rect.y -= move_y
+                    break
 
         # update and remove effects
         for effect in self.active_effects[:]:
@@ -1503,8 +1505,8 @@ class LabScene(AdventureScene):
         self.box_empty_image = pygame.image.load("assets/chapter1/lab/box_empty.png").convert_alpha()
 
         # bots movement rectangle
-        self.starting_position = (400, 200)
         self.party_rect = pygame.Rect(400, 200, 100, 50)
+        self.starting_position = (400, 200)
 
         # create walls for the lab scene to prevent the player from moving through them
         self.walls = [
