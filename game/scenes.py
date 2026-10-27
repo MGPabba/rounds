@@ -1327,11 +1327,11 @@ class AdventureScene():
         self.all_bots_menu_rect = pygame.Rect(330, 200, 120, 150)
 
         # load stuff for debugging
-        self.gun_bot = GunBot(250, 150)
-        self.healer_bot = HealerBot(250, 350)
-        self.player_bots = [self.gun_bot, self.healer_bot]
-        for bot in self.player_bots:
-            bot.load_images()
+        #self.gun_bot = GunBot(250, 150)
+        #self.healer_bot = HealerBot(250, 350)
+        #self.player_bots = [self.gun_bot, self.healer_bot]
+        #for bot in self.player_bots:
+        #    bot.load_images()
 
     def handle_input(self, events):
         for event in events:
