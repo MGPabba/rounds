@@ -251,3 +251,49 @@ class DummyGoon(Goon):
 
         # add action stats to lore text
         lore.append((f"Damage: {self.damage}", "normal"))
+
+class PatrollingGoon(Goon):
+    # patrolling goon info
+    name = "Patrolling Goon"
+    description = "A patrolling robot that patrols the streets. It deals damage to a bot it finds."
+    projectile_offset = (-40, -40)
+    min_gears = 1
+    max_gears = 5
+
+    # images
+    idle_image_path = "assets/goons/patrolling_goon/patrolling_goon_idle.png"
+    hurt_image_path = "assets/goons/patrolling_goon/patrolling_goon_hurt.png"
+    dead_image_path = "assets/goons/patrolling_goon/patrolling_goon_dead.png"
+    mini_image_path = "assets/goons/patrolling_goon/patrolling_goon_idle.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+    mini_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # patrolling goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.damage = 1
+
+    @classmethod
+    def load_images(cls):
+        super().load_images()
+
+        # load goon mini image
+        cls.mini_image = pygame.image.load(cls.mini_image_path).convert_alpha()
+        cls.mini_image = pygame.transform.scale_by(cls.mini_image, 0.5)
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        damage, reduction = target.damage_amount(self.damage)
+        target.real_health -= damage
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Damage: {self.damage}", "normal"))

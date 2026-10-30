@@ -6,9 +6,9 @@ import random
 import math
 
 # import game modules
-from .abilities import MetalObject
+from .abilities import MetalObject, CheckpointRunes
 from .bots import GunBot, RicoBot, ModBot, ElementalBot, LazerBot, ChaosBot, DuploBot, HealerBot
-from .goons import BasicGoon, TankyGoon, PowerfulGoon, DummyGoon
+from .goons import BasicGoon, TankyGoon, PowerfulGoon, DummyGoon, PatrollingGoon
 from .helper import wrap_text, dynamic_text, render_text
 from .battle import ActionBox, LoreBox, ShopBox, ShopBar, ShopMenu, PlayerZone, EnemyZone, Execution
 from .effects import FloatingText, BounceProjectile, LaserProjectile, GlitchyBlockProjectile, ShieldProjectile
@@ -1489,10 +1489,6 @@ class AdventureScene():
                 bot_image_rect = bot.idle_images[2].get_rect(center=(bot_menu_rect.centerx, bot_menu_rect.y + 85))
                 screen.blit(bot.idle_images[2], bot_image_rect)
 
-        # draw all active effects
-        for effect in self.active_effects:
-            effect.draw(screen, self.fonts, self.text_cache)
-
 class LabScene(AdventureScene):
     def __init__(self, fonts, font_cache, player_bots, gears):
         super().__init__(fonts, font_cache, player_bots, gears)
@@ -1696,7 +1692,7 @@ class LabScene(AdventureScene):
 
                     # exit the lab
                     else:
-                        return BlankScene(self.fonts, self.font_cache)
+                        return OutsideLabScene(self.fonts, self.font_cache, self.player_bots, self.gears)
 
         return self
 
@@ -1782,6 +1778,227 @@ class LabScene(AdventureScene):
             screen.blit(next_text, next_text_rect)
 
         super().draw(screen)
+
+        # draw all active effects
+        for effect in self.active_effects:
+            effect.draw(screen, self.fonts, self.text_cache)
+
+class OutsideLabScene(AdventureScene):
+    def __init__(self, fonts, font_cache, player_bots, gears):
+        super().__init__(fonts, font_cache, player_bots, gears)
+
+        # load images for the outside lab scene
+        self.background_image = pygame.image.load("assets/chapter1/outside_lab/background.png").convert_alpha()
+        self.background_image = pygame.transform.scale_by(self.background_image, 2)
+
+        # bots movement rectangle
+        self.party_rect = pygame.Rect(950, 650, 100, 50)
+        self.starting_position = (950, 650)
+
+        # assign player bots to instance variables
+        self.gun_bot = player_bots[0]
+        self.healer_bot = player_bots[1]
+
+        # create walls for the outside lab scene to prevent the player from moving through them
+        self.walls = [
+            # (x1, y1, x2, y2)
+
+            # screen boundaries
+            (0, 0, 1200, 0),        # top boundary
+            (0, 0, 0, 730),         # left boundary
+            (1200, 0, 1200, 730),   # right boundary
+            (0, 730, 1200, 730),    # bottom boundary
+
+            # building walls
+            (0, 150, 325, 155),     # top left building bottom wall
+            (365, 155, 880, 155),   # top right building bottom wall
+            (880, 155, 880, 0),     # top right building right wall
+            (0, 720, 1200, 715),    # bottom building top wall
+
+            # runes sides
+            (570, 570, 650, 570),   # top side
+            (570, 570, 570, 640),   # left side
+            (650, 570, 650, 640),   # right side
+            (570, 640, 650, 640)    # bottom side
+        ]
+
+        # initial variables for the dialogue system
+        self.current_stage = "first_line"
+        self.current_line = 0
+
+        # dialogue lines for each stage
+        self.dialogue_lines = {
+            "first_line": {
+                "lines": [
+                    ("Ready to save the world! Let's go!", self.gun_bot)
+                ],
+                "draw_box": pygame.Rect(780, 575, 300, 60),
+                "input_box": pygame.Rect(1090, 575, 100, 60)
+            },
+            "checkpoint": {
+                "lines": [
+                    ("Look at those runes there.", self.healer_bot),
+                    ("I can use my healing magic to activate these runes.", self.healer_bot),
+                    ("It will set a checkpoint.", self.healer_bot),
+                    ("If we die in battle, we can respawn from here.", self.healer_bot),
+                    ("I need to place them in the right orientation.", self.healer_bot),
+                    ("Then do my magic and bam!", self.healer_bot),
+                    ("Let's go!", self.gun_bot)
+                ],
+                "draw_box": pygame.Rect(450, 500, 400, 60),
+                "input_box": pygame.Rect(860, 500, 100, 60)
+            },
+            "discovered": {
+                "lines": [
+                    ("You have been discovered by a patrolling goon.", None),
+                    ("Destroy it before it alerts the others.", None)
+                ],
+                "draw_box": pygame.Rect(350, 175, 400, 60),
+                "input_box": pygame.Rect(760, 175, 100, 60)
+            }
+        }
+
+        # checkpoint runes and state
+        self.checkpoint_runes = CheckpointRunes(pygame.Rect(570, 570, 80, 70))
+        self.checkpoint_activated = False
+
+        # create patrolling goon
+        self.patrolling_goon = PatrollingGoon(700, 250, 0)
+        self.patrolling_goon.load_images()
+        self.patrol_rect = pygame.Rect(700, 300, 50, 50)
+        self.patrol_destroyed = False
+        self.patrol_moving = True
+        self.patrol_direction = 1
+        self.patrol_speed = 8
+        self.patrol_range = 200
+
+    def handle_input(self, events):
+        # handle input for the checkpoint runes if they are open
+        if self.checkpoint_runes.open:
+            for event in events:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    self.moving, self.checkpoint_activated = self.checkpoint_runes.handle_input(event, self.fonts, self.active_effects, self.party_rect, self.party_selected, self.moving)
+            return self
+
+        # if parent class handles input, don't handle the input here
+        if self.current_stage == "free_play":
+            clicked = super().handle_input(events)
+            if clicked:
+                return self
+
+        for event in events:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not self.party_menu_open:
+
+                # handle dialogue lines based on the current stage
+                if self.current_stage in ["first_line", "checkpoint", "discovered"] and self.dialogue_lines[self.current_stage]["input_box"].collidepoint(event.pos):
+                    
+                    # advance to the next line
+                    self.current_line += 1
+
+                    # advance to next stage if the lines for this stage are done
+                    if self.current_line >= len(self.dialogue_lines[self.current_stage]["lines"]):
+                        self.current_line = 0
+                        if self.current_stage == "first_line":
+                            self.current_stage = "checkpoint"
+                        elif self.current_stage == "discovered":
+                            return BlankScene(self.fonts, self.font_cache)
+                        else:
+                            self.current_stage = "free_play"
+                            self.moving = True
+
+                # handle input for the checkpoint runes if in free play stage
+                elif self.current_stage == "free_play":
+                    self.moving, self.checkpoint_activated = self.checkpoint_runes.handle_input(event, self.fonts, self.active_effects, self.party_rect, self.party_selected, self.moving)
+
+        return self
+
+    def update(self):
+        super().update()
+
+        # update the checkpoint runes state
+        self.moving = self.checkpoint_runes.update(self.active_effects, self.moving)
+
+        # update the patrolling goon
+        if not self.patrol_destroyed and self.patrol_moving:
+            self.patrol_rect.x += self.patrol_direction * self.patrol_speed
+            if self.patrol_rect.x <= 1 or self.patrol_rect.x >= 1150:
+                self.patrol_direction *= -1
+
+            # check if the bots are withing patrol goon detection range
+            distance = math.hypot(self.patrol_rect.centerx - self.party_rect.centerx, self.patrol_rect.centery - self.party_rect.centery)
+            if distance < self.patrol_range and not self.checkpoint_runes.open:
+                self.moving = False
+                self.party_menu_open = False
+                self.patrol_moving = False
+                self.current_stage = "discovered"
+
+    def draw(self, screen):
+        # draw background
+        screen.fill((0, 0, 0))
+        screen.blit(self.background_image, (0, 0))
+
+        # draw the patrolling goon and its detection range
+        if not self.patrol_destroyed:
+            red_circle = pygame.Surface((self.patrol_range * 2, self.patrol_range * 2), pygame.SRCALPHA)
+            pygame.draw.circle(red_circle, (255, 0, 0, 50), (self.patrol_range, self.patrol_range), self.patrol_range)
+            screen.blit(red_circle, (self.patrol_rect.centerx - self.patrol_range, self.patrol_rect.centery - self.patrol_range))
+            screen.blit(self.patrolling_goon.mini_image, self.patrol_rect)
+
+        # draw an indicator when the player is discovered
+        if self.current_stage == "discovered":
+            exclamation_text = render_text(self.fonts, self.text_cache, 24, "!!", (255, 0, 0))
+            screen.blit(exclamation_text, (self.patrol_rect.centerx - 10, self.patrol_rect.centery - 30))
+
+        # draw dialogue system if in a dialogue stage
+        if self.current_stage in ["first_line", "checkpoint", "discovered"]:
+            draw_box = self.dialogue_lines[self.current_stage]["draw_box"]
+            curr_line = self.dialogue_lines[self.current_stage]["lines"][self.current_line]
+
+            # draw speaker if not a narrator
+            if curr_line[1] != None:
+
+                # draw speaker box
+                speaker_box = pygame.Rect(draw_box.x - draw_box.height - 10, draw_box.y, draw_box.height, draw_box.height)
+                pygame.draw.rect(screen, (100, 100, 255), speaker_box)
+                pygame.draw.rect(screen, (255, 255, 255), speaker_box, 3)
+
+                # draw speaker image
+                bot_image_rect = curr_line[1].mini_image.get_rect(center=speaker_box.center)
+                screen.blit(curr_line[1].mini_image, bot_image_rect)
+
+            # draw dialogue box
+            pygame.draw.rect(screen, (100, 100, 255), draw_box)
+            pygame.draw.rect(screen, (255, 255, 255), draw_box, 3)
+
+            # draw dialogue text
+            dialogue_lines = wrap_text(curr_line[0], self.fonts, draw_box.width - 20)
+            for i, line in enumerate(dialogue_lines):
+                dialogue_text = render_text(self.fonts, self.text_cache, 24, line, (255, 255, 255))
+                screen.blit(dialogue_text, (draw_box.x + 10, draw_box.y + 10 + i * 25))
+    
+            # draw next button
+            mouse_pos = pygame.mouse.get_pos()
+            input_box = self.dialogue_lines[self.current_stage]["input_box"]
+            if input_box.collidepoint(mouse_pos):
+                button_color = (150, 150, 255)
+            else:
+                button_color = (100, 100, 255)
+            pygame.draw.rect(screen, button_color, input_box)
+            pygame.draw.rect(screen, (255, 255, 255), input_box, 3)
+
+            # draw next button text
+            next_text = dynamic_text(self.font_cache, self.text_cache, "Next", 90, 50, (255, 255, 255))
+            next_text_rect = next_text.get_rect(center=input_box.center)
+            screen.blit(next_text, next_text_rect)
+
+        super().draw(screen)
+
+        # draw checkpoint runes
+        self.checkpoint_runes.draw(screen, self.fonts, self.text_cache)
+
+        # draw all active effects
+        for effect in self.active_effects:
+            effect.draw(screen, self.fonts, self.text_cache)
 
 # ------------------------------
 # BLANK SCENE
