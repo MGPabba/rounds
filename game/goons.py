@@ -6,7 +6,7 @@ import random
 
 # import game modules
 from .characters import Character
-from .effects import LinearProjectile
+from .effects import LinearProjectile, PatrolProjectile
 
 # ------------------------------
 # GOON CLASSES
@@ -256,7 +256,7 @@ class PatrollingGoon(Goon):
     # patrolling goon info
     name = "Patrolling Goon"
     description = "A patrolling robot that patrols the streets. It deals damage to a bot it finds."
-    projectile_offset = (-40, -40)
+    projectile_offset = (-16, -25)
     min_gears = 1
     max_gears = 5
 
@@ -290,7 +290,7 @@ class PatrollingGoon(Goon):
         # perform action on target character
         damage, reduction = target.damage_amount(self.damage)
         target.real_health -= damage
-        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        active_effects.append(PatrolProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)

@@ -846,9 +846,7 @@ class BattleScene():
                 self.battle_state = "Victory"
                 self.active_effects.append(FloatingText((255, 255, 255), 460, 300, "Victory!"))
                 for bot in self.player_bots:
-                    bot.acted = False
-                    for action in bot.actions:
-                        action["used"] = False
+                    bot.reset_actions()
 
         # change to enemy turn if player turn is over and all projectiles have reached their target
         if self.battle_state == "Player Turn Over":
@@ -1901,7 +1899,7 @@ class OutsideLabScene(AdventureScene):
                         if self.current_stage == "first_line":
                             self.current_stage = "checkpoint"
                         elif self.current_stage == "discovered":
-                            return BlankScene(self.fonts, self.font_cache)
+                            return OutsideLabBattleScene(self.fonts, self.font_cache, self.player_bots, self.gears, self)
                         else:
                             self.current_stage = "free_play"
                             self.moving = True
@@ -1999,6 +1997,36 @@ class OutsideLabScene(AdventureScene):
         # draw all active effects
         for effect in self.active_effects:
             effect.draw(screen, self.fonts, self.text_cache)
+
+class OutsideLabBattleScene(BattleScene):
+    def __init__(self, fonts, font_cache, player_bots, gears, main_scene):
+        super().__init__(fonts, font_cache)
+
+        # get the player bots, gears, and main scene from the previous scene
+        self.player_bots = player_bots
+        self.gears = gears
+        self.main_scene = main_scene
+        self.gun_bot = player_bots[0]
+        self.healer_bot = player_bots[1]
+
+        # create enemy goons
+        self.patrolling_goon = PatrollingGoon(700, 200, 0)
+        self.patrolling_goon.load_images()
+        self.enemy_goons = [self.patrolling_goon]
+        self.enemy_slots = [{"x": 700, "y": 250, "occupied": True}]
+
+    def handle_input(self, events):
+        super().handle_input(events)
+
+        # check if battle is over, update, and return to the main scene
+        if not self.enemy_goons and not self.active_effects:
+            self.main_scene.patrol_destroyed = True
+            self.main_scene.moving = True
+            self.main_scene.current_stage = "free_play"
+            self.main_scene.gears = self.gears
+            return self.main_scene
+
+        return self
 
 # ------------------------------
 # BLANK SCENE

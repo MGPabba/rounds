@@ -461,3 +461,31 @@ class LaserProjectile():
         else:
             pygame.draw.line(laser_surface, (255, 50, 255, self.alpha), self.start_pos, self.end_pos, 3)
         screen.blit(laser_surface, (0, 0))
+
+# ------------------------------
+# PROJECTILE CLASSES FOR PATROLLING GOON
+# ------------------------------
+
+class PatrolProjectile(LinearProjectile):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, projectile_type):
+        super().__init__(color, source_char, target_char, projectile_offset, amount, reduction, projectile_type)
+
+        # patrol projectile specific info
+        self.angle = 0
+        self.orbit_radius = 5
+        self.rotation_speed = 0.2
+    
+    def update(self, active_effects):
+        super().update(active_effects)
+
+        # rotate the circles counterclockwise as it moves towards target
+        self.angle -= self.rotation_speed
+        self.red_x = self.x + math.cos(self.angle) * self.orbit_radius
+        self.red_y = self.y + math.sin(self.angle) * self.orbit_radius
+        self.blue_x = self.x - math.cos(self.angle) * self.orbit_radius
+        self.blue_y = self.y - math.sin(self.angle) * self.orbit_radius
+
+    def draw(self, screen):
+        # draw two rotating circles projectile that moves straight towards target
+        pygame.draw.circle(screen, (255, 0, 0), (round(self.red_x), round(self.red_y)), 5)
+        pygame.draw.circle(screen, (0, 0, 255), (round(self.blue_x), round(self.blue_y)), 5)

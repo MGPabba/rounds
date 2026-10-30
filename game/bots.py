@@ -147,7 +147,7 @@ class Bot(Character):
         if self.rect.collidepoint(mouse_pos) and self.real_health > 0:
             if (battle_state in ["Target Bot", "Target Any"]) or (self.name == "Lazer Bot" and battle_state in ["Target Line", "Lazer Movement"]) or (self.name == "Duplo Bot" and battle_state == "Target Enemy or Self"):
                 pygame.draw.rect(screen, (0, 255, 0), self.rect, 3)
-            elif battle_state not in ["Game Over", "Shop", "Lazer Movement"] and not self.acted:
+            elif battle_state not in ["Lazer Movement", "Shop", "Game Over", "Victory"] and not self.acted:
                 pygame.draw.rect(screen, (0, 0, 255), self.rect, 3)
 
 # ------------------------------

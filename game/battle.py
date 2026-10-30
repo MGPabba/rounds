@@ -598,8 +598,8 @@ class ShopMenu:
 
 class PlayerZone:
     def handle_event(self, event, player_bots, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll, lore_target_scroll):
-        # dont allow selecting or deselecting bots if targeting a bot
-        if battle_state in ["Target Bot", "Target Any"]:
+        # dont allow selecting or deselecting bots if targeting a bot or if the battle is over
+        if battle_state in ["Target Bot", "Target Any", "Victory"]:
             return battle_state, active_bot, chosen_action, inspecting_character, lore_scroll, lore_target_scroll
 
         # handle valid bot selection or deselection
