@@ -8,7 +8,7 @@ import math
 # import game modules
 from .abilities import MetalObject, CheckpointRunes
 from .bots import GunBot, RicoBot, ModBot, ElementalBot, LazerBot, ChaosBot, DuploBot, HealerBot
-from .goons import BasicGoon, TankyGoon, PowerfulGoon, DummyGoon, PatrollingGoon
+from .goons import BasicGoon, TankyGoon, PowerfulGoon, HealingGoon, BounceGoon, FireGoon, RandomGoon, ChargeGoon, DummyGoon, PatrollingGoon
 from .helper import wrap_text, dynamic_text, render_text
 from .battle import ActionBox, LoreBox, ShopBox, ShopBar, ShopMenu, PlayerZone, EnemyZone, Execution
 from .effects import FloatingText, BounceProjectile, LaserProjectile, GlitchyBlockProjectile, ShieldProjectile
@@ -350,7 +350,7 @@ class EndlessModeScene():
         ]
 
         # different types of enemy
-        self.enemy_types = [BasicGoon, TankyGoon, PowerfulGoon]
+        self.enemy_types = [BasicGoon, TankyGoon, PowerfulGoon, HealingGoon, BounceGoon, FireGoon, RandomGoon, ChargeGoon]
 
         # initial list of characters and effects
         self.player_bots = [self.gun_bot, self.rico_bot]
@@ -569,7 +569,7 @@ class EndlessModeScene():
             if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile) or isinstance(effect, GlitchyBlockProjectile) or isinstance(effect, ShieldProjectile):
                 effect.update()
             elif isinstance(effect, BounceProjectile):
-                effect.update(self.enemy_goons, self.active_effects)
+                effect.update(self.player_bots, self.enemy_goons, self.active_effects)
             else:
                 effect.update(self.active_effects)
             if not effect.active:
@@ -884,7 +884,7 @@ class BattleScene():
             if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile) or isinstance(effect, GlitchyBlockProjectile) or isinstance(effect, ShieldProjectile):
                 effect.update()
             elif isinstance(effect, BounceProjectile):
-                effect.update(self.enemy_goons, self.active_effects)
+                effect.update(self.player_bots, self.enemy_goons, self.active_effects)
             else:
                 effect.update(self.active_effects)
             if not effect.active:

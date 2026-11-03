@@ -225,8 +225,9 @@ class ShieldProjectile(Projectile):
 # ------------------------------
 
 class ArcProjectile(Projectile):
-    def __init__(self, color, source_char, target_char, projectile_offset, amount):
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, source_char_type):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
+        self.source_char_type = source_char_type
 
         # arc projectile specific info
         self.frames = 80
@@ -246,24 +247,30 @@ class ArcProjectile(Projectile):
         pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), 5)
 
 class HealProjectile(ArcProjectile):
-    def __init__(self, color, source_char, target_char, projectile_offset, amount):
-        super().__init__(color, source_char, target_char, projectile_offset, amount)
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, source_char_type):
+        super().__init__(color, source_char, target_char, projectile_offset, amount, source_char_type)
 
     def update(self, active_effects):
         # move projectile in an arc towards target
         super().update()
 
         # move projectile in a different arc if target is self
-        if self.target_char.name in ["Rico Bot", "Healer Bot"]:
+        if self.target_char == self.source_char:
+            self.y = self.base_y - self.curve_y
             max_x = math.sin(self.progress * math.pi) * (self.arc*0.5)
             curve_x = math.sin((self.progress**2) * math.pi) * (self.arc*0.5)
-            self.x = self.base_x + (max_x + (max_x - curve_x))
-            self.y = self.base_y - self.curve_y
+            if self.source_char_type == "Bot":
+                self.x = self.base_x + (max_x + (max_x - curve_x))
+            else:
+                self.x = self.base_x - (max_x + (max_x - curve_x))
 
         # move projectile in an arc
         else:
-            self.x = self.base_x + self.curve_y
             self.y = self.base_y - self.curve_y
+            if self.source_char_type == "Bot":
+                self.x = self.base_x + self.curve_y
+            else:
+                self.x = self.base_x - self.curve_y
 
         # heal when projectile reaches
         if self.current_frame >= self.frames:
@@ -271,20 +278,19 @@ class HealProjectile(ArcProjectile):
             self.target_char.take_heal(active_effects, self.amount)
 
 class BounceProjectile(ArcProjectile):
-    def __init__(self, color, source_char, target_char, projectile_offset, amount, reduction, base_amount, bounce_amount, enemies_hit):
-        super().__init__(color, source_char, target_char, projectile_offset, amount)
+    def __init__(self, color, source_char, target_char, projectile_offset, amount, source_char_type, reduction, base_amount, bounce_amount, characters_hit):
+        super().__init__(color, source_char, target_char, projectile_offset, amount, source_char_type)
 
         # bounce projectile specific info
         self.reduction = reduction
         self.base_amount = base_amount
         self.bounce_amount = bounce_amount
-        self.enemies_hit = enemies_hit
+        self.characters_hit = characters_hit
     
-    def update(self, enemy_goons, active_effects):
+    def update(self, player_bots, enemy_goons, active_effects):
         # move projectile in an arc towards target
         super().update()
-
-        if len(self.enemies_hit) == 0:
+        if len(self.characters_hit) == 0:
             self.x = self.base_x + self.curve_y
             self.y = self.base_y - self.curve_y
         else:
@@ -293,19 +299,31 @@ class BounceProjectile(ArcProjectile):
         
         # damage when projectile reaches and bounce again if valid
         if self.current_frame >= self.frames:
+
+            # damage the character and mark it as hit
             self.target_char.take_damage(active_effects, self.amount, self.reduction)
             self.active = False
-            self.enemies_hit.append(self.target_char)
+            self.characters_hit.append(self.target_char)
+
+            # bounce again if it can still bounce
             if self.bounce_amount > 0:
+
+                # find valid targets to hit
                 valid_targets = []
-                for enemy in enemy_goons:
-                    if enemy.real_health > 0 and enemy not in self.enemies_hit:
-                        valid_targets.append(enemy)
+                if self.source_char_type == "Bot":
+                    characters = enemy_goons
+                else:
+                    characters = player_bots
+                for char in characters:
+                    if char.real_health > 0 and char not in self.characters_hit:
+                        valid_targets.append(char)
+
+                # bounce to a random valid target
                 if valid_targets:
                     next_target = random.choice(valid_targets)
                     damage, reduction = next_target.damage_amount(self.base_amount)
                     next_target.real_health -= damage
-                    active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), damage, reduction, self.base_amount, self.bounce_amount - 1, self.enemies_hit))
+                    active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), damage, self.source_char_type, reduction, self.base_amount, self.bounce_amount - 1, self.characters_hit))
 
 # ------------------------------
 # PROJECTILE CLASSES FOR CHAOS BOT

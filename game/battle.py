@@ -846,13 +846,24 @@ class Execution:
                         continue
                     
                     # attack a random alive bot
-                    bots_alive = []
-                    for bot in player_bots:
-                        if bot.real_health > 0:
-                            bots_alive.append(bot)
-                    if bots_alive:
-                        target = random.choice(bots_alive)
-                        goon.perform_attack(active_effects, target)
+                    if goon.target == "Bot":
+                        bots_alive = []
+                        for bot in player_bots:
+                            if bot.real_health > 0:
+                                bots_alive.append(bot)
+                        if bots_alive:
+                            target = random.choice(bots_alive)
+                            goon.perform_attack(active_effects, target)
+
+                    # buff a random alive goon
+                    elif goon.target == "Goon":
+                        goons_alive = []
+                        for g in enemy_goons:
+                            if g.real_health > 0:
+                                goons_alive.append(g)
+                        if goons_alive:
+                            target = random.choice(goons_alive)
+                            goon.perform_attack(active_effects, target)
 
             battle_state = "Enemy Turn Over"
         return battle_state

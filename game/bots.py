@@ -451,7 +451,7 @@ class HealerBot(StoryBot):
         # perform action on target character based on which action is chosen
         if chosen_action == "Heal":
             target_char.real_health += self.actions[0]["heal"]
-            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"]))
+            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"], "Bot"))
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -522,11 +522,11 @@ class RicoBot(Bot):
         # perform action on target character based on which action is chosen
         if chosen_action == "Heal":
             target_char.real_health += self.actions[0]["heal"]
-            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"]))
+            active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"], "Bot"))
         elif chosen_action == "Bounce":
             damage, reduction = target_char.damage_amount(self.actions[1]["damage"])
             target_char.real_health -= damage
-            active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], damage, reduction, self.actions[1]["damage"], self.actions[1]["bounce_amount"] - 1, []))
+            active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], damage, "Bot", reduction, self.actions[1]["damage"], self.actions[1]["bounce_amount"] - 1, []))
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text

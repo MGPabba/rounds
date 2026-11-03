@@ -6,7 +6,20 @@ import random
 
 # import game modules
 from .characters import Character
-from .effects import LinearProjectile, PatrolProjectile
+from .effects import (
+    FloatingText,
+    LinearProjectile,
+    ChargeProjectile,
+    MarkProjectile,
+    PercentageProjectile,
+    ShieldProjectile,
+    HealProjectile,
+    BounceProjectile,
+    GlitchyDamageProjectile,
+    GlitchyHealProjectile,
+    GlitchyBlockProjectile,
+    PatrolProjectile
+)
 
 # ------------------------------
 # GOON CLASSES
@@ -108,6 +121,7 @@ class BasicGoon(Goon):
     # basic goon info
     name = "Basic Goon"
     description = "A basic enemy goon that deals damage to a bot."
+    target = "Bot"
     projectile_offset = (-40, -40)
     min_gears = 1
     max_gears = 5
@@ -143,7 +157,8 @@ class BasicGoon(Goon):
 class TankyGoon(Goon):
     # tanky goon info
     name = "Tanky Goon"
-    description = "A tanky enemy goon that deals damage to a bot and has more health than a basic goon."
+    description = "A tanky enemy goon that has more health than a basic goon."
+    target = "Bot"
     projectile_offset = (-40, -40)
     min_gears = 1
     max_gears = 10
@@ -180,6 +195,7 @@ class PowerfulGoon(Goon):
     # powerful goon info
     name = "Powerful Goon"
     description = "A powerful enemy goon that deals more damage to a bot than a basic goon."
+    target = "Bot"
     projectile_offset = (-40, -40)
     min_gears = 1
     max_gears = 10
@@ -212,6 +228,208 @@ class PowerfulGoon(Goon):
         # add action stats to lore text
         lore.append((f"Damage: {self.damage}", "normal"))
 
+class HealingGoon(Goon):
+    # healing goon info
+    name = "Healing Goon"
+    description = "A healing goon that heals a fellow goon."
+    target = "Goon"
+    projectile_offset = (0, 0)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/healing_goon/healing_goon_idle.png"
+    hurt_image_path = "assets/goons/healing_goon/healing_goon_hurt.png"
+    dead_image_path = "assets/goons/healing_goon/healing_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # healing goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.heal = 1
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        target.real_health += self.heal
+        active_effects.append(HealProjectile((255, 0, 0), self, target, self.projectile_offset, self.heal, "Goon"))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Heal: {self.heal}", "normal"))
+
+class BounceGoon(Goon):
+    # bounce goon info
+    name = "Bounce Goon"
+    description = "This goon shoots a ball that bounces between bots dealing damage."
+    target = "Bot"
+    projectile_offset = (-29, -33)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/bounce_goon/bounce_goon_idle.png"
+    hurt_image_path = "assets/goons/bounce_goon/bounce_goon_hurt.png"
+    dead_image_path = "assets/goons/bounce_goon/bounce_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # bounce goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.damage = 1
+        self.bounce_amount = 2
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        damage, reduction = target.damage_amount(self.damage)
+        target.real_health -= damage
+        active_effects.append(BounceProjectile((255, 0, 0), self, target, self.projectile_offset, damage, "Goon", reduction, self.damage, self.bounce_amount-1, []))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Bounces: {self.bounce_amount}", "normal"))
+        lore.append((f"Damage: {self.damage}", "normal"))
+
+class FireGoon(Goon):
+    # fire goon info
+    name = "Fire Goon"
+    description = "This goon sets a bot on fire."
+    target = "Bot"
+    projectile_offset = (-5, -30)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/fire_goon/fire_goon_idle.png"
+    hurt_image_path = "assets/goons/fire_goon/fire_goon_hurt.png"
+    dead_image_path = "assets/goons/fire_goon/fire_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # fire goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.fire_rounds_amount = 3
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, self.fire_rounds_amount, 0, "Fire"))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Fire Rounds: {self.fire_rounds_amount}", "normal"))
+
+class RandomGoon(Goon):
+    # random goon info
+    name = "Random Goon"
+    description = "A goon that deals random amounts of damage to a bot."
+    target = "Bot"
+    projectile_offset = (-40, -45)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/random_goon/random_goon_idle.png"
+    hurt_image_path = "assets/goons/random_goon/random_goon_hurt.png"
+    dead_image_path = "assets/goons/random_goon/random_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # random goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.damage = 3
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        chosen_damage = random.randint(self.damage - 2, self.damage + 2)
+        damage, reduction = target.damage_amount(chosen_damage)
+        target.real_health -= damage
+        active_effects.append(GlitchyDamageProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Min Damage: {self.damage - 2}", "normal"))
+        lore.append((f"Max Damage: {self.damage + 2}", "normal"))
+
+class ChargeGoon(Goon):
+    # charge goon info
+    name = "Charge Goon"
+    description = "A goon that either charges, which doubles its damage, or attacks, which damages a bot."
+    target = "Bot"
+    projectile_offset = (3, 10)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/charge_goon/charge_goon_idle.png"
+    hurt_image_path = "assets/goons/charge_goon/charge_goon_hurt.png"
+    dead_image_path = "assets/goons/charge_goon/charge_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # charge goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.damage = 1
+        self.projectile_radius = 2
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        choice = random.choices(["charge", "attack"], weights=[60, 40])[0]
+
+        # if goon chooses to charge, double its damage
+        if choice == "charge":
+            self.damage *= 2
+            self.projectile_radius += 2
+            text = "Charged!"
+            text_width = len(text) * 10
+            text_x = random.randint(self.rect.left, self.rect.right - text_width)
+            active_effects.append(FloatingText((255, 0, 0), text_x, self.rect.top + 10, text))
+
+        # if goon chooses to attack, damage a bot
+        else:
+            damage, reduction = target.damage_amount(self.damage)
+            target.real_health -= damage
+            active_effects.append(ChargeProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage", self.projectile_radius))
+            self.damage = 1
+            self.projectile_radius = 2
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Damage: {self.damage}", "normal"))
+
 # ------------------------------
 # STORY GOON CLASSES
 # ------------------------------
@@ -220,6 +438,7 @@ class DummyGoon(Goon):
     # dummy goon info
     name = "Dummy Goon"
     description = "A dummy robot that is used for testing purposes."
+    target = "Bot"
     projectile_offset = (-40, -40)
     min_gears = 5
     max_gears = 5
@@ -256,6 +475,7 @@ class PatrollingGoon(Goon):
     # patrolling goon info
     name = "Patrolling Goon"
     description = "A patrolling robot that patrols the streets. It deals damage to a bot it finds."
+    target = "Bot"
     projectile_offset = (-16, -25)
     min_gears = 1
     max_gears = 5
