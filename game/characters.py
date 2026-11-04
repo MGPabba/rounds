@@ -21,11 +21,13 @@ class Character:
         # status effects
         self.fire_rounds = 0
         self.ice_hits = 0
-        self.frozen = False
+        self.frozen_rounds = 0
         self.mark_hits = 0
-        self.marked = False
+        self.marked_rounds = 0
         self.block = 0
-        self.shield = 0
+        self.block_rounds = 0
+        self.reduction_shield = 0
+        self.reduction_shield_rounds = 0
 
         # animation
         self.animation_timer = 0
@@ -41,13 +43,13 @@ class Character:
                 return 0, 0
 
         # double damage if marked
-        if self.marked:
+        if self.marked_rounds > 0:
             damage *= 2
         
         # reduce damage if shield is active
-        if self.shield > 0:
+        if self.reduction_shield > 0:
             og_damage = damage
-            damage = math.ceil(damage * self.shield)
+            damage = math.ceil(damage * self.reduction_shield)
             reduction = og_damage - damage
         else:
             reduction = 0
@@ -103,7 +105,10 @@ class Character:
         # add ice hits, freeze if enough hits, and display text animation
         self.ice_hits += 1
         if self.ice_hits >= ice_hits_needed:
-            self.frozen = True
+            if self.character_type == "Bot":
+                self.frozen_rounds = 2
+            elif self.character_type == "Goon":
+                self.frozen_rounds = 1
             self.ice_hits = 0
             text = "Frozen!"
         else:
@@ -116,7 +121,10 @@ class Character:
         # add mark hits, mark if enough hits, and display text animation
         self.mark_hits += 1
         if self.mark_hits >= mark_hits_needed:
-            self.marked = True
+            if self.character_type == "Bot":
+                self.marked_rounds = 2
+            elif self.character_type == "Goon":
+                self.marked_rounds = 1
             self.mark_hits = 0
             text = "Marked!"
         else:
@@ -132,6 +140,27 @@ class Character:
             self.shake_x = random.randint(-5, 5)
         else:
             self.shake_x = 0
+
+    def update_status_effects(self):
+        # update being frozen
+        if self.frozen_rounds > 0:
+            self.frozen_rounds -= 1
+
+        # update being marked
+        if self.marked_rounds > 0:
+            self.marked_rounds -= 1
+
+        # update having a block barrier
+        if self.block_rounds > 0:
+            self.block_rounds -= 1
+            if self.block_rounds == 0:
+                self.block = 0
+
+        # update having a reduction shield
+        if self.reduction_shield_rounds > 0:
+            self.reduction_shield_rounds -= 1
+            if self.reduction_shield_rounds == 0:
+                self.reduction_shield = 0
 
     def lore_text(self, fonts, lore):
         # add character name and description to lore text
@@ -156,7 +185,7 @@ class Character:
         if self.visual_health > 0:
 
             # draw overlay on character if frozen
-            if self.frozen:
+            if self.frozen_rounds > 0:
                 overlay = pygame.Surface((100, 100), pygame.SRCALPHA)
                 overlay.fill((0, 255, 255, 100))
                 screen.blit(overlay, self.rect)
@@ -173,16 +202,6 @@ class Character:
                 screen.blit(fire_text, (self.rect.x + 2, self.rect.bottom - 16))
 
             # draw "M" if marked
-            if self.marked:
+            if self.marked_rounds > 0:
                 mark_text = render_text(fonts, text_cache, 24, "M", (255, 255, 0))
                 screen.blit(mark_text, (self.rect.x - 16, self.rect.y - 20))
-
-            # draw block barrier if having a barrier
-            if self.block > 0:
-                pygame.draw.rect(screen, (255, 155, 0), (self.rect.x -10, self.rect.y, 110, 110), 3)
-                pygame.draw.rect(screen, (255, 155, 0), (self.rect.x, self.rect.y - 5, 105, 105), 3)
-                pygame.draw.rect(screen, (255, 155, 0), (self.rect.x, self.rect.y, 120, 120), 3)
-
-            # draw shield if having a shield
-            if self.shield > 0:
-                pygame.draw.circle(screen, (200, 200, 200), (self.rect.centerx, self.rect.centery), 55, 3)

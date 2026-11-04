@@ -8,7 +8,14 @@ import math
 # import game modules
 from .abilities import MetalObject, CheckpointRunes
 from .bots import GunBot, RicoBot, ModBot, ElementalBot, LazerBot, ChaosBot, DuploBot, HealerBot
-from .goons import BasicGoon, TankyGoon, PowerfulGoon, HealingGoon, BounceGoon, FireGoon, RandomGoon, ChargeGoon, DummyGoon, PatrollingGoon
+from .goons import (
+    BasicGoon, TankyGoon, PowerfulGoon,
+    PercentageGoon, RandomGoon, ChargeGoon,
+    FireGoon, IceGoon, MarkGoon,
+    ReductionGoon, BlockGoon,
+    HealingGoon, BounceGoon,
+    DummyGoon, PatrollingGoon
+)
 from .helper import wrap_text, dynamic_text, render_text
 from .battle import ActionBox, LoreBox, ShopBox, ShopBar, ShopMenu, PlayerZone, EnemyZone, Execution
 from .effects import FloatingText, BounceProjectile, LaserProjectile, GlitchyBlockProjectile, ShieldProjectile
@@ -350,7 +357,13 @@ class EndlessModeScene():
         ]
 
         # different types of enemy
-        self.enemy_types = [BasicGoon, TankyGoon, PowerfulGoon, HealingGoon, BounceGoon, FireGoon, RandomGoon, ChargeGoon]
+        self.enemy_types = [
+            BasicGoon, TankyGoon, PowerfulGoon,     # 0, 1, 2
+            PercentageGoon, RandomGoon, ChargeGoon, # 3, 4, 5
+            FireGoon, IceGoon, MarkGoon,            # 6, 7, 8
+            ReductionGoon, BlockGoon,               # 9, 10
+            HealingGoon, BounceGoon                 # 11, 12
+        ]
 
         # initial list of characters and effects
         self.player_bots = [self.gun_bot, self.rico_bot]
@@ -835,7 +848,7 @@ class BattleScene():
         return self
 
     def update(self):
-        # change to game over if all enemies are dead
+        # change to victory if all enemies are dead
         if self.battle_state != "Victory":
             enemies_alive = False
             for enemy in self.enemy_goons:

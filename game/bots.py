@@ -35,6 +35,7 @@ class Bot(Character):
         self.visual_health = 10
         self.acted = False
         self.current_frame = 0
+        self.character_type = "Bot"
         
         # images
         self.idle_images = []
@@ -58,7 +59,7 @@ class Bot(Character):
 
     def update_idle_animation(self):
         # update idle animation when character is alive and doing nothing
-        if self.visual_health > 0:
+        if self.visual_health > 0 and self.frozen_rounds == 0:
             self.animation_timer += 1
             if self.animation_timer >= self.animation_speed:
                 self.animation_timer = 0
@@ -149,6 +150,28 @@ class Bot(Character):
                 pygame.draw.rect(screen, (0, 255, 0), self.rect, 3)
             elif battle_state not in ["Lazer Movement", "Shop", "Game Over", "Victory"] and not self.acted:
                 pygame.draw.rect(screen, (0, 0, 255), self.rect, 3)
+
+        # draw character status effects
+        if self.visual_health > 0:
+
+            # draw boxes for number of ice hits and how many needed
+            if self.ice_hits > 0:
+                for i in range(2):
+                    box_rect = pygame.Rect(self.rect.right - 19 + (i * 9), self.rect.y - 11, 10, 10)
+                    if i < self.ice_hits:
+                        pygame.draw.rect(screen, (0, 255, 255), box_rect)
+                    else:
+                        pygame.draw.rect(screen, (0, 255, 255), box_rect, 1)
+
+            # draw block barrier if having a barrier
+            if self.block > 0:
+                pygame.draw.rect(screen, (255, 155, 0), (self.rect.x -10, self.rect.y, 110, 110), 3)
+                pygame.draw.rect(screen, (255, 155, 0), (self.rect.x, self.rect.y - 5, 105, 105), 3)
+                pygame.draw.rect(screen, (255, 155, 0), (self.rect.x, self.rect.y, 120, 120), 3)
+
+            # draw shield if having a shield
+            if self.reduction_shield > 0:
+                pygame.draw.circle(screen, (200, 200, 200), (self.rect.centerx, self.rect.centery), 55, 3)
 
 # ------------------------------
 # STORY BOT CLASSES

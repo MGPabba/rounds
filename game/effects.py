@@ -194,7 +194,10 @@ class ShieldProjectile(Projectile):
 
         # shield projectile specific info
         self.progress = 0
-        self.control_x = 800
+        if self.source_char.character_type == "Bot":
+            self.control_x = 800
+        else:
+            self.control_x = 400
         self.control_y1 = self.source_y + (self.target_y - self.source_y) * 0.1
         self.control_y2 = self.source_y + (self.target_y - self.source_y) * 0.9
 
@@ -214,7 +217,11 @@ class ShieldProjectile(Projectile):
         # apply shield when projectile reaches target
         if self.progress >= 1:
             self.active = False
-            self.target_char.shield = self.amount
+            self.target_char.reduction_shield = self.amount
+            if self.target_char.character_type == "Bot":
+                self.target_char.reduction_shield_rounds = 1
+            elif self.target_char.character_type == "Goon":
+                self.target_char.reduction_shield_rounds = 2
 
     def draw(self, screen):
         # draw a hollow circle projectile that moves in a curve
@@ -427,8 +434,11 @@ class GlitchyBlockProjectile(GlitchyProjectile):
 
         # move projectile forward
         if self.movement == "Forward":
-            self.x += 5
-            if self.x >= 600:
+            if self.source_char.character_type == "Bot":
+                self.x += 5
+            else:
+                self.x -= 5
+            if (self.source_char.character_type == "Bot" and self.x >= 600) or (self.source_char.character_type == "Goon" and self.x <= 600):
                 self.movement = "Backward"
                 self.distance_x = self.target_x - self.x
                 self.distance_y = self.target_y - self.y
@@ -445,6 +455,10 @@ class GlitchyBlockProjectile(GlitchyProjectile):
             if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
                 self.active = False
                 self.target_char.block = self.amount
+                if self.target_char.character_type == "Bot":
+                    self.target_char.block_rounds = 1
+                elif self.target_char.character_type == "Goon":
+                    self.target_char.block_rounds = 2
 
     def draw(self, screen):
         # draw a hollow rectangle projectile that shakes

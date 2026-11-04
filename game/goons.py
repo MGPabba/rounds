@@ -31,6 +31,7 @@ class Goon(Character):
 
         # goon specific info
         self.slot_id = slot_id
+        self.character_type = "Goon"
         self.box_background_color = (255, 75, 75)
 
         # animation
@@ -71,7 +72,7 @@ class Goon(Character):
 
         # move up and down
         char_y = self.rect.y
-        if not self.frozen:
+        if self.frozen_rounds == 0:
             char_y += self.float_offset
 
         # draw goon image
@@ -112,6 +113,16 @@ class Goon(Character):
                         pygame.draw.rect(screen, (255, 255, 0), box_rect)
                     else:
                         pygame.draw.rect(screen, (255, 255, 0), box_rect, 1)
+
+            # draw block barrier if having a barrier
+            if self.block > 0:
+                pygame.draw.rect(screen, (255, 0, 0), (self.rect.x -10, self.rect.y, 110, 110), 3)
+                pygame.draw.rect(screen, (255, 0, 0), (self.rect.x, self.rect.y - 5, 105, 105), 3)
+                pygame.draw.rect(screen, (255, 0, 0), (self.rect.x, self.rect.y, 120, 120), 3)
+
+            # draw shield if having a shield
+            if self.reduction_shield > 0:
+                pygame.draw.circle(screen, (255, 0, 0), (self.rect.centerx, self.rect.centery), 55, 3)
 
 # ------------------------------
 # ENDLESS GOON CLASSES
@@ -429,6 +440,181 @@ class ChargeGoon(Goon):
 
         # add action stats to lore text
         lore.append((f"Damage: {self.damage}", "normal"))
+
+class PercentageGoon(Goon):
+    # percentage goon info
+    name = "Percentage Goon"
+    description = "A goon that deals damage to a bot based on its current health. The amount of damage is rounded down with a minimum of 1 damage."
+    target = "Bot"
+    projectile_offset = (-24, -36)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/percentage_goon/percentage_goon_idle.png"
+    hurt_image_path = "assets/goons/percentage_goon/percentage_goon_hurt.png"
+    dead_image_path = "assets/goons/percentage_goon/percentage_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # percentage goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.damage = 25
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        damage, reduction = target.damage_amount(max(1, int(target.real_health * (self.damage / 100))))
+        target.real_health -= damage
+        active_effects.append(PercentageProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Damage: {self.damage}%", "normal"))
+
+class IceGoon(Goon):
+    # ice goon info
+    name = "Ice Goon"
+    description = "A goon that fires an ice projectile at a bot. After the bot has been hit multiple times, it will be frozen and cannot attack for a round."
+    target = "Bot"
+    projectile_offset = (-3, -33)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/ice_goon/ice_goon_idle.png"
+    hurt_image_path = "assets/goons/ice_goon/ice_goon_hurt.png"
+    dead_image_path = "assets/goons/ice_goon/ice_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # ice goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, 2, 0, "Ice"))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append(("Ice Hits Needed: 2", "normal"))
+
+class MarkGoon(Goon):
+    # mark goon info
+    name = "Mark Goon"
+    description = "This goon marks a bot. A marked bot takes double damage from all sources for a round."
+    target = "Bot"
+    projectile_offset = (-25, -24)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/mark_goon/mark_goon_idle.png"
+    hurt_image_path = "assets/goons/mark_goon/mark_goon_hurt.png"
+    dead_image_path = "assets/goons/mark_goon/mark_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # mark goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        active_effects.append(MarkProjectile((255, 0, 0), self, target, self.projectile_offset, 1, 0, "Mark"))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append(("Mark Hits Needed: 1", "normal"))
+
+class ReductionGoon(Goon):
+    # reduction goon info
+    name = "Reduction Goon"
+    description = "This goon gives a fellow goon a damage reduction shield."
+    target = "Goon"
+    projectile_offset = (-34, 0)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/reduction_goon/reduction_goon_idle.png"
+    hurt_image_path = "assets/goons/reduction_goon/reduction_goon_hurt.png"
+    dead_image_path = "assets/goons/reduction_goon/reduction_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # reduction goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.reduction_shield_amount = 0.5
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        active_effects.append(ShieldProjectile((255, 0, 0), self, target, self.projectile_offset, self.reduction_shield_amount))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Damage Reduction: {round((1-self.reduction_shield_amount) * 100)}%", "normal"))
+
+class BlockGoon(Goon):
+    # block goon info
+    name = "Block Goon"
+    description = "This goon gives a fellow goon a block barrier."
+    target = "Goon"
+    projectile_offset = (-36, -16)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/block_goon/block_goon_idle.png"
+    hurt_image_path = "assets/goons/block_goon/block_goon_hurt.png"
+    dead_image_path = "assets/goons/block_goon/block_goon_dead.png"
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # block goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.block_amount = 50
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        active_effects.append(GlitchyBlockProjectile((255, 0, 0), self, target, self.projectile_offset, self.block_amount))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Block Chance: {self.block_amount}%", "normal"))
 
 # ------------------------------
 # STORY GOON CLASSES

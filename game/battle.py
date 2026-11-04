@@ -842,7 +842,7 @@ class Execution:
                 if goon.real_health > 0:
 
                     # skip the enemy turn if frozen
-                    if goon.frozen:
+                    if goon.frozen_rounds > 0:
                         continue
                     
                     # attack a random alive bot
@@ -886,10 +886,10 @@ class Execution:
         for bot in player_bots:
             bot.reset_actions()
         for char in player_bots + enemy_goons:
-            char.frozen = False
-            char.marked = False
-            char.block = 0
-            char.shield = 0
+            char.update_status_effects()
+        for bot in player_bots:
+            if bot.frozen_rounds > 0:
+                bot.acted = True
         gun_bot.reset_gun_aiming()
         battle_state = "Player Turn"
         rounds += 1
@@ -906,5 +906,14 @@ class Execution:
 
         # display round number for new round
         active_effects.append(FloatingText((255, 255, 255), 460, 300, f"Round: {rounds}"))
+
+        # change to player turn over if all bots are frozen
+        bots_frozen = True
+        for bot in player_bots:
+            if bot.real_health > 0 and bot.frozen_rounds == 0:
+                bots_frozen = False
+                break
+        if bots_frozen:
+            battle_state = "Player Turn Over"
 
         return battle_state, gears, rounds
