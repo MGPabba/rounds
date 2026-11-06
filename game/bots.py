@@ -235,6 +235,7 @@ class GunBot(StoryBot):
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/gun_bot/gun_bot_left_gun.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/gun_bot/gun_bot_left_gun_sound.mp3"),
                 "description": "A basic attack that fires at an enemy.",
                 "scroll": 65,
                 "projectile_offset": (-20, -49)
@@ -246,6 +247,7 @@ class GunBot(StoryBot):
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/gun_bot/gun_bot_right_gun.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/gun_bot/gun_bot_right_gun_sound.mp3"),
                 "description": "A basic attack that fires at an enemy.",
                 "scroll": 155,
                 "projectile_offset": (35, -18)
@@ -267,11 +269,13 @@ class GunBot(StoryBot):
             damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
             target_char.real_health -= damage
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage"))
+            self.actions[0]["sound"].play()
             
         elif chosen_action == "Right Gun":
             damage, reduction = target_char.damage_amount(self.actions[1]["damage"])
             target_char.real_health -= damage
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], damage, reduction, "Damage"))
+            self.actions[1]["sound"].play()
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -464,6 +468,7 @@ class HealerBot(StoryBot):
                 "target_state": "Target Bot",
                 "image_path": "assets/bots/healer_bot/healer_bot_heal.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/healer_bot/healer_bot_heal_sound.mp3"),
                 "description": "Heals a friendly bot.",
                 "scroll": 65,
                 "projectile_offset": (0, 0)
@@ -475,6 +480,7 @@ class HealerBot(StoryBot):
         if chosen_action == "Heal":
             target_char.real_health += self.actions[0]["heal"]
             active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"], "Bot"))
+            self.actions[0]["sound"].play()
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -523,6 +529,7 @@ class RicoBot(Bot):
                 "target_state": "Target Bot",
                 "image_path": "assets/bots/rico_bot/rico_bot_heal.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/rico_bot/rico_bot_heal_sound.mp3"),
                 "description": "Shoots a healing ball that heals a friendly bot.",
                 "scroll": 65,
                 "projectile_offset": (37, -21)
@@ -535,6 +542,7 @@ class RicoBot(Bot):
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/rico_bot/rico_bot_bounce.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/rico_bot/rico_bot_bounce_sound.mp3"),
                 "description": "Shoots a bouncy ball that bounces between enemies dealing damage.",
                 "scroll": 155,
                 "projectile_offset": (35, -20)
@@ -546,10 +554,12 @@ class RicoBot(Bot):
         if chosen_action == "Heal":
             target_char.real_health += self.actions[0]["heal"]
             active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"], "Bot"))
+            self.actions[0]["sound"].play()
         elif chosen_action == "Bounce":
             damage, reduction = target_char.damage_amount(self.actions[1]["damage"])
             target_char.real_health -= damage
             active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], damage, "Bot", reduction, self.actions[1]["damage"], self.actions[1]["bounce_amount"] - 1, []))
+            self.actions[1]["sound"].play()
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -597,6 +607,7 @@ class ModBot(Bot):
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/mod_bot/mod_bot_percentage.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/mod_bot/mod_bot_percentage_sound.mp3"),
                 "description": "Shoots a percentage projectile that damages an enemy. The amount of damage is based on the percentage of the enemy's current health. The amount of damage is rounded down with a minimum of 1 damage.",
                 "scroll": 65,
                 "projectile_offset": (-22, -26)
@@ -608,6 +619,7 @@ class ModBot(Bot):
                 "target_state": "Target Bot",
                 "image_path": "assets/bots/mod_bot/mod_bot_shield.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/mod_bot/mod_bot_shield_sound.mp3"),
                 "description": "Shoots a shield projectile that creates a shield around a friendly bot. The shield reduces enemy damage for one round. The damage taken is rounded up.",
                 "scroll": 215,
                 "projectile_offset": (21, 19)
@@ -621,8 +633,10 @@ class ModBot(Bot):
             damage, reduction = target_char.damage_amount(percentage_damage)
             target_char.real_health -= damage
             active_effects.append(PercentageProjectile((200, 200, 200), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage"))
+            self.actions[0]["sound"].play()
         elif chosen_action == "Shield":
             active_effects.append(ShieldProjectile((200, 200, 200), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["shield"]))
+            self.actions[1]["sound"].play()
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -670,6 +684,7 @@ class ElementalBot(Bot):
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/elemental_bot/elemental_bot_fire.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/elemental_bot/elemental_bot_fire_sound.mp3"),
                 "description": "Shoots a fire projectile at an enemy. Sets the enemy on fire, dealing damage over time. The fire does damage at the end of the round.",
                 "scroll": 65,
                 "projectile_offset": (-22, 11)
@@ -681,6 +696,7 @@ class ElementalBot(Bot):
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/elemental_bot/elemental_bot_ice.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/elemental_bot/elemental_bot_ice_sound.mp3"),
                 "description": "Shoots an ice projectile at an enemy. After the enemy has been hit multiple times, it will be frozen and cannot attack for a round.",
                 "scroll": 220,
                 "projectile_offset": (10, 13)
@@ -691,8 +707,10 @@ class ElementalBot(Bot):
         # perform action on target character based on which action is chosen
         if chosen_action == "Fire":
             active_effects.append(LinearProjectile((255, 0, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["fire_rounds_amount"], 0, "Fire"))
+            self.actions[0]["sound"].play()
         elif chosen_action == "Ice":
             active_effects.append(LinearProjectile((0, 255, 255), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["ice_hits_needed"], 0, "Ice"))
+            self.actions[1]["sound"].play()
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -741,6 +759,7 @@ class LazerBot(Bot):
                 "target_state": "Target Line",
                 "image_path": "assets/bots/lazer_bot/lazer_bot_pierce.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/lazer_bot/lazer_bot_pierce_sound.mp3"),
                 "description": "Fires a laser beam that can pierce through multiple enemies in a straight line. The laser beam can be aimed with the mouse position. Click to fire the laser beam and all enemies in the line will take damage. Click on lazer bot to enter into movement mode. While in movement mode, you can move lazer bot up and down with the mouse position. Click on lazer bot again to exit movement mode. You can use movement mode to have better aim with the laser beam.",
                 "scroll": 65,
                 "projectile_offset": (11, -1)
@@ -754,6 +773,7 @@ class LazerBot(Bot):
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/lazer_bot/lazer_bot_barrage.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/lazer_bot/lazer_bot_barrage_sound.mp3"),
                 "description": "Fires a laser beam at every enemy in the battle. This action can only be used after charging up the barrage. Each enemy hit with the Pierce action will charge up the barrage.",
                 "scroll": 275,
                 "projectile_offset": (-12, -8)
@@ -771,6 +791,7 @@ class LazerBot(Bot):
 
             # create laser projectile and damage all enemies hit by the laser
             active_effects.append(LaserProjectile((self.rect.centerx + self.actions[0]["projectile_offset"][0], self.rect.centery + self.actions[0]["projectile_offset"][1]), laser_end))
+            self.actions[0]["sound"].play()
             for enemy in target_list:
                 damage, reduction = enemy.damage_amount(self.actions[0]["damage"])
                 enemy.real_health -= damage
@@ -791,6 +812,7 @@ class LazerBot(Bot):
                     damage, reduction = enemy.damage_amount(self.actions[1]["damage"])
                     enemy.real_health -= damage
                     active_effects.append(LaserProjectile((self.rect.centerx + self.actions[1]["projectile_offset"][0], self.rect.centery + self.actions[1]["projectile_offset"][1]), (enemy.rect.centerx, enemy.rect.centery)))
+                    self.actions[1]["sound"].play()
                     enemy.take_damage(active_effects, damage, reduction)
 
     def lore_stats_text(self, lore, action):
@@ -860,6 +882,7 @@ class ChaosBot(Bot):
                 "target_state": "Target Any",
                 "image_path": "assets/bots/chaos_bot/chaos_bot_random.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/chaos_bot/chaos_bot_random_sound.mp3"),
                 "description": "Shoots a glitchy projectile that can heal a friendly bot or damage an enemy. The amount of healing or damage is random.",
                 "scroll": 65,
                 "projectile_offset": (-6, 6)
@@ -871,6 +894,7 @@ class ChaosBot(Bot):
                 "target_state": "Target Bot",
                 "image_path": "assets/bots/chaos_bot/chaos_bot_barrier.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/chaos_bot/chaos_bot_barrier_sound.mp3"),
                 "description": "Shoots a glitchy projectile that creates a barrier around a friendly bot. The barrier has a chance to block enemy damage for one round.",
                 "scroll": 200,
                 "projectile_offset": (-5, 6)
@@ -891,6 +915,7 @@ class ChaosBot(Bot):
 
             # damage enemy or heal bot
             random_amount = random.randint(self.actions[0]["min_power"], self.actions[0]["max_power"])
+            self.actions[0]["sound"].play()
             if isinstance(target_char, Bot):
                 target_char.real_health += random_amount
                 active_effects.append(GlitchyHealProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], random_amount))
@@ -901,6 +926,7 @@ class ChaosBot(Bot):
                 
         elif chosen_action == "Barrier":
             active_effects.append(GlitchyBlockProjectile((255, 155, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["block"]))
+            self.actions[1]["sound"].play()
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -946,6 +972,8 @@ class DuploBot(Bot):
                 "target_state": "Target Enemy or Self",
                 "image_path": "assets/bots/duplo_bot/duplo_bot_charge.png",
                 "image": None,
+                "sound_charge": pygame.mixer.Sound("assets/bots/duplo_bot/duplo_bot_charge_charge_sound.mp3"),
+                "sound_attack": pygame.mixer.Sound("assets/bots/duplo_bot/duplo_bot_charge_attack_sound.mp3"),
                 "description": "Charge or attack. Click on Duplo Bot to charge. Charging doubles the damage. Click on an enemy to attack. The damage will reset to 1 after attacking.",
                 "scroll": 65,
                 "projectile_offset": (26, -28)
@@ -957,6 +985,7 @@ class DuploBot(Bot):
                 "target_state": "Target Enemy",
                 "image_path": "assets/bots/duplo_bot/duplo_bot_mark.png",
                 "image": None,
+                "sound": pygame.mixer.Sound("assets/bots/duplo_bot/duplo_bot_mark_sound.mp3"),
                 "description": "Shoots a marker at an enemy. After the enemy has been hit multiple times, it will be marked and take double damage from all sources for a round.",
                 "scroll": 195,
                 "projectile_offset": (26, -28)
@@ -975,17 +1004,20 @@ class DuploBot(Bot):
                 text_width = len(text) * 10
                 text_x = random.randint(self.rect.left, self.rect.right - text_width)
                 active_effects.append(FloatingText((255, 255, 0), text_x, self.rect.top + 10, text))
+                self.actions[0]["sound_charge"].play()
 
             # if target character is an enemy, deal damage and reset damage
             else:
                 damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
                 target_char.real_health -= damage
                 active_effects.append(ChargeProjectile((255, 255, 0), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage", self.actions[0]["projectile_radius"]))
+                self.actions[0]["sound_attack"].play()
                 self.actions[0]["damage"] = 1
                 self.actions[0]["projectile_radius"] = 2
 
         elif chosen_action == "Mark":
             active_effects.append(MarkProjectile((255, 255, 0), self, target_char, self.actions[1]["projectile_offset"], self.actions[1]["mark_hits_needed"], 0, "Mark"))
+            self.actions[1]["sound"].play()
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text

@@ -14,10 +14,14 @@ from .effects import FloatingText
 
 class ActionBox:
     def __init__(self):
+        # action button rectangles
         self.buttons = [
             pygame.Rect(120, 640, 150, 50), # left button
             pygame.Rect(290, 640, 150, 50)  # right button
         ]
+
+        # sound effects
+        self.select_button_sound = pygame.mixer.Sound("assets/characters/select_action_button_sound.mp3")
 
     def handle_event(self, event, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll, lore_target_scroll):
         if active_bot:
@@ -38,6 +42,7 @@ class ActionBox:
 
             # if action click or press is valid and not used, update states
             if action and not action["used"]:
+                self.select_button_sound.play()
 
                 # action is deselected if already chosen
                 if chosen_action == action["name"]:
@@ -50,11 +55,10 @@ class ActionBox:
                     battle_state = action["target_state"]
                     lore_target_scroll = action["scroll"]
 
-                # if inspecting something else, switch inspecting to active bot when action is chosen
-                if inspecting_character != active_bot:
-                    inspecting_character = active_bot
-                    lore_scroll = action["scroll"]
-                    lore_target_scroll = action["scroll"]
+                    # if inspecting something else, switch inspecting to active bot when action is chosen
+                    if inspecting_character != active_bot:
+                        inspecting_character = active_bot
+                        lore_scroll = action["scroll"]
 
         return battle_state, chosen_action, inspecting_character, lore_scroll, lore_target_scroll
 
@@ -181,7 +185,11 @@ class LoreBox:
 
 class ShopBox:
     def __init__(self):
+        # shop button rectangle
         self.shop_button_rect = pygame.Rect(40, 530, 100, 50)
+
+        # sound effects
+        self.select_button_sound = pygame.mixer.Sound("assets/endless/select_shop_button_sound.mp3")
 
     def handle_event(self, event, all_bots, bot_upgrades, battle_state, previous_battle_state):
         # dont open shop during lazer movement
@@ -189,6 +197,7 @@ class ShopBox:
             return battle_state, previous_battle_state
         
         if self.shop_button_rect.collidepoint(event.pos):
+            self.select_button_sound.play()
 
             # close shop
             if battle_state == "Shop":
@@ -256,6 +265,10 @@ class ShopBox:
         screen.blit(gears_text, gears_text_rect)
 
 class ShopBar:
+    def __init__(self):
+        # sound effects
+        self.select_button_sound = pygame.mixer.Sound("assets/endless/select_shop_button_sound.mp3")
+
     def handle_event(self, event, all_bots, bot_upgrades, menu_height, menu_target_scroll):
         for i in range(len(all_bots)):
             bar_bot_rect = pygame.Rect(180, 40 + i * 80, 80, 80)
@@ -269,6 +282,7 @@ class ShopBar:
                     else:
                         jump_y += 90
                 menu_target_scroll = min(menu_height - 560, jump_y)
+                self.select_button_sound.play()
                 break
     
         return menu_target_scroll
@@ -307,7 +321,13 @@ class ShopBar:
 
 class ShopMenu:
     def __init__(self):
+        # shop menu rectangle
         self.menu_rect = pygame.Rect(257, 40, 760, 560)
+
+        # sound effects
+        self.select_button_sound = pygame.mixer.Sound("assets/endless/select_shop_button_sound.mp3")
+        self.upgrade_action_sound = pygame.mixer.Sound("assets/endless/upgrade_action_sound.mp3")
+        self.unlock_bot_sound = pygame.mixer.Sound("assets/endless/unlock_bot_sound.mp3")
 
     def handle_event_scroll(self, event, battle_state, menu_height, menu_target_scroll):
         if battle_state == "Shop":
@@ -349,6 +369,7 @@ class ShopMenu:
                         if upgrade["confirm"]:
                             i = upgrade["action_number"]
                             bot["bot"].actions[i][upgrade["stat"]] = upgrade["amount"][upgrade["level"]]
+                            self.upgrade_action_sound.play()
 
                             # if the upgrade is for barrage, check if barrage can be used with the new charge needed value
                             if upgrade["stat"] == "barrage_charge_needed" and bot["bot"].actions[i]["barrage_charge"] >= bot["bot"].actions[i]["barrage_charge_needed"] and bot["bot"].actions[i]["used"]:
@@ -359,7 +380,7 @@ class ShopMenu:
                             if upgrade["stat"] == "ice_hits_needed":
                                 for enemy in enemy_goons:
                                     if enemy.real_health > 0 and enemy.ice_hits >= bot["bot"].actions[i]["ice_hits_needed"]:
-                                        enemy.frozen = True
+                                        enemy.frozen_rounds = 1
                                         enemy.ice_hits = 0
                                         text = "Frozen!"
                                         text_width = len(text) * 10
@@ -370,7 +391,7 @@ class ShopMenu:
                             if upgrade["stat"] == "mark_hits_needed":
                                 for enemy in enemy_goons:
                                     if enemy.real_health > 0 and enemy.mark_hits >= bot["bot"].actions[i]["mark_hits_needed"]:
-                                        enemy.marked = True
+                                        enemy.marked_rounds = 1
                                         enemy.mark_hits = 0
                                         text = "Marked!"
                                         text_width = len(text) * 10
@@ -389,6 +410,7 @@ class ShopMenu:
                                 for u in bot_upgrades[b["bot"].name]:
                                     u["confirm"] = False
                             upgrade["confirm"] = True
+                            self.select_button_sound.play()
                         
                         return previous_battle_state, gears
 
@@ -406,6 +428,7 @@ class ShopMenu:
                         gears -= bot["cost"]
                         bot["unlocked"] = True
                         player_bots.append(bot["bot"])
+                        self.unlock_bot_sound.play()
                         if previous_battle_state == "Player Turn Over":
                             previous_battle_state = "Player Turn"
 
@@ -416,6 +439,7 @@ class ShopMenu:
                             for u in bot_upgrades[b["bot"].name]:
                                 u["confirm"] = False
                         bot["confirm"] = True
+                        self.select_button_sound.play()
 
                     return previous_battle_state, gears
 
@@ -651,6 +675,10 @@ class PlayerZone:
             bot.draw(screen, fonts, text_cache, battle_state, active_bot, chosen_action, inspecting_character)
 
 class EnemyZone:
+    def __init__(self):
+        # sound effects
+        self.harvest_gears_sound = pygame.mixer.Sound("assets/characters/harvest_gears_sound.mp3")
+
     def handle_event(self, event, enemy_slots, enemy_goons, active_effects, battle_state, inspecting_character, lore_scroll, lore_target_scroll, gears):
         # handle valid goon selection or deselection
         for i in range(len(enemy_goons) - 1, -1, -1):
@@ -669,6 +697,7 @@ class EnemyZone:
                         inspecting_character = goon
                         lore_scroll = 0
                         lore_target_scroll = 0
+                    
                     break
 
                 # if goon dead, harvest
@@ -678,6 +707,7 @@ class EnemyZone:
                     enemy_gears = random.randint(goon.min_gears, goon.max_gears)
                     gears += enemy_gears
                     active_effects.append(FloatingText((100, 100, 100), goon.rect.left, goon.rect.centery, f"+{enemy_gears} gears"))
+                    self.harvest_gears_sound.play()
                     
                     # remove goon from the game
                     enemy_slots[goon.slot_id]["occupied"] = False
@@ -710,6 +740,7 @@ class EnemyZone:
                         enemy_gears = random.randint(enemy.min_gears, enemy.max_gears)
                         gears += enemy_gears
                         active_effects.append(FloatingText((100, 100, 100), enemy.rect.left, enemy.rect.centery, f"+{enemy_gears} gears"))
+                        self.harvest_gears_sound.play()
                         
                         # remove goon from the game
                         enemy_slots[enemy.slot_id]["occupied"] = False

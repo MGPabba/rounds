@@ -189,6 +189,9 @@ class PercentageProjectile(LinearProjectile):
         pygame.draw.line(screen, self.color, (self.line_two_x1, self.line_two_y1), (self.line_two_x2, self.line_two_y2), 2)
 
 class ShieldProjectile(Projectile):
+    # sound effects
+    get_reduction_shield_sound = pygame.mixer.Sound("assets/characters/get_reduction_shield_sound.mp3")
+
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
 
@@ -218,6 +221,7 @@ class ShieldProjectile(Projectile):
         if self.progress >= 1:
             self.active = False
             self.target_char.reduction_shield = self.amount
+            self.get_reduction_shield_sound.play()
             if self.target_char.character_type == "Bot":
                 self.target_char.reduction_shield_rounds = 1
             elif self.target_char.character_type == "Goon":
@@ -285,6 +289,9 @@ class HealProjectile(ArcProjectile):
             self.target_char.take_heal(active_effects, self.amount)
 
 class BounceProjectile(ArcProjectile):
+    # sound effects
+    bounce_sound = pygame.mixer.Sound("assets/bots/rico_bot/rico_bot_bounce_sound.mp3")
+
     def __init__(self, color, source_char, target_char, projectile_offset, amount, source_char_type, reduction, base_amount, bounce_amount, characters_hit):
         super().__init__(color, source_char, target_char, projectile_offset, amount, source_char_type)
 
@@ -331,6 +338,7 @@ class BounceProjectile(ArcProjectile):
                     damage, reduction = next_target.damage_amount(self.base_amount)
                     next_target.real_health -= damage
                     active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), damage, self.source_char_type, reduction, self.base_amount, self.bounce_amount - 1, self.characters_hit))
+                    self.bounce_sound.play()
 
 # ------------------------------
 # PROJECTILE CLASSES FOR CHAOS BOT
@@ -422,6 +430,9 @@ class GlitchyHealProjectile(GlitchyProjectile):
         pygame.draw.rect(screen, self.color, (self.x + self.shake_x, self.y + self.shake_y, 10, 10))
 
 class GlitchyBlockProjectile(GlitchyProjectile):
+    # sound effects
+    get_block_sound = pygame.mixer.Sound("assets/characters/get_block_sound.mp3")
+
     def __init__(self, color, source_char, target_char, projectile_offset, amount):
         super().__init__(color, source_char, target_char, projectile_offset, amount)
         
@@ -455,6 +466,7 @@ class GlitchyBlockProjectile(GlitchyProjectile):
             if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
                 self.active = False
                 self.target_char.block = self.amount
+                self.get_block_sound.play()
                 if self.target_char.character_type == "Bot":
                     self.target_char.block_rounds = 1
                 elif self.target_char.character_type == "Goon":

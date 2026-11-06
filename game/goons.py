@@ -26,6 +26,11 @@ from .effects import (
 # ------------------------------
 
 class Goon(Character):
+    # images
+    idle_image = None
+    hurt_image = None
+    dead_image = None
+
     def __init__(self, x, y, slot_id):
         super().__init__(x, y)
 
@@ -141,9 +146,9 @@ class BasicGoon(Goon):
     idle_image_path = "assets/goons/basic_goon/basic_goon_idle.png"
     hurt_image_path = "assets/goons/basic_goon/basic_goon_hurt.png"
     dead_image_path = "assets/goons/basic_goon/basic_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/basic_goon/basic_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -158,6 +163,7 @@ class BasicGoon(Goon):
         damage, reduction = target.damage_amount(self.damage)
         target.real_health -= damage
         active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -178,9 +184,9 @@ class TankyGoon(Goon):
     idle_image_path = "assets/goons/tanky_goon/tanky_goon_idle.png"
     hurt_image_path = "assets/goons/tanky_goon/tanky_goon_hurt.png"
     dead_image_path = "assets/goons/tanky_goon/tanky_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/tanky_goon/tanky_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -195,6 +201,7 @@ class TankyGoon(Goon):
         damage, reduction = target.damage_amount(self.damage)
         target.real_health -= damage
         active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -215,9 +222,9 @@ class PowerfulGoon(Goon):
     idle_image_path = "assets/goons/powerful_goon/powerful_goon_idle.png"
     hurt_image_path = "assets/goons/powerful_goon/powerful_goon_hurt.png"
     dead_image_path = "assets/goons/powerful_goon/powerful_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/powerful_goon/powerful_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -232,6 +239,7 @@ class PowerfulGoon(Goon):
         damage, reduction = target.damage_amount(self.damage)
         target.real_health -= damage
         active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -252,9 +260,9 @@ class HealingGoon(Goon):
     idle_image_path = "assets/goons/healing_goon/healing_goon_idle.png"
     hurt_image_path = "assets/goons/healing_goon/healing_goon_hurt.png"
     dead_image_path = "assets/goons/healing_goon/healing_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/healing_goon/healing_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -268,6 +276,7 @@ class HealingGoon(Goon):
         # perform action on target character
         target.real_health += self.heal
         active_effects.append(HealProjectile((255, 0, 0), self, target, self.projectile_offset, self.heal, "Goon"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -288,9 +297,9 @@ class BounceGoon(Goon):
     idle_image_path = "assets/goons/bounce_goon/bounce_goon_idle.png"
     hurt_image_path = "assets/goons/bounce_goon/bounce_goon_hurt.png"
     dead_image_path = "assets/goons/bounce_goon/bounce_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/bounce_goon/bounce_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -306,6 +315,7 @@ class BounceGoon(Goon):
         damage, reduction = target.damage_amount(self.damage)
         target.real_health -= damage
         active_effects.append(BounceProjectile((255, 0, 0), self, target, self.projectile_offset, damage, "Goon", reduction, self.damage, self.bounce_amount-1, []))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -327,9 +337,9 @@ class FireGoon(Goon):
     idle_image_path = "assets/goons/fire_goon/fire_goon_idle.png"
     hurt_image_path = "assets/goons/fire_goon/fire_goon_hurt.png"
     dead_image_path = "assets/goons/fire_goon/fire_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/fire_goon/fire_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -342,6 +352,7 @@ class FireGoon(Goon):
     def perform_attack(self, active_effects, target):
         # perform action on target character
         active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, self.fire_rounds_amount, 0, "Fire"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -362,9 +373,9 @@ class RandomGoon(Goon):
     idle_image_path = "assets/goons/random_goon/random_goon_idle.png"
     hurt_image_path = "assets/goons/random_goon/random_goon_hurt.png"
     dead_image_path = "assets/goons/random_goon/random_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/random_goon/random_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -380,6 +391,7 @@ class RandomGoon(Goon):
         damage, reduction = target.damage_amount(chosen_damage)
         target.real_health -= damage
         active_effects.append(GlitchyDamageProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -401,9 +413,10 @@ class ChargeGoon(Goon):
     idle_image_path = "assets/goons/charge_goon/charge_goon_idle.png"
     hurt_image_path = "assets/goons/charge_goon/charge_goon_hurt.png"
     dead_image_path = "assets/goons/charge_goon/charge_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/charge_goon/charge_goon_attack_sound.mp3")
+    charge_sound = pygame.mixer.Sound("assets/goons/charge_goon/charge_goon_charge_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -426,12 +439,14 @@ class ChargeGoon(Goon):
             text_width = len(text) * 10
             text_x = random.randint(self.rect.left, self.rect.right - text_width)
             active_effects.append(FloatingText((255, 0, 0), text_x, self.rect.top + 10, text))
+            self.charge_sound.play()
 
         # if goon chooses to attack, damage a bot
         else:
             damage, reduction = target.damage_amount(self.damage)
             target.real_health -= damage
             active_effects.append(ChargeProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage", self.projectile_radius))
+            self.attack_sound.play()
             self.damage = 1
             self.projectile_radius = 2
 
@@ -454,9 +469,9 @@ class PercentageGoon(Goon):
     idle_image_path = "assets/goons/percentage_goon/percentage_goon_idle.png"
     hurt_image_path = "assets/goons/percentage_goon/percentage_goon_hurt.png"
     dead_image_path = "assets/goons/percentage_goon/percentage_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/percentage_goon/percentage_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -471,6 +486,7 @@ class PercentageGoon(Goon):
         damage, reduction = target.damage_amount(max(1, int(target.real_health * (self.damage / 100))))
         target.real_health -= damage
         active_effects.append(PercentageProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -491,9 +507,9 @@ class IceGoon(Goon):
     idle_image_path = "assets/goons/ice_goon/ice_goon_idle.png"
     hurt_image_path = "assets/goons/ice_goon/ice_goon_hurt.png"
     dead_image_path = "assets/goons/ice_goon/ice_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/ice_goon/ice_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -505,6 +521,7 @@ class IceGoon(Goon):
     def perform_attack(self, active_effects, target):
         # perform action on target character
         active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, 2, 0, "Ice"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -525,9 +542,9 @@ class MarkGoon(Goon):
     idle_image_path = "assets/goons/mark_goon/mark_goon_idle.png"
     hurt_image_path = "assets/goons/mark_goon/mark_goon_hurt.png"
     dead_image_path = "assets/goons/mark_goon/mark_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/mark_goon/mark_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -539,6 +556,7 @@ class MarkGoon(Goon):
     def perform_attack(self, active_effects, target):
         # perform action on target character
         active_effects.append(MarkProjectile((255, 0, 0), self, target, self.projectile_offset, 1, 0, "Mark"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -559,9 +577,9 @@ class ReductionGoon(Goon):
     idle_image_path = "assets/goons/reduction_goon/reduction_goon_idle.png"
     hurt_image_path = "assets/goons/reduction_goon/reduction_goon_hurt.png"
     dead_image_path = "assets/goons/reduction_goon/reduction_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/reduction_goon/reduction_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -574,6 +592,7 @@ class ReductionGoon(Goon):
     def perform_attack(self, active_effects, target):
         # perform action on target character
         active_effects.append(ShieldProjectile((255, 0, 0), self, target, self.projectile_offset, self.reduction_shield_amount))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -594,9 +613,9 @@ class BlockGoon(Goon):
     idle_image_path = "assets/goons/block_goon/block_goon_idle.png"
     hurt_image_path = "assets/goons/block_goon/block_goon_hurt.png"
     dead_image_path = "assets/goons/block_goon/block_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/block_goon/block_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -609,6 +628,7 @@ class BlockGoon(Goon):
     def perform_attack(self, active_effects, target):
         # perform action on target character
         active_effects.append(GlitchyBlockProjectile((255, 0, 0), self, target, self.projectile_offset, self.block_amount))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -633,9 +653,9 @@ class DummyGoon(Goon):
     idle_image_path = "assets/goons/dummy_goon/dummy_goon_idle.png"
     hurt_image_path = "assets/goons/dummy_goon/dummy_goon_hurt.png"
     dead_image_path = "assets/goons/dummy_goon/dummy_goon_dead.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/dummy_goon/dummy_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -650,6 +670,7 @@ class DummyGoon(Goon):
         damage, reduction = target.damage_amount(self.damage)
         target.real_health -= damage
         active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
@@ -671,10 +692,10 @@ class PatrollingGoon(Goon):
     hurt_image_path = "assets/goons/patrolling_goon/patrolling_goon_hurt.png"
     dead_image_path = "assets/goons/patrolling_goon/patrolling_goon_dead.png"
     mini_image_path = "assets/goons/patrolling_goon/patrolling_goon_idle.png"
-    idle_image = None
-    hurt_image = None
-    dead_image = None
     mini_image = None
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/patrolling_goon/patrolling_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id):
         super().__init__(x, y, slot_id)
@@ -697,6 +718,7 @@ class PatrollingGoon(Goon):
         damage, reduction = target.damage_amount(self.damage)
         target.real_health -= damage
         active_effects.append(PatrolProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)

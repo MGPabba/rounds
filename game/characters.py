@@ -33,7 +33,15 @@ class Character:
         self.animation_timer = 0
         self.animation_speed = 15
         self.hurt_timer = 0
-        self.shake_x = 0  
+        self.shake_x = 0
+
+        # sound effects
+        self.damage_sound = pygame.mixer.Sound("assets/characters/take_damage_sound.mp3")
+        self.blocked_sound = pygame.mixer.Sound("assets/characters/blocked_sound.mp3")
+        self.heal_sound = pygame.mixer.Sound("assets/characters/take_heal_sound.mp3")
+        self.fire_sound = pygame.mixer.Sound("assets/characters/apply_fire_sound.mp3")
+        self.ice_sound = pygame.mixer.Sound("assets/characters/apply_ice_sound.mp3")
+        self.mark_sound = pygame.mixer.Sound("assets/characters/apply_mark_sound.mp3")
 
     def damage_amount(self, damage):
         # calculate damage amount based on block chance
@@ -66,10 +74,12 @@ class Character:
 
         # text animation
         if damage == 0:
+            self.blocked_sound.play()
             text = "Blocked!"
             color = (255, 155, 0)
         else:
             self.hurt_timer = 30
+            self.damage_sound.play()
             text = f"-{damage}"
             color = (255, 0, 0)
         text_width = len(text) * 10
@@ -86,6 +96,7 @@ class Character:
     def take_heal(self, active_effects, amount):
         # increase health
         self.visual_health += amount
+        self.heal_sound.play()
 
         # text animation
         text_x = random.randint(self.rect.left, self.rect.right - 30)
@@ -94,6 +105,7 @@ class Character:
     def apply_fire(self, active_effects, fire_rounds_amount):
         # add fire rounds
         self.fire_rounds += fire_rounds_amount
+        self.fire_sound.play()
 
         # text animation
         text = f"+{fire_rounds_amount} fire"
@@ -116,6 +128,7 @@ class Character:
         text_width = len(text) * 10
         text_x = random.randint(self.rect.left, self.rect.right - text_width)
         active_effects.append(FloatingText((0, 255, 255), text_x, self.rect.top + 10, text))
+        self.ice_sound.play()
 
     def apply_mark(self, active_effects, mark_hits_needed):
         # add mark hits, mark if enough hits, and display text animation
@@ -132,6 +145,7 @@ class Character:
         text_width = len(text) * 10
         text_x = random.randint(self.rect.left, self.rect.right - text_width)
         active_effects.append(FloatingText((255, 255, 0), text_x, self.rect.top + 10, text))
+        self.mark_sound.play()
 
     def hurt_animations(self):
         # shake character when hurt

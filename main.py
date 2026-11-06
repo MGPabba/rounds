@@ -4,9 +4,10 @@
 import asyncio
 import pygame
 
-# initialize pygame and font module
+# initialize pygame and its modules
 pygame.init()
 pygame.font.init()
+pygame.mixer.init()
 
 # import game modules
 from game.scenes import MainMenuScene

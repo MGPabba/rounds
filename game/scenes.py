@@ -108,6 +108,12 @@ class EndlessModeScene():
         self.font_cache = font_cache
         self.text_cache = {}
 
+        # scene music and sound effects
+        pygame.mixer.music.load("assets/endless/endless_music.mp3")
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
+        self.right_click_sound = pygame.mixer.Sound("assets/characters/right_click_sound.mp3")
+
         # create game elements
         self.action_box = ActionBox()
         self.lore_box = LoreBox()
@@ -491,6 +497,7 @@ class EndlessModeScene():
                     # close shop
                     if self.battle_state == "Shop":
                         self.battle_state = self.previous_battle_state
+                        self.right_click_sound.play()
 
                         # reset all unlock and upgrades confirmations
                         for b in self.all_bots:
@@ -503,11 +510,14 @@ class EndlessModeScene():
                         if self.chosen_action:
                             self.chosen_action = None
                             self.battle_state = "Player Turn"
+                            self.right_click_sound.play()
                         elif self.active_bot:
                             self.inspecting_character = None
                             self.active_bot = None
+                            self.right_click_sound.play()
                         elif self.inspecting_character:
                             self.inspecting_character = None
+                            self.right_click_sound.play()
 
             # handles key presses
             elif event.type == pygame.KEYDOWN:
