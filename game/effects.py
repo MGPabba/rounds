@@ -73,6 +73,9 @@ class LinearProjectile(Projectile):
         self.distance = math.sqrt(self.distance_x ** 2 + self.distance_y ** 2)
         self.speed_x = self.distance_x / self.distance * self.speed
         self.speed_y = self.distance_y / self.distance * self.speed
+
+        # sound effects
+        self.nerf_sound = pygame.mixer.Sound("assets/characters/apply_nerf_sound.mp3")
     
     def update(self, active_effects):
         # move projectile towards target
@@ -90,11 +93,17 @@ class LinearProjectile(Projectile):
                 self.target_char.apply_ice(active_effects, self.amount)
             elif self.projectile_type == "Mark":
                 self.target_char.apply_mark(active_effects, self.amount)
+            elif self.projectile_type == "Nerf":
+                self.target_char.nerf = self.amount
+                self.target_char.nerf_rounds = 2
+                self.nerf_sound.play()
 
     def draw(self, screen):
-        # draw a rectangle or ellipse projectile that moves straight towards target
+        # draw a projectile that moves straight towards target
         if self.projectile_type == "Damage":
             pygame.draw.rect(screen, self.color, (self.x, self.y, 10, 5))
+        elif self.projectile_type == "Nerf":
+            pygame.draw.circle(screen, self.color, (self.x, self.y), 5)
         else:
             pygame.draw.ellipse(screen, self.color, (int(self.x), int(self.y), 10, 5))
 
@@ -335,8 +344,7 @@ class BounceProjectile(ArcProjectile):
                 # bounce to a random valid target
                 if valid_targets:
                     next_target = random.choice(valid_targets)
-                    damage, reduction = next_target.damage_amount(self.base_amount)
-                    next_target.real_health -= damage
+                    damage, reduction = self.source_char.damage_calculations(next_target, self.base_amount)
                     active_effects.append(BounceProjectile(self.color, self.target_char, next_target, (0, 0), damage, self.source_char_type, reduction, self.base_amount, self.bounce_amount - 1, self.characters_hit))
                     self.bounce_sound.play()
 
@@ -399,12 +407,20 @@ class GlitchyHealProjectile(GlitchyProjectile):
 
         # move projectile forward
         if self.movement == "Forward":
-            self.x += self.speed
-            if self.x >= 600:
-                if self.target_y < self.y:
-                    self.movement = "Upward"
-                else:
-                    self.movement = "Downward"
+            if self.source_char.character_type == "Bot":
+                self.x += self.speed
+                if self.x >= 600:
+                    if self.target_y < self.y:
+                        self.movement = "Upward"
+                    else:
+                        self.movement = "Downward"
+            else:
+                self.x -= self.speed
+                if self.x <= 600:
+                    if self.target_y < self.y:
+                        self.movement = "Upward"
+                    else:
+                        self.movement = "Downward"
 
         # move projectile upward or downward towards target
         elif self.movement == "Upward":
@@ -416,14 +432,18 @@ class GlitchyHealProjectile(GlitchyProjectile):
             if self.y >= self.target_y:
                 self.movement = "Backward"
 
-        # move projectile backward towards target
+        # move projectile backward towards target and heal when projectile reaches target
         elif self.movement == "Backward":
-            self.x -= self.speed
-
-            # heal when projectile reaches target
-            if self.x <= self.target_x:
-                self.active = False
-                self.target_char.take_heal(active_effects, self.amount)
+            if self.source_char.character_type == "Bot":
+                self.x -= self.speed
+                if self.x <= self.target_x:
+                    self.active = False
+                    self.target_char.take_heal(active_effects, self.amount)
+            else:
+                self.x += self.speed
+                if self.x >= self.target_x:
+                    self.active = False
+                    self.target_char.take_heal(active_effects, self.amount)
 
     def draw(self, screen):
         # draw a rectangle projectile that shakes

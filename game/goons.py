@@ -160,8 +160,7 @@ class BasicGoon(Goon):
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
-        damage, reduction = target.damage_amount(self.damage)
-        target.real_health -= damage
+        damage, reduction = self.damage_calculations(target, self.damage)
         active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
         self.attack_sound.play()
 
@@ -198,46 +197,7 @@ class TankyGoon(Goon):
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
-        damage, reduction = target.damage_amount(self.damage)
-        target.real_health -= damage
-        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
-        self.attack_sound.play()
-
-    def lore_text(self, fonts, lore):
-        super().lore_text(fonts, lore)
-
-        # add action stats to lore text
-        lore.append((f"Damage: {self.damage}", "normal"))
-
-class PowerfulGoon(Goon):
-    # powerful goon info
-    name = "Powerful Goon"
-    description = "A powerful enemy goon that deals more damage to a bot than a basic goon."
-    target = "Bot"
-    projectile_offset = (-40, -40)
-    min_gears = 1
-    max_gears = 10
-
-    # images
-    idle_image_path = "assets/goons/powerful_goon/powerful_goon_idle.png"
-    hurt_image_path = "assets/goons/powerful_goon/powerful_goon_hurt.png"
-    dead_image_path = "assets/goons/powerful_goon/powerful_goon_dead.png"
-
-    # sound effects
-    attack_sound = pygame.mixer.Sound("assets/goons/powerful_goon/powerful_goon_sound.mp3")
-
-    def __init__(self, x, y, slot_id):
-        super().__init__(x, y, slot_id)
-
-        # powerful goon specific info
-        self.real_health = 5
-        self.visual_health = 5
-        self.damage = 2
-
-    def perform_attack(self, active_effects, target):
-        # perform action on target character
-        damage, reduction = target.damage_amount(self.damage)
-        target.real_health -= damage
+        damage, reduction = self.damage_calculations(target, self.damage)
         active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
         self.attack_sound.play()
 
@@ -312,8 +272,7 @@ class BounceGoon(Goon):
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
-        damage, reduction = target.damage_amount(self.damage)
-        target.real_health -= damage
+        damage, reduction = self.damage_calculations(target, self.damage)
         active_effects.append(BounceProjectile((255, 0, 0), self, target, self.projectile_offset, damage, "Goon", reduction, self.damage, self.bounce_amount-1, []))
         self.attack_sound.play()
 
@@ -388,8 +347,7 @@ class RandomGoon(Goon):
     def perform_attack(self, active_effects, target):
         # perform action on target character
         chosen_damage = random.randint(self.damage - 2, self.damage + 2)
-        damage, reduction = target.damage_amount(chosen_damage)
-        target.real_health -= damage
+        damage, reduction = self.damage_calculations(target, chosen_damage)
         active_effects.append(GlitchyDamageProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction))
         self.attack_sound.play()
 
@@ -443,8 +401,7 @@ class ChargeGoon(Goon):
 
         # if goon chooses to attack, damage a bot
         else:
-            damage, reduction = target.damage_amount(self.damage)
-            target.real_health -= damage
+            damage, reduction = self.damage_calculations(target, self.damage)
             active_effects.append(ChargeProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage", self.projectile_radius))
             self.attack_sound.play()
             self.damage = 1
@@ -483,8 +440,7 @@ class PercentageGoon(Goon):
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
-        damage, reduction = target.damage_amount(max(1, int(target.real_health * (self.damage / 100))))
-        target.real_health -= damage
+        damage, reduction = self.damage_calculations(target, max(1, int(target.real_health * (self.damage / 100))))
         active_effects.append(PercentageProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
         self.attack_sound.play()
 
@@ -636,6 +592,125 @@ class BlockGoon(Goon):
         # add action stats to lore text
         lore.append((f"Block Chance: {self.block_amount}%", "normal"))
 
+class PowerfulGoon(Goon):
+    # powerful goon info
+    name = "Powerful Goon"
+    description = "A powerful enemy goon that attacks a bot while increasing its damage every round."
+    target = "Bot"
+    projectile_offset = (-40, -40)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/powerful_goon/powerful_goon_idle.png"
+    hurt_image_path = "assets/goons/powerful_goon/powerful_goon_hurt.png"
+    dead_image_path = "assets/goons/powerful_goon/powerful_goon_dead.png"
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/powerful_goon/powerful_goon_sound.mp3")
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # powerful goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.damage = 0
+
+    def perform_attack(self, active_effects, target):
+        # increase damage by 1 every round
+        self.damage += 1
+        text = "+1 Damage"
+        text_width = len(text) * 10
+        text_x = random.randint(self.rect.left, self.rect.right - text_width)
+        active_effects.append(FloatingText((255, 0, 0), text_x, self.rect.top + 10, text))
+
+        # perform action on target character
+        damage, reduction = self.damage_calculations(target, self.damage)
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        self.attack_sound.play()
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Damage: {self.damage}", "normal"))
+
+class NerfGoon(Goon):
+    # nerf goon info
+    name = "Nerf Goon"
+    description = "A goon like this nerfs a bots damage for a round."
+    target = "Bot"
+    projectile_offset = (-30, -15)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/nerf_goon/nerf_goon_idle.png"
+    hurt_image_path = "assets/goons/nerf_goon/nerf_goon_hurt.png"
+    dead_image_path = "assets/goons/nerf_goon/nerf_goon_dead.png"
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/nerf_goon/nerf_goon_sound.mp3")
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # nerf goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.nerf_amount = 1
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, self.nerf_amount, 0, "Nerf"))
+        self.attack_sound.play()
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Nerf: -{self.nerf_amount} Damage", "normal"))
+
+class HealtonGoon(Goon):
+    # healton goon info
+    name = "Healton Goon"
+    description = "A goon that heals random amounts to a fellow goon."
+    target = "Goon"
+    projectile_offset = (-5, -40)
+    min_gears = 1
+    max_gears = 10
+
+    # images
+    idle_image_path = "assets/goons/healton_goon/healton_goon_idle.png"
+    hurt_image_path = "assets/goons/healton_goon/healton_goon_hurt.png"
+    dead_image_path = "assets/goons/healton_goon/healton_goon_dead.png"
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/healton_goon/healton_goon_sound.mp3")
+
+    def __init__(self, x, y, slot_id):
+        super().__init__(x, y, slot_id)
+
+        # healton goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.heal_amount = 3
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        chosen_heal = random.randint(self.heal_amount - 2, self.heal_amount + 2)
+        target.real_health += chosen_heal
+        active_effects.append(GlitchyHealProjectile((255, 0, 0), self, target, self.projectile_offset, chosen_heal))
+        self.attack_sound.play()
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Min Heal: {self.heal_amount - 2}", "normal"))
+        lore.append((f"Max Heal: {self.heal_amount + 2}", "normal"))
+
 # ------------------------------
 # STORY GOON CLASSES
 # ------------------------------
@@ -667,8 +742,7 @@ class DummyGoon(Goon):
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
-        damage, reduction = target.damage_amount(self.damage)
-        target.real_health -= damage
+        damage, reduction = self.damage_calculations(target, self.damage)
         active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
         self.attack_sound.play()
 
@@ -715,8 +789,7 @@ class PatrollingGoon(Goon):
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
-        damage, reduction = target.damage_amount(self.damage)
-        target.real_health -= damage
+        damage, reduction = self.damage_calculations(target, self.damage)
         active_effects.append(PatrolProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
         self.attack_sound.play()
 

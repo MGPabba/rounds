@@ -905,12 +905,10 @@ class Execution:
             if char.real_health > 0 and char.fire_rounds > 0:
                 char.fire_rounds -= 1
                 if char in player_bots:
-                    damage, reduction = char.damage_amount(1)
-                    char.real_health -= damage
+                    damage, reduction = char.damage_calculations(char, 1)
                     char.take_damage(active_effects, damage, reduction)
                 elif char in enemy_goons:
-                    damage, reduction = char.damage_amount(elemental_bot.actions[0]["damage"])
-                    char.real_health -= damage
+                    damage, reduction = elemental_bot.damage_calculations(char, elemental_bot.actions[0]["damage"])
                     char.take_damage(active_effects, damage, reduction)
         
         # resets for next turn

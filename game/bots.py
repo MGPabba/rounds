@@ -265,15 +265,13 @@ class GunBot(StoryBot):
                         self.actions[0]["damage"] = zone["damage"]
                         break
                 active_effects.append(FloatingText((50, 100, 255), 50, self.actions[0]["marker_pos"], f"{self.actions[0]['damage']}"))
-            
-            damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
-            target_char.real_health -= damage
+
+            damage, reduction = self.damage_calculations(target_char, self.actions[0]["damage"])
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage"))
             self.actions[0]["sound"].play()
             
         elif chosen_action == "Right Gun":
-            damage, reduction = target_char.damage_amount(self.actions[1]["damage"])
-            target_char.real_health -= damage
+            damage, reduction = self.damage_calculations(target_char, self.actions[1]["damage"])
             active_effects.append(LinearProjectile((0, 0, 255), self, target_char, self.actions[1]["projectile_offset"], damage, reduction, "Damage"))
             self.actions[1]["sound"].play()
 
@@ -556,8 +554,7 @@ class RicoBot(Bot):
             active_effects.append(HealProjectile((0, 255, 0), self, target_char, self.actions[0]["projectile_offset"], self.actions[0]["heal"], "Bot"))
             self.actions[0]["sound"].play()
         elif chosen_action == "Bounce":
-            damage, reduction = target_char.damage_amount(self.actions[1]["damage"])
-            target_char.real_health -= damage
+            damage, reduction = self.damage_calculations(target_char, self.actions[1]["damage"])
             active_effects.append(BounceProjectile((0, 255, 0), self, target_char, self.actions[1]["projectile_offset"], damage, "Bot", reduction, self.actions[1]["damage"], self.actions[1]["bounce_amount"] - 1, []))
             self.actions[1]["sound"].play()
 
@@ -630,8 +627,7 @@ class ModBot(Bot):
         # perform action on target character based on which action is chosen
         if chosen_action == "Percentage":
             percentage_damage = max(1, int(target_char.real_health * self.actions[0]["damage"]))
-            damage, reduction = target_char.damage_amount(percentage_damage)
-            target_char.real_health -= damage
+            damage, reduction = self.damage_calculations(target_char, percentage_damage)
             active_effects.append(PercentageProjectile((200, 200, 200), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage"))
             self.actions[0]["sound"].play()
         elif chosen_action == "Shield":
@@ -793,8 +789,7 @@ class LazerBot(Bot):
             active_effects.append(LaserProjectile((self.rect.centerx + self.actions[0]["projectile_offset"][0], self.rect.centery + self.actions[0]["projectile_offset"][1]), laser_end))
             self.actions[0]["sound"].play()
             for enemy in target_list:
-                damage, reduction = enemy.damage_amount(self.actions[0]["damage"])
-                enemy.real_health -= damage
+                damage, reduction = self.damage_calculations(enemy, self.actions[0]["damage"])
                 enemy.take_damage(active_effects, damage, reduction)
                 self.actions[1]["barrage_charge"] += 1
 
@@ -809,11 +804,10 @@ class LazerBot(Bot):
             self.actions[1]["barrage_charge"] -= self.actions[1]["barrage_charge_needed"]
             for enemy in target_list:
                 if enemy.real_health > 0:
-                    damage, reduction = enemy.damage_amount(self.actions[1]["damage"])
-                    enemy.real_health -= damage
+                    damage, reduction = self.damage_calculations(enemy, self.actions[1]["damage"])
+                    enemy.take_damage(active_effects, damage, reduction)
                     active_effects.append(LaserProjectile((self.rect.centerx + self.actions[1]["projectile_offset"][0], self.rect.centery + self.actions[1]["projectile_offset"][1]), (enemy.rect.centerx, enemy.rect.centery)))
                     self.actions[1]["sound"].play()
-                    enemy.take_damage(active_effects, damage, reduction)
 
     def lore_stats_text(self, lore, action):
         # add action stats to lore text
@@ -920,8 +914,7 @@ class ChaosBot(Bot):
                 target_char.real_health += random_amount
                 active_effects.append(GlitchyHealProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], random_amount))
             else:
-                damage, reduction = target_char.damage_amount(random_amount)
-                target_char.real_health -= damage
+                damage, reduction = self.damage_calculations(target_char, random_amount)
                 active_effects.append(GlitchyDamageProjectile((255, 155, 0), self, target_char, self.actions[0]["projectile_offset"], damage, reduction))
                 
         elif chosen_action == "Barrier":
@@ -1008,8 +1001,7 @@ class DuploBot(Bot):
 
             # if target character is an enemy, deal damage and reset damage
             else:
-                damage, reduction = target_char.damage_amount(self.actions[0]["damage"])
-                target_char.real_health -= damage
+                damage, reduction = self.damage_calculations(target_char, self.actions[0]["damage"])
                 active_effects.append(ChargeProjectile((255, 255, 0), self, target_char, self.actions[0]["projectile_offset"], damage, reduction, "Damage", self.actions[0]["projectile_radius"]))
                 self.actions[0]["sound_attack"].play()
                 self.actions[0]["damage"] = 1

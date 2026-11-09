@@ -24,6 +24,8 @@ class Character:
         self.frozen_rounds = 0
         self.mark_hits = 0
         self.marked_rounds = 0
+        self.nerf = 0
+        self.nerf_rounds = 0
         self.block = 0
         self.block_rounds = 0
         self.reduction_shield = 0
@@ -43,25 +45,34 @@ class Character:
         self.ice_sound = pygame.mixer.Sound("assets/characters/apply_ice_sound.mp3")
         self.mark_sound = pygame.mixer.Sound("assets/characters/apply_mark_sound.mp3")
 
-    def damage_amount(self, damage):
-        # calculate damage amount based on block chance
-        if self.block > 0:
+    def damage_calculations(self, target, damage):
+        # calculate damage amount based on target block chance
+        if target.block > 0:
             block_roll = random.randint(1, 100)
-            if block_roll <= self.block:
+            if block_roll <= target.block:
                 return 0, 0
 
-        # double damage if marked
-        if self.marked_rounds > 0:
+        # calculate damage output if nerfed
+        if self.nerf > 0:
+            damage -= self.nerf
+            if damage <= 0:
+                damage = 1
+
+        # double damage if target is marked
+        if target.marked_rounds > 0:
             damage *= 2
         
-        # reduce damage if shield is active
-        if self.reduction_shield > 0:
+        # reduce damage if target has shield active
+        if target.reduction_shield > 0:
             og_damage = damage
-            damage = math.ceil(damage * self.reduction_shield)
+            damage = math.ceil(damage * target.reduction_shield)
             reduction = og_damage - damage
         else:
             reduction = 0
-        
+
+        # reduce target real health
+        target.real_health -= damage
+
         return damage, reduction
 
     def take_damage(self, active_effects, damage, reduction):
@@ -164,6 +175,12 @@ class Character:
         if self.marked_rounds > 0:
             self.marked_rounds -= 1
 
+        # update being nerfed
+        if self.nerf_rounds > 0:
+            self.nerf_rounds -= 1
+            if self.nerf_rounds == 0:
+                self.nerf = 0
+
         # update having a block barrier
         if self.block_rounds > 0:
             self.block_rounds -= 1
@@ -219,3 +236,8 @@ class Character:
             if self.marked_rounds > 0:
                 mark_text = render_text(fonts, text_cache, 24, "M", (255, 255, 0))
                 screen.blit(mark_text, (self.rect.x - 16, self.rect.y - 20))
+
+            # draw "N" if nerfed
+            if self.nerf_rounds > 0:
+                nerf_text = render_text(fonts, text_cache, 24, "N", (255, 0, 0))
+                screen.blit(nerf_text, (self.rect.x - 16, self.rect.y - 40))
