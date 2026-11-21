@@ -704,13 +704,15 @@ class EnemyZone:
                 elif goon.visual_health == 0:
 
                     # harvest gears from dead goons
-                    enemy_gears = random.randint(goon.min_gears, goon.max_gears)
-                    gears += enemy_gears
-                    active_effects.append(FloatingText((100, 100, 100), goon.rect.left, goon.rect.centery, f"+{enemy_gears} gears"))
+                    if goon.quantumized:
+                        goon.gears_reward *= 2
+                    gears += goon.gears_reward
+                    active_effects.append(FloatingText((100, 100, 100), goon.rect.left, goon.rect.centery, f"+{goon.gears_reward} gears"))
                     self.harvest_gears_sound.play()
                     
                     # remove goon from the game
-                    enemy_slots[goon.slot_id]["occupied"] = False
+                    if enemy_slots:
+                        enemy_slots[goon.slot_id]["occupied"] = False
                     enemy_goons.pop(i)
                     break
 
@@ -733,17 +735,18 @@ class EnemyZone:
             # auto harvest gears and remove dead goons if there are max number of enemies on the field
             if len(enemy_goons) == max_enemies:
                 for i in range(len(enemy_goons) - 1, -1, -1):
-                    enemy = enemy_goons[i]
-                    if enemy.visual_health == 0:
+                    goon = enemy_goons[i]
+                    if goon.visual_health == 0:
 
                         # harvest gears from dead goons
-                        enemy_gears = random.randint(enemy.min_gears, enemy.max_gears)
-                        gears += enemy_gears
-                        active_effects.append(FloatingText((100, 100, 100), enemy.rect.left, enemy.rect.centery, f"+{enemy_gears} gears"))
+                        if goon.quantumized:
+                            goon.gears_reward *= 2
+                        gears += goon.gears_reward
+                        active_effects.append(FloatingText((100, 100, 100), goon.rect.left, goon.rect.centery, f"+{goon.gears_reward} gears"))
                         self.harvest_gears_sound.play()
                         
                         # remove goon from the game
-                        enemy_slots[enemy.slot_id]["occupied"] = False
+                        enemy_slots[goon.slot_id]["occupied"] = False
                         enemy_goons.pop(i)
                         break
             
@@ -763,9 +766,12 @@ class EnemyZone:
                     slot = enemy_slots[slot_id]
                     slot["occupied"] = True
     
-                    # random offsets for the goon spawn position
+                    # random offsets for the spawn position
                     x_offset = random.randint(0, 100)
                     y_offset = random.randint(40, 100)
+
+                    # randomly determine if quantumized
+                    quantumization = random.choice([True, False])
     
                     # spawn a random goon
                     random_type = random.randint(0, len(enemy_types) - 1)
@@ -773,7 +779,7 @@ class EnemyZone:
                     new_enemy = enemy_type(
                         slot["x"] + x_offset,
                         slot["y"] + y_offset,
-                        slot_id)
+                        slot_id, quantumization)
                     enemy_goons.append(new_enemy)
         
         return gears, max_enemies
@@ -806,7 +812,7 @@ class Execution:
                 
                 # perform the action chosen on the target character
                 if chosen_action == "Barrage":
-                    active_bot.perform_action(active_effects, enemy_goons, chosen_action, None)
+                    active_bot.perform_action(player_bots, enemy_goons, active_effects, enemy_goons, chosen_action, None)
                 else:
                     active_bot.perform_action(active_effects, char, chosen_action)
                 
@@ -850,7 +856,7 @@ class Execution:
             for enemy in enemy_goons:
                 if enemy.real_health > 0 and enemy.rect.clipline(start_x, start_y, end_x, end_y):
                     enemies_hit.append(enemy)
-            active_bot.perform_action(active_effects, enemies_hit, chosen_action, (end_x, end_y))
+            active_bot.perform_action(player_bots, enemy_goons, active_effects, enemies_hit, chosen_action, (end_x, end_y))
 
             # reset for next action
             active_bot.check_actions(chosen_action)
@@ -906,10 +912,10 @@ class Execution:
                 char.fire_rounds -= 1
                 if char in player_bots:
                     damage, reduction = char.damage_calculations(char, 1)
-                    char.take_damage(active_effects, damage, reduction)
+                    char.take_damage(player_bots, enemy_goons, active_effects, damage, reduction)
                 elif char in enemy_goons:
                     damage, reduction = elemental_bot.damage_calculations(char, elemental_bot.actions[0]["damage"])
-                    char.take_damage(active_effects, damage, reduction)
+                    char.take_damage(player_bots, enemy_goons, active_effects, damage, reduction)
         
         # resets for next turn
         for bot in player_bots:

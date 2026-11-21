@@ -77,7 +77,7 @@ class LinearProjectile(Projectile):
         # sound effects
         self.nerf_sound = pygame.mixer.Sound("assets/characters/apply_nerf_sound.mp3")
     
-    def update(self, active_effects):
+    def update(self, player_bots, enemy_goons, active_effects):
         # move projectile towards target
         self.x += self.speed_x
         self.y += self.speed_y
@@ -86,7 +86,7 @@ class LinearProjectile(Projectile):
         if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
             self.active = False
             if self.projectile_type == "Damage":
-                self.target_char.take_damage(active_effects, self.amount, self.reduction)
+                self.target_char.take_damage(player_bots, enemy_goons, active_effects, self.amount, self.reduction)
             elif self.projectile_type == "Fire":
                 self.target_char.apply_fire(active_effects, self.amount)
             elif self.projectile_type == "Ice":
@@ -121,13 +121,13 @@ class ChargeProjectile(LinearProjectile):
         self.border = 1
         self.border_phase = "Grow"
     
-    def update(self, active_effects):
+    def update(self, player_bots, enemy_goons, active_effects):
         # projectile grows based on amount of charge
         if self.current_radius < self.max_radius:
             self.current_radius += 1
 
         else:
-            super().update(active_effects)
+            super().update(player_bots, enemy_goons, active_effects)
 
             # border grows and shrinks as projectile moves towards target
             if self.border_phase == "Grow":
@@ -152,8 +152,8 @@ class MarkProjectile(LinearProjectile):
         self.angle = 0
         self.rotation_speed = 0.5
     
-    def update(self, active_effects):
-        super().update(active_effects)
+    def update(self, player_bots, enemy_goons, active_effects):
+        super().update(player_bots, enemy_goons, active_effects)
 
         # rotate projectile as it moves towards target
         self.angle -= self.rotation_speed
@@ -171,12 +171,24 @@ class PercentageProjectile(LinearProjectile):
         super().__init__(color, source_char, target_char, projectile_offset, amount, reduction, projectile_type)
 
         # percentage projectile specific info
-        self.line_one_angle = 0
-        self.line_two_angle = 0
         self.rotation_speed = 0.2
+
+        # calculate the initial positions of one line
+        self.line_one_angle = 0
+        self.line_one_x1 = self.x + math.cos(self.line_one_angle) * 10
+        self.line_one_y1 = self.y + math.sin(self.line_one_angle) * 10
+        self.line_one_x2 = self.x - math.cos(self.line_one_angle) * 5
+        self.line_one_y2 = self.y - math.sin(self.line_one_angle) * 5
+
+        # calculate the initial positions of the other line
+        self.line_two_angle = 0
+        self.line_two_x1 = self.x + math.cos(self.line_two_angle) * 10
+        self.line_two_y1 = self.y + math.sin(self.line_two_angle) * 5
+        self.line_two_x2 = self.x - math.cos(self.line_two_angle) * 10
+        self.line_two_y2 = self.y - math.sin(self.line_two_angle) * 5
     
-    def update(self, active_effects):
-        super().update(active_effects)
+    def update(self, player_bots, enemy_goons, active_effects):
+        super().update(player_bots, enemy_goons, active_effects)
 
         # rotate one line clockwise as it moves towards target
         self.line_one_angle += self.rotation_speed
@@ -324,7 +336,7 @@ class BounceProjectile(ArcProjectile):
         if self.current_frame >= self.frames:
 
             # damage the character and mark it as hit
-            self.target_char.take_damage(active_effects, self.amount, self.reduction)
+            self.target_char.take_damage(player_bots, enemy_goons, active_effects, self.amount, self.reduction)
             self.active = False
             self.characters_hit.append(self.target_char)
 
@@ -378,7 +390,7 @@ class GlitchyDamageProjectile(GlitchyProjectile):
         self.speed_x = self.distance_x / self.distance * self.speed
         self.speed_y = self.distance_y / self.distance * self.speed
 
-    def update(self, active_effects):
+    def update(self, player_bots, enemy_goons, active_effects):
         super().update()
         
         # move projectile towards target
@@ -388,7 +400,7 @@ class GlitchyDamageProjectile(GlitchyProjectile):
         # damage when projectile reaches
         if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
             self.active = False
-            self.target_char.take_damage(active_effects, self.amount, self.reduction)
+            self.target_char.take_damage(player_bots, enemy_goons, active_effects, self.amount, self.reduction)
 
     def draw(self, screen):
         # draw a rectangle projectile that shakes
@@ -538,9 +550,15 @@ class PatrolProjectile(LinearProjectile):
         self.angle = 0
         self.orbit_radius = 5
         self.rotation_speed = 0.2
+
+        # calculate the initial positions of the two circles
+        self.red_x = self.x + math.cos(self.angle) * self.orbit_radius
+        self.red_y = self.y + math.sin(self.angle) * self.orbit_radius
+        self.blue_x = self.x - math.cos(self.angle) * self.orbit_radius
+        self.blue_y = self.y - math.sin(self.angle) * self.orbit_radius
     
-    def update(self, active_effects):
-        super().update(active_effects)
+    def update(self, player_bots, enemy_goons, active_effects):
+        super().update(player_bots, enemy_goons, active_effects)
 
         # rotate the circles counterclockwise as it moves towards target
         self.angle -= self.rotation_speed

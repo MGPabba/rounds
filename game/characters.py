@@ -75,7 +75,7 @@ class Character:
 
         return damage, reduction
 
-    def take_damage(self, active_effects, damage, reduction):
+    def take_damage(self, player_bots, enemy_goons, active_effects, damage, reduction):
         # reduce health
         self.visual_health -= damage
         if self.visual_health < 0:
@@ -103,6 +103,17 @@ class Character:
             reduction_text_width = len(reduction_text) * 10
             reduction_text_x = random.randint(self.rect.left, self.rect.right - reduction_text_width)
             active_effects.append(FloatingText((200, 200, 200), reduction_text_x, self.rect.top + 30, reduction_text))
+
+        # if goon is dead and quantumized, perform a final attack on all targets
+        if self.character_type == "Goon" and self.visual_health == 0 and self.quantumized:
+            if self.target == "Bot":
+                for bot in player_bots:
+                    if bot.real_health > 0:
+                        self.perform_attack(active_effects, bot)
+            elif self.target == "Goon":
+                for goon in enemy_goons:
+                    if goon.real_health > 0:
+                        self.perform_attack(active_effects, goon)
 
     def take_heal(self, active_effects, amount):
         # increase health
@@ -240,4 +251,4 @@ class Character:
             # draw "N" if nerfed
             if self.nerf_rounds > 0:
                 nerf_text = render_text(fonts, text_cache, 24, "N", (255, 0, 0))
-                screen.blit(nerf_text, (self.rect.x - 16, self.rect.y - 40))
+                screen.blit(nerf_text, (self.rect.x - 16, self.rect.y))

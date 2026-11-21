@@ -142,14 +142,6 @@ class Bot(Character):
         # draw small circle next to name if inspecting bot
         if self == inspecting_character:
             pygame.draw.circle(screen, (0, 0, 255), (self.rect.x - 10, self.rect.y - 32), 5)
-        
-        # draw highlight around bot
-        mouse_pos = pygame.mouse.get_pos()
-        if self.rect.collidepoint(mouse_pos) and self.real_health > 0:
-            if (battle_state in ["Target Bot", "Target Any"]) or (self.name == "Lazer Bot" and battle_state in ["Target Line", "Lazer Movement"]) or (self.name == "Duplo Bot" and battle_state == "Target Enemy or Self"):
-                pygame.draw.rect(screen, (0, 255, 0), self.rect, 3)
-            elif battle_state not in ["Lazer Movement", "Shop", "Game Over", "Victory"] and not self.acted:
-                pygame.draw.rect(screen, (0, 0, 255), self.rect, 3)
 
         # draw character status effects
         if self.visual_health > 0:
@@ -172,6 +164,14 @@ class Bot(Character):
             # draw shield if having a shield
             if self.reduction_shield > 0:
                 pygame.draw.circle(screen, (200, 200, 200), (self.rect.centerx, self.rect.centery), 55, 3)
+
+        # draw highlight around bot
+        mouse_pos = pygame.mouse.get_pos()
+        if self.rect.collidepoint(mouse_pos) and self.real_health > 0:
+            if (battle_state in ["Target Bot", "Target Any"]) or (self.name == "Lazer Bot" and battle_state in ["Target Line", "Lazer Movement"]) or (self.name == "Duplo Bot" and battle_state == "Target Enemy or Self"):
+                pygame.draw.rect(screen, (0, 255, 0), self.rect, 3)
+            elif battle_state not in ["Lazer Movement", "Shop", "Game Over", "Victory"] and not self.acted:
+                pygame.draw.rect(screen, (0, 0, 255), self.rect, 3)
 
 # ------------------------------
 # STORY BOT CLASSES
@@ -781,7 +781,7 @@ class LazerBot(Bot):
         self.acted = False
         self.actions[0]["used"] = False
 
-    def perform_action(self, active_effects, target_list, chosen_action, laser_end):
+    def perform_action(self, player_bots, enemy_goons, active_effects, target_list, chosen_action, laser_end):
         # perform action on target characters based on which action is chosen
         if chosen_action == "Pierce":
 
@@ -790,7 +790,7 @@ class LazerBot(Bot):
             self.actions[0]["sound"].play()
             for enemy in target_list:
                 damage, reduction = self.damage_calculations(enemy, self.actions[0]["damage"])
-                enemy.take_damage(active_effects, damage, reduction)
+                enemy.take_damage(player_bots, enemy_goons, active_effects, damage, reduction)
                 self.actions[1]["barrage_charge"] += 1
 
             # check if barrage is charged and reset used status if it is
@@ -805,7 +805,7 @@ class LazerBot(Bot):
             for enemy in target_list:
                 if enemy.real_health > 0:
                     damage, reduction = self.damage_calculations(enemy, self.actions[1]["damage"])
-                    enemy.take_damage(active_effects, damage, reduction)
+                    enemy.take_damage(player_bots, enemy_goons, active_effects, damage, reduction)
                     active_effects.append(LaserProjectile((self.rect.centerx + self.actions[1]["projectile_offset"][0], self.rect.centery + self.actions[1]["projectile_offset"][1]), (enemy.rect.centerx, enemy.rect.centery)))
                     self.actions[1]["sound"].play()
 

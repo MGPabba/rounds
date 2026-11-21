@@ -18,7 +18,7 @@ from .goons import (
 )
 from .helper import wrap_text, dynamic_text, render_text
 from .battle import ActionBox, LoreBox, ShopBox, ShopBar, ShopMenu, PlayerZone, EnemyZone, Execution
-from .effects import FloatingText, BounceProjectile, LaserProjectile, GlitchyBlockProjectile, ShieldProjectile
+from .effects import FloatingText, ShieldProjectile, GlitchyBlockProjectile, LaserProjectile, HealProjectile, GlitchyHealProjectile
 
 # ------------------------------
 # MAIN MENU
@@ -429,7 +429,7 @@ class EndlessModeScene():
             new_enemy = self.enemy_types[0](
                 slot["x"] + x_offset,
                 slot["y"] + y_offset,
-                slot_id)
+                slot_id, False)
             self.enemy_goons.append(new_enemy)
 
     def handle_input(self, events):
@@ -589,12 +589,12 @@ class EndlessModeScene():
 
         # update and remove effects
         for effect in self.active_effects[:]:
-            if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile) or isinstance(effect, GlitchyBlockProjectile) or isinstance(effect, ShieldProjectile):
+            if isinstance(effect, (FloatingText, ShieldProjectile, GlitchyBlockProjectile, LaserProjectile)):
                 effect.update()
-            elif isinstance(effect, BounceProjectile):
-                effect.update(self.player_bots, self.enemy_goons, self.active_effects)
-            else:
+            elif isinstance(effect, (HealProjectile, GlitchyHealProjectile)):
                 effect.update(self.active_effects)
+            else:
+                effect.update(self.player_bots, self.enemy_goons, self.active_effects)
             if not effect.active:
                 self.active_effects.remove(effect)
 
@@ -808,8 +808,7 @@ class BattleScene():
                     if self.battle_state != "Lazer Movement":
 
                         # handle player zone, enemy zone, and action box events
-                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event,
-                            self.enemy_slots,
+                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event, None,
                             self.enemy_goons, self.active_effects,
                             self.battle_state,
                             self.inspecting_character, self.lore_scroll, self.lore_target_scroll,
@@ -904,12 +903,12 @@ class BattleScene():
 
         # update and remove effects
         for effect in self.active_effects[:]:
-            if isinstance(effect, FloatingText) or isinstance(effect, LaserProjectile) or isinstance(effect, GlitchyBlockProjectile) or isinstance(effect, ShieldProjectile):
+            if isinstance(effect, (FloatingText, ShieldProjectile, GlitchyBlockProjectile, LaserProjectile)):
                 effect.update()
-            elif isinstance(effect, BounceProjectile):
-                effect.update(self.player_bots, self.enemy_goons, self.active_effects)
-            else:
+            elif isinstance(effect, (HealProjectile, GlitchyHealProjectile)):
                 effect.update(self.active_effects)
+            else:
+                effect.update(self.player_bots, self.enemy_goons, self.active_effects)
             if not effect.active:
                 self.active_effects.remove(effect)
 
@@ -952,12 +951,7 @@ class TutorialBattleScene(BattleScene):
         self.healer_bot = HealerBot(250, 350)
 
         # create enemy goons
-        self.dummy_goon = DummyGoon(700, 250, 0)
-
-        # slots for enemies to spawn in
-        self.enemy_slots = [
-            {"x": 600, "y": 0, "occupied": False}
-        ]
+        self.dummy_goon = DummyGoon(700, 250)
 
         # initial list of characters
         self.player_bots = [self.gun_bot, self.healer_bot]
@@ -1884,7 +1878,7 @@ class OutsideLabScene(AdventureScene):
         self.checkpoint_activated = False
 
         # create patrolling goon
-        self.patrolling_goon = PatrollingGoon(700, 250, 0)
+        self.patrolling_goon = PatrollingGoon(700, 250)
         self.patrolling_goon.load_images()
         self.patrol_rect = pygame.Rect(700, 300, 50, 50)
         self.patrol_destroyed = False
@@ -2033,10 +2027,9 @@ class OutsideLabBattleScene(BattleScene):
         self.healer_bot = player_bots[1]
 
         # create enemy goons
-        self.patrolling_goon = PatrollingGoon(700, 200, 0)
+        self.patrolling_goon = PatrollingGoon(700, 200)
         self.patrolling_goon.load_images()
         self.enemy_goons = [self.patrolling_goon]
-        self.enemy_slots = [{"x": 700, "y": 250, "occupied": True}]
 
     def handle_input(self, events):
         super().handle_input(events)
