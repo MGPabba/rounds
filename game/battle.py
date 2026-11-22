@@ -911,11 +911,15 @@ class Execution:
             if char.real_health > 0 and char.fire_rounds > 0:
                 char.fire_rounds -= 1
                 if char in player_bots:
-                    damage, reduction = char.damage_calculations(char, 1)
-                    char.take_damage(player_bots, enemy_goons, active_effects, damage, reduction)
+                    damage = 1
                 elif char in enemy_goons:
-                    damage, reduction = elemental_bot.damage_calculations(char, elemental_bot.actions[0]["damage"])
-                    char.take_damage(player_bots, enemy_goons, active_effects, damage, reduction)
+                    damage = elemental_bot.actions[0]["damage"]
+                    if char.name == "Spiteful Goon":
+                        char.last_attacker = elemental_bot
+                if char.marked_rounds > 0:
+                    damage *= 2
+                char.real_health -= damage
+                char.take_damage(player_bots, enemy_goons, active_effects, damage, 0)
         
         # resets for next turn
         for bot in player_bots:

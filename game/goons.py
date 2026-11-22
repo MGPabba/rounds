@@ -206,7 +206,7 @@ class EndlessGoon(Goon):
         super().lore_text(fonts, lore)
 
         # add quantumized info to lore text
-        if self.quantumized:
+        if self.quantumized and self.name != "Spiteful Goon":
             lore.append((f"* This goon has been quantumized. When destroyed, it will perform its", "less"))
             lore.append((f"action on every {self.target}. The goon also drops double the gears. *", "normal"))
 
@@ -359,7 +359,7 @@ class BounceGoon(EndlessGoon):
 class FireGoon(EndlessGoon):
     # fire goon info
     name = "Fire Goon"
-    description = "This goon sets a bot on fire."
+    description = "This goon sets a bot on fire. Fire damage ignores negative effects."
     target = "Bot"
     projectile_offset = (-5, -30)
 
@@ -705,7 +705,7 @@ class PowerfulGoon(EndlessGoon):
 class NerfGoon(EndlessGoon):
     # nerf goon info
     name = "Nerf Goon"
-    description = "A goon like this nerfs a bots damage for a round."
+    description = "A goon like this nerfs a bot's damage for a round. The damage nerf can't nerf the damage below 1."
     target = "Bot"
     projectile_offset = (-30, -15)
 
@@ -774,6 +774,55 @@ class HealtonGoon(EndlessGoon):
         # add action stats to lore text
         lore.append((f"Min Heal: {self.heal_amount - 2}", "normal"))
         lore.append((f"Max Heal: {self.heal_amount + 2}", "normal"))
+
+class SpitefulGoon(EndlessGoon):
+    # spiteful goon info
+    name = "Spiteful Goon"
+    description = "A spiteful goon this goon is. It will attack whoever attacked it last."
+    target = "Bot"
+    projectile_offset = (-40, -40)
+
+    # images
+    idle_image_path = "assets/goons/spiteful_goon/spiteful_goon_idle.png"
+    hurt_image_path = "assets/goons/spiteful_goon/spiteful_goon_hurt.png"
+    dead_image_path = "assets/goons/spiteful_goon/spiteful_goon_dead.png"
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/spiteful_goon/spiteful_goon_sound.mp3")
+
+    def __init__(self, x, y, slot_id, quantumized):
+        super().__init__(x, y, slot_id, quantumized)
+
+        # spiteful goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.gears_reward = random.randint(1, 10)
+        self.damage = 2
+        self.last_attacker = None
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        if self.last_attacker and self.last_attacker.real_health > 0:
+            target = self.last_attacker
+        if self.quantumized and self.visual_health == 0:
+            self.damage *= 2 
+        damage, reduction = self.damage_calculations(target, self.damage)
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Spiteful Damage"))
+        self.attack_sound.play()
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add alternate quantumized info to lore text
+        if self.quantumized:
+            lore.append((f"* This goon has been quantumized. When destroyed, it will perform its", "less"))
+            lore.append((f"action on its last attacker with double damage. The goon also drops", "less"))
+            lore.append((f"double the gears. *", "normal"))
+
+        # add action stats to lore text
+        lore.append((f"Damage: {self.damage}", "normal"))
+        if self.last_attacker:
+            lore.append((f"Last Attacker: {self.last_attacker.name}", "normal"))
 
 # ------------------------------
 # STORY GOON CLASSES

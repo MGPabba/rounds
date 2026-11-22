@@ -9,11 +9,10 @@ import math
 from .abilities import MetalObject, CheckpointRunes
 from .bots import GunBot, RicoBot, ModBot, ElementalBot, LazerBot, ChaosBot, DuploBot, HealerBot
 from .goons import (
-    BasicGoon, TankyGoon, BounceGoon,
+    BasicGoon, TankyGoon, BounceGoon, SpitefulGoon,
     PowerfulGoon, PercentageGoon, RandomGoon, ChargeGoon,
     FireGoon, IceGoon, MarkGoon, NerfGoon,
-    ReductionGoon, BlockGoon,
-    HealingGoon, HealtonGoon,
+    ReductionGoon, BlockGoon, HealingGoon, HealtonGoon,
     DummyGoon, PatrollingGoon
 )
 from .helper import wrap_text, dynamic_text, render_text
@@ -364,11 +363,10 @@ class EndlessModeScene():
 
         # different types of enemy
         self.enemy_types = [
-            BasicGoon, TankyGoon, BounceGoon,                       # 0, 1, 2
-            PowerfulGoon, PercentageGoon, RandomGoon, ChargeGoon,   # 3, 4, 5, 6
-            FireGoon, IceGoon, MarkGoon, NerfGoon,                  # 7, 8, 9, 10
-            ReductionGoon, BlockGoon,                               # 11, 12
-            HealingGoon, HealtonGoon                                # 13, 14
+            BasicGoon, TankyGoon, BounceGoon, SpitefulGoon,         # 0, 1, 2, 3
+            PowerfulGoon, PercentageGoon, RandomGoon, ChargeGoon,   # 4, 5, 6, 7
+            FireGoon, IceGoon, MarkGoon, NerfGoon,                  # 8, 9, 10, 11
+            ReductionGoon, BlockGoon, HealingGoon, HealtonGoon      # 12, 13, 14, 15
         ]
 
         # initial list of characters and effects

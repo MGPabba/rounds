@@ -681,7 +681,7 @@ class ElementalBot(Bot):
                 "image_path": "assets/bots/elemental_bot/elemental_bot_fire.png",
                 "image": None,
                 "sound": pygame.mixer.Sound("assets/bots/elemental_bot/elemental_bot_fire_sound.mp3"),
-                "description": "Shoots a fire projectile at an enemy. Sets the enemy on fire, dealing damage over time. The fire does damage at the end of the round.",
+                "description": "Shoots a fire projectile at an enemy. Sets the enemy on fire, dealing damage over time. The fire does damage at the end of the round. Fire damage ignores negative effects.",
                 "scroll": 65,
                 "projectile_offset": (-22, 11)
             },

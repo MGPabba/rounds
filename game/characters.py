@@ -73,6 +73,10 @@ class Character:
         # reduce target real health
         target.real_health -= damage
 
+        # spiteful goon remembers last attacker
+        if target.name == "Spiteful Goon":
+            target.last_attacker = self
+
         return damage, reduction
 
     def take_damage(self, player_bots, enemy_goons, active_effects, damage, reduction):
@@ -107,9 +111,12 @@ class Character:
         # if goon is dead and quantumized, perform a final attack on all targets
         if self.character_type == "Goon" and self.visual_health == 0 and self.quantumized:
             if self.target == "Bot":
-                for bot in player_bots:
-                    if bot.real_health > 0:
-                        self.perform_attack(active_effects, bot)
+                if self.name == "Spiteful Goon":
+                    self.perform_attack(active_effects, self.last_attacker)
+                else:
+                    for bot in player_bots:
+                        if bot.real_health > 0:
+                            self.perform_attack(active_effects, bot)
             elif self.target == "Goon":
                 for goon in enemy_goons:
                     if goon.real_health > 0:

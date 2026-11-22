@@ -85,7 +85,7 @@ class LinearProjectile(Projectile):
         # damage or apply effect when projectile reaches
         if (self.speed_x > 0 and self.x >= self.target_x) or (self.speed_x < 0 and self.x <= self.target_x):
             self.active = False
-            if self.projectile_type == "Damage":
+            if self.projectile_type in ["Damage", "Spiteful Damage"]:
                 self.target_char.take_damage(player_bots, enemy_goons, active_effects, self.amount, self.reduction)
             elif self.projectile_type == "Fire":
                 self.target_char.apply_fire(active_effects, self.amount)
@@ -102,6 +102,8 @@ class LinearProjectile(Projectile):
         # draw a projectile that moves straight towards target
         if self.projectile_type == "Damage":
             pygame.draw.rect(screen, self.color, (self.x, self.y, 10, 5))
+        elif self.projectile_type == "Spiteful Damage":
+            pygame.draw.ellipse(screen, self.color, (int(self.x), int(self.y), 15, 8), 3)
         elif self.projectile_type == "Nerf":
             pygame.draw.circle(screen, self.color, (self.x, self.y), 5)
         else:
