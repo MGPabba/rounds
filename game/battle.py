@@ -3,6 +3,7 @@
 # import libraries
 import pygame
 import random
+import math
 
 # import game modules
 from .helper import dynamic_text, render_text
@@ -718,22 +719,30 @@ class EnemyZone:
 
         return inspecting_character, lore_scroll, lore_target_scroll, gears
 
-    def spawn_goons(self, enemy_slots, enemy_types, enemy_goons, active_effects, gears, rounds, max_enemies):
-        # determine how many enemies to spawn based on the round
-        spawns = 0
-        if rounds <= 10:
-            spawns = 1
-        else:
-            spawns = 2
+    def spawn_goons(self, enemy_slots, goon_types, enemy_goons, active_effects, gears, rounds):
+        # count how many goons are currently alive
+        alive_goons = 0
+        for goon in enemy_goons:
+            if goon.real_health > 0:
+                alive_goons += 1
+
+        # determine how many goons to spawn based on the round
+        possible_spawns = min(6, math.ceil(rounds / 10))
+        max_enemies = min(9, (rounds // 5) + 3)
+        actual_spawns = min(possible_spawns, max_enemies - alive_goons)
+
+        # determine which goons are available to spawn based on the round
+        available_enemies = []
+        enemies_weights = []
+        for goon in goon_types:
+            if goon["round"] <= rounds:
+                available_enemies.append(goon["goon"])
+                enemies_weights.append(goon["weight"])
         
-        # increase the max number of enemies every 5 rounds, up to a maximum of 9
-        if max_enemies < 9 and rounds % 5 == 0:
-            max_enemies += 1
-        
-        for _ in range(spawns):
+        for _ in range(actual_spawns):
             
             # auto harvest gears and remove dead goons if there are max number of enemies on the field
-            if len(enemy_goons) == max_enemies:
+            if len(enemy_goons) == 9:
                 for i in range(len(enemy_goons) - 1, -1, -1):
                     goon = enemy_goons[i]
                     if goon.visual_health == 0:
@@ -749,40 +758,45 @@ class EnemyZone:
                         enemy_slots[goon.slot_id]["occupied"] = False
                         enemy_goons.pop(i)
                         break
-            
-            # spawn new enemies if there are empty slots
-            if len(enemy_goons) < max_enemies:
     
-                # find empty slots
-                empty_slots = []
-                for i, slot in enumerate(enemy_slots):
-                    if not slot["occupied"]:
-                        empty_slots.append(i)
-                
-                if empty_slots:
+            # find empty slots
+            empty_slots = []
+            for i, slot in enumerate(enemy_slots):
+                if not slot["occupied"]:
+                    empty_slots.append(i)
 
-                    # choose a random empty slot
-                    slot_id = random.choice(empty_slots)
-                    slot = enemy_slots[slot_id]
-                    slot["occupied"] = True
-    
-                    # random offsets for the spawn position
-                    x_offset = random.randint(0, 100)
-                    y_offset = random.randint(40, 100)
+            # choose a random empty slot
+            slot_id = random.choice(empty_slots)
+            slot = enemy_slots[slot_id]
+            slot["occupied"] = True
 
-                    # randomly determine if quantumized
-                    quantumization = random.choice([True, False])
-    
-                    # spawn a random goon
-                    random_type = random.randint(0, len(enemy_types) - 1)
-                    enemy_type = enemy_types[random_type]
-                    new_enemy = enemy_type(
-                        slot["x"] + x_offset,
-                        slot["y"] + y_offset,
-                        slot_id, quantumization)
-                    enemy_goons.append(new_enemy)
+            # random offsets for the spawn position
+            x_offset = random.randint(0, 100)
+            y_offset = random.randint(40, 100)
+
+            # randomly determine if quantumized
+            if rounds >= 20:
+                quantumization = random.choice([True, False])
+            else:
+                quantumization = False
+
+            # spawn a random goon
+            goon_type = random.choices(available_enemies, weights=enemies_weights)[0]
+            new_goon = goon_type(
+                slot["x"] + x_offset,
+                slot["y"] + y_offset,
+                slot_id, quantumization)
+            enemy_goons.append(new_goon)
+
+            # increase goon health based on the round
+            if rounds >= 20:
+                new_goon.real_health *= 2
+                new_goon.visual_health *= 2
+            if rounds >= 50:
+                new_goon.real_health *= 2
+                new_goon.visual_health *= 2
         
-        return gears, max_enemies
+        return gears
 
     def update(self, enemy_goons):
         # update goon animations

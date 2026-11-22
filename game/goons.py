@@ -26,6 +26,10 @@ from .effects import (
 # ------------------------------
 
 class Goon(Character):
+    # goon info
+    character_type = "Goon"
+    box_background_color = (255, 75, 75)
+
     # images
     idle_image = None
     hurt_image = None
@@ -36,10 +40,6 @@ class Goon(Character):
 
         # goon specific info
         self.quantumized = False
-        self.character_type = "Goon"
-        self.box_background_color = (255, 75, 75)
-
-        # animation
         self.float_direction = 2
         self.float_offset = random.choice([-4, -2, 0, 2, 4])
 
@@ -144,9 +144,9 @@ class Goon(Character):
 
             # draw block barrier if having a barrier
             if self.block > 0:
-                pygame.draw.rect(screen, (255, 0, 0), (self.rect.x -10, self.rect.y, 110, 110), 3)
-                pygame.draw.rect(screen, (255, 0, 0), (self.rect.x, self.rect.y - 5, 105, 105), 3)
-                pygame.draw.rect(screen, (255, 0, 0), (self.rect.x, self.rect.y, 120, 120), 3)
+                pygame.draw.rect(screen, (255, 100, 100), (self.rect.x -10, self.rect.y, 110, 110), 3)
+                pygame.draw.rect(screen, (255, 100, 100), (self.rect.x, self.rect.y - 5, 105, 105), 3)
+                pygame.draw.rect(screen, (255, 100, 100), (self.rect.x, self.rect.y, 120, 120), 3)
 
             # draw shield if having a shield
             if self.reduction_shield > 0:
@@ -780,7 +780,7 @@ class SpitefulGoon(EndlessGoon):
     name = "Spiteful Goon"
     description = "A spiteful goon this goon is. It will attack whoever attacked it last."
     target = "Bot"
-    projectile_offset = (-40, -40)
+    projectile_offset = (-33, -32)
 
     # images
     idle_image_path = "assets/goons/spiteful_goon/spiteful_goon_idle.png"

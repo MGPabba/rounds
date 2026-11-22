@@ -361,12 +361,27 @@ class EndlessModeScene():
             {"x": 1000, "y": 400, "occupied": False} # back, bottom
         ]
 
-        # different types of enemy
-        self.enemy_types = [
-            BasicGoon, TankyGoon, BounceGoon, SpitefulGoon,         # 0, 1, 2, 3
-            PowerfulGoon, PercentageGoon, RandomGoon, ChargeGoon,   # 4, 5, 6, 7
-            FireGoon, IceGoon, MarkGoon, NerfGoon,                  # 8, 9, 10, 11
-            ReductionGoon, BlockGoon, HealingGoon, HealtonGoon      # 12, 13, 14, 15
+        # different types of goons and their spawn conditions
+        self.goon_types = [
+            {"goon": BasicGoon, "round": 1, "weight": 3},
+            {"goon": TankyGoon, "round": 1, "weight": 3},
+            {"goon": BounceGoon, "round": 1, "weight": 2},
+            {"goon": SpitefulGoon, "round": 1, "weight": 2},
+
+            {"goon": PowerfulGoon, "round": 5, "weight": 2},
+            {"goon": PercentageGoon, "round": 5, "weight": 2},
+            {"goon": RandomGoon, "round": 10, "weight": 1},
+            {"goon": ChargeGoon, "round": 10, "weight": 1},
+
+            {"goon": FireGoon, "round": 5, "weight": 2},
+            {"goon": IceGoon, "round": 10, "weight": 1},
+            {"goon": MarkGoon, "round": 10, "weight": 1},
+            {"goon": NerfGoon, "round": 10, "weight": 1},
+
+            {"goon": ReductionGoon, "round": 5, "weight": 2},
+            {"goon": BlockGoon, "round": 5, "weight": 2},
+            {"goon": HealingGoon, "round": 1, "weight": 2},
+            {"goon": HealtonGoon, "round": 10, "weight": 1}
         ]
 
         # initial list of characters and effects
@@ -394,13 +409,12 @@ class EndlessModeScene():
         # initial variables for game progression
         self.gears = 0
         self.rounds = 1
-        self.max_enemies = 3
 
         # load initial character images
-        for char in self.all_bots:
-            char["bot"].load_images()
-        for enemy in self.enemy_types:
-            enemy.load_images()
+        for bot in self.all_bots:
+            bot["bot"].load_images()
+        for goon in self.goon_types:
+            goon["goon"].load_images()
 
         # inital gun bot aiming setup
         self.gun_bot.reset_gun_aiming()
@@ -424,11 +438,11 @@ class EndlessModeScene():
             y_offset = random.randint(40, 100)
 
             # spawn a basic goon
-            new_enemy = self.enemy_types[0](
+            new_goon = BasicGoon(
                 slot["x"] + x_offset,
                 slot["y"] + y_offset,
                 slot_id, False)
-            self.enemy_goons.append(new_enemy)
+            self.enemy_goons.append(new_goon)
 
     def handle_input(self, events):
         # dont allow any input if the game is over
@@ -568,7 +582,7 @@ class EndlessModeScene():
         # handle round end and spawn new goons
         if self.battle_state == "Round End":
             self.battle_state, self.gears, self.rounds = self.execution.round_end(self.player_bots, self.enemy_goons, self.active_effects, self.battle_state, self.gears, self.rounds, self.gun_bot, self.elemental_bot)
-            self.gears, self.max_enemies = self.enemy_zone.spawn_goons(self.enemy_slots, self.enemy_types, self.enemy_goons, self.active_effects, self.gears, self.rounds, self.max_enemies)
+            self.gears = self.enemy_zone.spawn_goons(self.enemy_slots, self.goon_types, self.enemy_goons, self.active_effects, self.gears, self.rounds)
 
         # check if game is over
         game_end = True
