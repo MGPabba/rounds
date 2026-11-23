@@ -210,6 +210,8 @@ class EndlessGoon(Goon):
             lore.append((f"* This goon has been quantumized. When destroyed, it will perform its", "less"))
             lore.append((f"action on every {self.target}. The goon also drops double the gears. *", "normal"))
 
+# ----- Unique Goons -----
+
 class BasicGoon(EndlessGoon):
     # basic goon info
     name = "Basic Goon"
@@ -282,42 +284,6 @@ class TankyGoon(EndlessGoon):
         # add action stats to lore text
         lore.append((f"Damage: {self.damage}", "normal"))
 
-class HealingGoon(EndlessGoon):
-    # healing goon info
-    name = "Healing Goon"
-    description = "A healing goon that heals a fellow goon."
-    target = "Goon"
-    projectile_offset = (0, 0)
-
-    # images
-    idle_image_path = "assets/goons/healing_goon/healing_goon_idle.png"
-    hurt_image_path = "assets/goons/healing_goon/healing_goon_hurt.png"
-    dead_image_path = "assets/goons/healing_goon/healing_goon_dead.png"
-
-    # sound effects
-    attack_sound = pygame.mixer.Sound("assets/goons/healing_goon/healing_goon_sound.mp3")
-
-    def __init__(self, x, y, slot_id, quantumized):
-        super().__init__(x, y, slot_id, quantumized)
-
-        # healing goon specific info
-        self.real_health = 5
-        self.visual_health = 5
-        self.gears_reward = random.randint(1, 10)
-        self.heal = 1
-
-    def perform_attack(self, active_effects, target):
-        # perform action on target character
-        target.real_health += self.heal
-        active_effects.append(HealProjectile((255, 0, 0), self, target, self.projectile_offset, self.heal, "Goon"))
-        self.attack_sound.play()
-
-    def lore_text(self, fonts, lore):
-        super().lore_text(fonts, lore)
-
-        # add action stats to lore text
-        lore.append((f"Heal: {self.heal}", "normal"))
-
 class BounceGoon(EndlessGoon):
     # bounce goon info
     name = "Bounce Goon"
@@ -356,40 +322,136 @@ class BounceGoon(EndlessGoon):
         lore.append((f"Bounces: {self.bounce_amount}", "normal"))
         lore.append((f"Damage: {self.damage}", "normal"))
 
-class FireGoon(EndlessGoon):
-    # fire goon info
-    name = "Fire Goon"
-    description = "This goon sets a bot on fire. Fire damage ignores negative effects."
+class SpitefulGoon(EndlessGoon):
+    # spiteful goon info
+    name = "Spiteful Goon"
+    description = "A spiteful goon this goon is. It will attack whoever attacked it last."
     target = "Bot"
-    projectile_offset = (-5, -30)
+    projectile_offset = (-33, -32)
 
     # images
-    idle_image_path = "assets/goons/fire_goon/fire_goon_idle.png"
-    hurt_image_path = "assets/goons/fire_goon/fire_goon_hurt.png"
-    dead_image_path = "assets/goons/fire_goon/fire_goon_dead.png"
+    idle_image_path = "assets/goons/spiteful_goon/spiteful_goon_idle.png"
+    hurt_image_path = "assets/goons/spiteful_goon/spiteful_goon_hurt.png"
+    dead_image_path = "assets/goons/spiteful_goon/spiteful_goon_dead.png"
 
     # sound effects
-    attack_sound = pygame.mixer.Sound("assets/goons/fire_goon/fire_goon_sound.mp3")
+    attack_sound = pygame.mixer.Sound("assets/goons/spiteful_goon/spiteful_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id, quantumized):
         super().__init__(x, y, slot_id, quantumized)
 
-        # fire goon specific info
+        # spiteful goon specific info
         self.real_health = 5
         self.visual_health = 5
         self.gears_reward = random.randint(1, 10)
-        self.fire_rounds_amount = 3
+        self.damage = 2
+        self.last_attacker = None
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
-        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, self.fire_rounds_amount, 0, "Fire"))
+        if self.last_attacker and self.last_attacker.real_health > 0:
+            target = self.last_attacker
+        if self.quantumized and self.visual_health == 0:
+            self.damage *= 2 
+        damage, reduction = self.damage_calculations(target, self.damage)
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Spiteful Damage"))
+        self.attack_sound.play()
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add alternate quantumized info to lore text
+        if self.quantumized:
+            lore.append((f"* This goon has been quantumized. When destroyed, it will perform its", "less"))
+            lore.append((f"action on its last attacker with double damage. The goon also drops", "less"))
+            lore.append((f"double the gears. *", "normal"))
+
+        # add action stats to lore text
+        lore.append((f"Damage: {self.damage}", "normal"))
+        if self.last_attacker:
+            lore.append((f"Last Attacker: {self.last_attacker.name}", "normal"))
+
+# ----- Damage Goons -----
+
+class PowerfulGoon(EndlessGoon):
+    # powerful goon info
+    name = "Powerful Goon"
+    description = "A powerful enemy goon that attacks a bot while increasing its damage every round."
+    target = "Bot"
+    projectile_offset = (-40, -40)
+
+    # images
+    idle_image_path = "assets/goons/powerful_goon/powerful_goon_idle.png"
+    hurt_image_path = "assets/goons/powerful_goon/powerful_goon_hurt.png"
+    dead_image_path = "assets/goons/powerful_goon/powerful_goon_dead.png"
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/powerful_goon/powerful_goon_sound.mp3")
+
+    def __init__(self, x, y, slot_id, quantumized):
+        super().__init__(x, y, slot_id, quantumized)
+
+        # powerful goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.gears_reward = random.randint(1, 10)
+        self.damage = 1
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        damage, reduction = self.damage_calculations(target, self.damage)
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        self.attack_sound.play()
+
+        # increase damage by 1 every round
+        if self.visual_health > 0:
+            self.damage += 1
+            text = "+1 Damage"
+            text_width = len(text) * 10
+            text_x = random.randint(self.rect.left, self.rect.right - text_width)
+            active_effects.append(FloatingText((255, 0, 0), text_x, self.rect.top + 10, text))
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Damage: {self.damage}", "normal"))
+
+class PercentageGoon(EndlessGoon):
+    # percentage goon info
+    name = "Percentage Goon"
+    description = "A goon that deals damage to a bot based on its current health. The amount of damage is rounded down with a minimum of 1 damage."
+    target = "Bot"
+    projectile_offset = (-24, -36)
+
+    # images
+    idle_image_path = "assets/goons/percentage_goon/percentage_goon_idle.png"
+    hurt_image_path = "assets/goons/percentage_goon/percentage_goon_hurt.png"
+    dead_image_path = "assets/goons/percentage_goon/percentage_goon_dead.png"
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/percentage_goon/percentage_goon_sound.mp3")
+
+    def __init__(self, x, y, slot_id, quantumized):
+        super().__init__(x, y, slot_id, quantumized)
+
+        # percentage goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.gears_reward = random.randint(1, 10)
+        self.damage = 25
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        damage, reduction = self.damage_calculations(target, max(1, int(target.real_health * (self.damage / 100))))
+        active_effects.append(PercentageProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
         self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
 
         # add action stats to lore text
-        lore.append((f"Fire Rounds: {self.fire_rounds_amount}", "normal"))
+        lore.append((f"Damage: {self.damage}%", "normal"))
 
 class RandomGoon(EndlessGoon):
     # random goon info
@@ -484,41 +546,42 @@ class ChargeGoon(EndlessGoon):
         # add action stats to lore text
         lore.append((f"Damage: {self.damage}", "normal"))
 
-class PercentageGoon(EndlessGoon):
-    # percentage goon info
-    name = "Percentage Goon"
-    description = "A goon that deals damage to a bot based on its current health. The amount of damage is rounded down with a minimum of 1 damage."
+# ----- Effect Goons -----
+
+class FireGoon(EndlessGoon):
+    # fire goon info
+    name = "Fire Goon"
+    description = "This goon sets a bot on fire. Fire damage ignores negative effects."
     target = "Bot"
-    projectile_offset = (-24, -36)
+    projectile_offset = (-5, -30)
 
     # images
-    idle_image_path = "assets/goons/percentage_goon/percentage_goon_idle.png"
-    hurt_image_path = "assets/goons/percentage_goon/percentage_goon_hurt.png"
-    dead_image_path = "assets/goons/percentage_goon/percentage_goon_dead.png"
+    idle_image_path = "assets/goons/fire_goon/fire_goon_idle.png"
+    hurt_image_path = "assets/goons/fire_goon/fire_goon_hurt.png"
+    dead_image_path = "assets/goons/fire_goon/fire_goon_dead.png"
 
     # sound effects
-    attack_sound = pygame.mixer.Sound("assets/goons/percentage_goon/percentage_goon_sound.mp3")
+    attack_sound = pygame.mixer.Sound("assets/goons/fire_goon/fire_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id, quantumized):
         super().__init__(x, y, slot_id, quantumized)
 
-        # percentage goon specific info
+        # fire goon specific info
         self.real_health = 5
         self.visual_health = 5
         self.gears_reward = random.randint(1, 10)
-        self.damage = 25
+        self.fire_rounds_amount = 3
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
-        damage, reduction = self.damage_calculations(target, max(1, int(target.real_health * (self.damage / 100))))
-        active_effects.append(PercentageProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, self.fire_rounds_amount, 0, "Fire"))
         self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
 
         # add action stats to lore text
-        lore.append((f"Damage: {self.damage}%", "normal"))
+        lore.append((f"Fire Rounds: {self.fire_rounds_amount}", "normal"))
 
 class IceGoon(EndlessGoon):
     # ice goon info
@@ -587,6 +650,43 @@ class MarkGoon(EndlessGoon):
 
         # add action stats to lore text
         lore.append(("Mark Hits Needed: 1", "normal"))
+
+class NerfGoon(EndlessGoon):
+    # nerf goon info
+    name = "Nerf Goon"
+    description = "A goon like this nerfs a bot's damage for a round. The damage nerf can't nerf the damage below 1."
+    target = "Bot"
+    projectile_offset = (-30, -15)
+
+    # images
+    idle_image_path = "assets/goons/nerf_goon/nerf_goon_idle.png"
+    hurt_image_path = "assets/goons/nerf_goon/nerf_goon_hurt.png"
+    dead_image_path = "assets/goons/nerf_goon/nerf_goon_dead.png"
+
+    # sound effects
+    attack_sound = pygame.mixer.Sound("assets/goons/nerf_goon/nerf_goon_sound.mp3")
+
+    def __init__(self, x, y, slot_id, quantumized):
+        super().__init__(x, y, slot_id, quantumized)
+
+        # nerf goon specific info
+        self.real_health = 5
+        self.visual_health = 5
+        self.gears_reward = random.randint(1, 10)
+        self.nerf_amount = 1
+
+    def perform_attack(self, active_effects, target):
+        # perform action on target character
+        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, self.nerf_amount, 0, "Nerf"))
+        self.attack_sound.play()
+
+    def lore_text(self, fonts, lore):
+        super().lore_text(fonts, lore)
+
+        # add action stats to lore text
+        lore.append((f"Nerf: -{self.nerf_amount} Damage", "normal"))
+
+# ----- Support Goons -----
 
 class ReductionGoon(EndlessGoon):
     # reduction goon info
@@ -658,84 +758,41 @@ class BlockGoon(EndlessGoon):
         # add action stats to lore text
         lore.append((f"Block Chance: {self.block_amount}%", "normal"))
 
-class PowerfulGoon(EndlessGoon):
-    # powerful goon info
-    name = "Powerful Goon"
-    description = "A powerful enemy goon that attacks a bot while increasing its damage every round."
-    target = "Bot"
-    projectile_offset = (-40, -40)
+class HealingGoon(EndlessGoon):
+    # healing goon info
+    name = "Healing Goon"
+    description = "A healing goon that heals a fellow goon."
+    target = "Goon"
+    projectile_offset = (0, 0)
 
     # images
-    idle_image_path = "assets/goons/powerful_goon/powerful_goon_idle.png"
-    hurt_image_path = "assets/goons/powerful_goon/powerful_goon_hurt.png"
-    dead_image_path = "assets/goons/powerful_goon/powerful_goon_dead.png"
+    idle_image_path = "assets/goons/healing_goon/healing_goon_idle.png"
+    hurt_image_path = "assets/goons/healing_goon/healing_goon_hurt.png"
+    dead_image_path = "assets/goons/healing_goon/healing_goon_dead.png"
 
     # sound effects
-    attack_sound = pygame.mixer.Sound("assets/goons/powerful_goon/powerful_goon_sound.mp3")
+    attack_sound = pygame.mixer.Sound("assets/goons/healing_goon/healing_goon_sound.mp3")
 
     def __init__(self, x, y, slot_id, quantumized):
         super().__init__(x, y, slot_id, quantumized)
 
-        # powerful goon specific info
+        # healing goon specific info
         self.real_health = 5
         self.visual_health = 5
         self.gears_reward = random.randint(1, 10)
-        self.damage = 1
+        self.heal = 1
 
     def perform_attack(self, active_effects, target):
         # perform action on target character
-        damage, reduction = self.damage_calculations(target, self.damage)
-        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Damage"))
-        self.attack_sound.play()
-
-        # increase damage by 1 every round
-        if self.visual_health > 0:
-            self.damage += 1
-            text = "+1 Damage"
-            text_width = len(text) * 10
-            text_x = random.randint(self.rect.left, self.rect.right - text_width)
-            active_effects.append(FloatingText((255, 0, 0), text_x, self.rect.top + 10, text))
-
-    def lore_text(self, fonts, lore):
-        super().lore_text(fonts, lore)
-
-        # add action stats to lore text
-        lore.append((f"Damage: {self.damage}", "normal"))
-
-class NerfGoon(EndlessGoon):
-    # nerf goon info
-    name = "Nerf Goon"
-    description = "A goon like this nerfs a bot's damage for a round. The damage nerf can't nerf the damage below 1."
-    target = "Bot"
-    projectile_offset = (-30, -15)
-
-    # images
-    idle_image_path = "assets/goons/nerf_goon/nerf_goon_idle.png"
-    hurt_image_path = "assets/goons/nerf_goon/nerf_goon_hurt.png"
-    dead_image_path = "assets/goons/nerf_goon/nerf_goon_dead.png"
-
-    # sound effects
-    attack_sound = pygame.mixer.Sound("assets/goons/nerf_goon/nerf_goon_sound.mp3")
-
-    def __init__(self, x, y, slot_id, quantumized):
-        super().__init__(x, y, slot_id, quantumized)
-
-        # nerf goon specific info
-        self.real_health = 5
-        self.visual_health = 5
-        self.gears_reward = random.randint(1, 10)
-        self.nerf_amount = 1
-
-    def perform_attack(self, active_effects, target):
-        # perform action on target character
-        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, self.nerf_amount, 0, "Nerf"))
+        target.real_health += self.heal
+        active_effects.append(HealProjectile((255, 0, 0), self, target, self.projectile_offset, self.heal, "Goon"))
         self.attack_sound.play()
 
     def lore_text(self, fonts, lore):
         super().lore_text(fonts, lore)
 
         # add action stats to lore text
-        lore.append((f"Nerf: -{self.nerf_amount} Damage", "normal"))
+        lore.append((f"Heal: {self.heal}", "normal"))
 
 class HealtonGoon(EndlessGoon):
     # healton goon info
@@ -774,55 +831,6 @@ class HealtonGoon(EndlessGoon):
         # add action stats to lore text
         lore.append((f"Min Heal: {self.heal_amount - 2}", "normal"))
         lore.append((f"Max Heal: {self.heal_amount + 2}", "normal"))
-
-class SpitefulGoon(EndlessGoon):
-    # spiteful goon info
-    name = "Spiteful Goon"
-    description = "A spiteful goon this goon is. It will attack whoever attacked it last."
-    target = "Bot"
-    projectile_offset = (-33, -32)
-
-    # images
-    idle_image_path = "assets/goons/spiteful_goon/spiteful_goon_idle.png"
-    hurt_image_path = "assets/goons/spiteful_goon/spiteful_goon_hurt.png"
-    dead_image_path = "assets/goons/spiteful_goon/spiteful_goon_dead.png"
-
-    # sound effects
-    attack_sound = pygame.mixer.Sound("assets/goons/spiteful_goon/spiteful_goon_sound.mp3")
-
-    def __init__(self, x, y, slot_id, quantumized):
-        super().__init__(x, y, slot_id, quantumized)
-
-        # spiteful goon specific info
-        self.real_health = 5
-        self.visual_health = 5
-        self.gears_reward = random.randint(1, 10)
-        self.damage = 2
-        self.last_attacker = None
-
-    def perform_attack(self, active_effects, target):
-        # perform action on target character
-        if self.last_attacker and self.last_attacker.real_health > 0:
-            target = self.last_attacker
-        if self.quantumized and self.visual_health == 0:
-            self.damage *= 2 
-        damage, reduction = self.damage_calculations(target, self.damage)
-        active_effects.append(LinearProjectile((255, 0, 0), self, target, self.projectile_offset, damage, reduction, "Spiteful Damage"))
-        self.attack_sound.play()
-
-    def lore_text(self, fonts, lore):
-        super().lore_text(fonts, lore)
-
-        # add alternate quantumized info to lore text
-        if self.quantumized:
-            lore.append((f"* This goon has been quantumized. When destroyed, it will perform its", "less"))
-            lore.append((f"action on its last attacker with double damage. The goon also drops", "less"))
-            lore.append((f"double the gears. *", "normal"))
-
-        # add action stats to lore text
-        lore.append((f"Damage: {self.damage}", "normal"))
-        if self.last_attacker:
-            lore.append((f"Last Attacker: {self.last_attacker.name}", "normal"))
 
 # ------------------------------
 # STORY GOON CLASSES
