@@ -8,6 +8,7 @@ import pygame
 pygame.init()
 pygame.font.init()
 pygame.mixer.init()
+pygame.mixer.set_num_channels(32)
 
 # import game modules
 from game.scenes import MainMenuScene

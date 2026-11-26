@@ -193,10 +193,6 @@ class ShopBox:
         self.select_button_sound = pygame.mixer.Sound("assets/endless/select_shop_button_sound.mp3")
 
     def handle_event(self, event, all_bots, bot_upgrades, battle_state, previous_battle_state):
-        # dont open shop during lazer movement
-        if battle_state == "Lazer Movement":
-            return battle_state, previous_battle_state
-        
         if self.shop_button_rect.collidepoint(event.pos):
             self.select_button_sound.play()
 
@@ -848,13 +844,13 @@ class Execution:
 
     def execute_laser_action(self, event, player_bots, enemy_goons, active_effects, battle_state, active_bot, chosen_action, inspecting_character):
         # bot enters and exits movement mode when clicked on
-        if battle_state == "Target Line" and active_bot.rect.collidepoint(event.pos):
+        if event.type == pygame.MOUSEBUTTONDOWN and battle_state == "Target Line" and active_bot.rect.collidepoint(event.pos):
             battle_state = "Lazer Movement"
-        elif battle_state == "Lazer Movement" and active_bot.rect.collidepoint(event.pos):
+        elif event.type == pygame.MOUSEBUTTONUP and battle_state == "Lazer Movement":
             battle_state = "Target Line"
         
         # perform pierce action if lazer bot is not moving and mouse is clicked to the right of lazer bot
-        elif battle_state == "Target Line" and event.pos[0] > active_bot.rect.centerx + active_bot.actions[0]["projectile_offset"][0]:
+        elif event.type == pygame.MOUSEBUTTONDOWN and battle_state == "Target Line" and event.pos[0] > active_bot.rect.right:
 
             # calculate the start position, end position, and direction of the laser beam based on the mouse position and lazer bot's position
             start_x = active_bot.rect.centerx + active_bot.actions[0]["projectile_offset"][0]

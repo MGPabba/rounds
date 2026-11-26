@@ -478,20 +478,19 @@ class EndlessModeScene():
                     else:
 
                         # handle player zone, enemy zone, and action box events
-                        if self.battle_state != "Lazer Movement":
-                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event,
-                                self.enemy_slots,
-                                self.enemy_goons, self.active_effects,
-                                self.battle_state,
-                                self.inspecting_character, self.lore_scroll, self.lore_target_scroll,
-                                self.gears)
-                            self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.player_zone.handle_event(event,
-                                self.player_bots,
-                                self.battle_state, self.active_bot, self.chosen_action,
-                                self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
-                            self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
-                                self.battle_state, self.active_bot, self.chosen_action,
-                                self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
+                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event,
+                            self.enemy_slots,
+                            self.enemy_goons, self.active_effects,
+                            self.battle_state,
+                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll,
+                            self.gears)
+                        self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.player_zone.handle_event(event,
+                            self.player_bots,
+                            self.battle_state, self.active_bot, self.chosen_action,
+                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
+                        self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
+                            self.battle_state, self.active_bot, self.chosen_action,
+                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
 
                         # execute the chosen action
                         self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_action(event,
@@ -530,6 +529,15 @@ class EndlessModeScene():
                         elif self.inspecting_character:
                             self.inspecting_character = None
                             self.right_click_sound.play()
+
+            # handles mouse release
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+
+                # release lazer bot movement
+                self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_laser_action(event,
+                    self.player_bots, self.enemy_goons, self.active_effects,
+                    self.battle_state, self.active_bot, self.chosen_action,
+                    self.inspecting_character)
 
             # handles key presses
             elif event.type == pygame.KEYDOWN:
@@ -817,31 +825,29 @@ class BattleScene():
                 # handle left mouse clicks
                 if event.button == 1:
 
-                    if self.battle_state != "Lazer Movement":
+                    # handle player zone, enemy zone, and action box events
+                    self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event, None,
+                        self.enemy_goons, self.active_effects,
+                        self.battle_state,
+                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll,
+                        self.gears)
+                    self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.player_zone.handle_event(event,
+                        self.player_bots,
+                        self.battle_state, self.active_bot, self.chosen_action,
+                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
+                    self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
+                        self.battle_state, self.active_bot, self.chosen_action,
+                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
 
-                        # handle player zone, enemy zone, and action box events
-                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event, None,
-                            self.enemy_goons, self.active_effects,
-                            self.battle_state,
-                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll,
-                            self.gears)
-                        self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.player_zone.handle_event(event,
-                            self.player_bots,
-                            self.battle_state, self.active_bot, self.chosen_action,
-                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
-                        self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
-                            self.battle_state, self.active_bot, self.chosen_action,
-                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
-
-                        # execute the chosen action
-                        self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_action(event,
-                            self.player_bots, self.enemy_goons, self.active_effects,
-                            self.battle_state, self.active_bot, self.chosen_action,
-                            self.inspecting_character)
-                        self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_laser_action(event,
-                            self.player_bots, self.enemy_goons, self.active_effects,
-                            self.battle_state, self.active_bot, self.chosen_action,
-                            self.inspecting_character)
+                    # execute the chosen action
+                    self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_action(event,
+                        self.player_bots, self.enemy_goons, self.active_effects,
+                        self.battle_state, self.active_bot, self.chosen_action,
+                        self.inspecting_character)
+                    self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_laser_action(event,
+                        self.player_bots, self.enemy_goons, self.active_effects,
+                        self.battle_state, self.active_bot, self.chosen_action,
+                        self.inspecting_character)
 
                 # handle right mouse clicks
                 elif event.button == 3:
@@ -856,6 +862,15 @@ class BattleScene():
                             self.active_bot = None
                         elif self.inspecting_character:
                             self.inspecting_character = None
+
+            # handles mouse release
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+
+                # release lazer bot movement
+                self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_laser_action(event,
+                    self.player_bots, self.enemy_goons, self.active_effects,
+                    self.battle_state, self.active_bot, self.chosen_action,
+                    self.inspecting_character)
 
             # handles key presses
             elif event.type == pygame.KEYDOWN:

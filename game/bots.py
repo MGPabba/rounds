@@ -750,13 +750,12 @@ class LazerBot(Bot):
             {
                 "name": "Pierce",
                 "damage": 1,
-                "movement_mode": False,
                 "used": False,
                 "target_state": "Target Line",
                 "image_path": "assets/bots/lazer_bot/lazer_bot_pierce.png",
                 "image": None,
                 "sound": pygame.mixer.Sound("assets/bots/lazer_bot/lazer_bot_pierce_sound.mp3"),
-                "description": "Fires a laser beam that can pierce through multiple enemies in a straight line. The laser beam can be aimed with the mouse position. Click to fire the laser beam and all enemies in the line will take damage. Click on lazer bot to enter into movement mode. While in movement mode, you can move lazer bot up and down with the mouse position. Click on lazer bot again to exit movement mode. You can use movement mode to have better aim with the laser beam.",
+                "description": "Fires a laser beam that can pierce through multiple enemies in a straight line. The laser beam can be aimed with the mouse position. Click to fire the laser beam and all enemies in the line will take damage. You can move lazer bot up and down by dragging it. Move lazer bot to have better aim with the laser beam.",
                 "scroll": 65,
                 "projectile_offset": (11, -1)
             },
@@ -780,6 +779,10 @@ class LazerBot(Bot):
         # reset actions for the next turn
         self.acted = False
         self.actions[0]["used"] = False
+
+        # check if barrage has enough charge and reset it also if it does
+        if self.actions[1]["barrage_charge"] >= self.actions[1]["barrage_charge_needed"]:
+            self.actions[1]["used"] = False
 
     def perform_action(self, player_bots, enemy_goons, active_effects, target_list, chosen_action, laser_end):
         # perform action on target characters based on which action is chosen
