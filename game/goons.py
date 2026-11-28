@@ -28,7 +28,12 @@ from .effects import (
 class Goon(Character):
     # goon info
     character_type = "Goon"
+
+    # colors
     box_background_color = (255, 75, 75)
+    button_color = (255, 150, 150)
+    button_hover_color = (255, 200, 200)
+    text_used_color = (255, 200, 200)
 
     # images
     idle_image = None
@@ -551,7 +556,7 @@ class ChargeGoon(EndlessGoon):
 class FireGoon(EndlessGoon):
     # fire goon info
     name = "Fire Goon"
-    description = "This goon sets a bot on fire. Fire damage ignores negative effects."
+    description = "This goon sets a bot on fire. Fire damage ignores effects."
     target = "Bot"
     projectile_offset = (-5, -30)
 

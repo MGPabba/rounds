@@ -26,6 +26,7 @@ async def main():
     # setup fonts
     fonts = {
         15: pygame.font.SysFont(None, 15),
+        20: pygame.font.SysFont(None, 20),
         24: pygame.font.SysFont(None, 24),
         30: pygame.font.SysFont(None, 30),
         40: pygame.font.SysFont(None, 40),

@@ -22,7 +22,7 @@ class ActionBox:
         ]
 
         # sound effects
-        self.select_button_sound = pygame.mixer.Sound("assets/characters/select_action_button_sound.mp3")
+        self.select_button_sound = pygame.mixer.Sound("assets/characters/select_bottom_box_button_sound.mp3")
 
     def handle_event(self, event, battle_state, active_bot, chosen_action, inspecting_character, lore_scroll, lore_target_scroll):
         if active_bot:
@@ -78,7 +78,7 @@ class ActionBox:
             for i, action in enumerate(active_bot.actions):
 
                 # draw action button
-                if battle_state not in ["Shop", "Lazer Movement"]:
+                if battle_state not in ["Lore Expanded", "Shop", "Lazer Movement"]:
                     if self.buttons[i].collidepoint(mouse_pos) and chosen_action == action["name"]:
                         button_color = (255, 125, 125)
                     elif self.buttons[i].collidepoint(mouse_pos) and not action["used"]:
@@ -106,9 +106,17 @@ class ActionBox:
 
 class LoreBox:
     def __init__(self):
+        # lore box rectangle
         self.lore_rect = pygame.Rect(600, 620, 580, 90)
 
-    def handle_event(self, event, lore_height, lore_target_scroll):
+        # lore box expand and collapse button rectangles
+        self.expand_button_rect = pygame.Rect(1150, 630, 20, 36)
+        self.collapse_button_rect = pygame.Rect(1150, 664, 20, 35)
+
+        # sound effects
+        self.select_button_sound = pygame.mixer.Sound("assets/characters/select_bottom_box_button_sound.mp3")
+
+    def handle_event_scroll(self, event, lore_height, lore_target_scroll):
         # scroll through the lore box if mouse is scrolled over it
         mouse_pos = pygame.mouse.get_pos()
         if self.lore_rect.collidepoint(mouse_pos):
@@ -124,6 +132,26 @@ class LoreBox:
             
         return lore_target_scroll
 
+    def handle_event_click(self, event, battle_state, previous_battle_state, inspecting_character, lore_height, lore_scroll, lore_target_scroll):
+        if battle_state != "Shop" and inspecting_character:
+
+            # expand lore box if expand button is clicked
+            if self.expand_button_rect.collidepoint(event.pos) and battle_state != "Lore Expanded" and lore_height > 80:
+                previous_battle_state = battle_state
+                battle_state = "Lore Expanded"
+                lore_scroll = 0
+                lore_target_scroll = 0
+                self.select_button_sound.play()
+
+            # collapse lore box if collapse button is clicked
+            elif self.collapse_button_rect.collidepoint(event.pos) and battle_state == "Lore Expanded":
+                battle_state = previous_battle_state
+                lore_scroll = 0
+                lore_target_scroll = 0
+                self.select_button_sound.play()
+
+        return battle_state, previous_battle_state, lore_scroll, lore_target_scroll
+
     def update(self, lore_scroll, lore_target_scroll):
         # update scrolling position for lore box
         lore_scroll += (lore_target_scroll - lore_scroll) * 0.2
@@ -132,14 +160,6 @@ class LoreBox:
         return lore_scroll
 
     def draw(self, screen, fonts, text_cache, battle_state, inspecting_character, lore_height, lore_scroll, rounds):
-        # draw lore box background
-        if inspecting_character:
-            box_color = inspecting_character.box_background_color
-        else:
-            box_color = (50, 50, 50)
-        pygame.draw.rect(screen, box_color, self.lore_rect)
-        pygame.draw.rect(screen, (255, 255, 255), self.lore_rect, 3)
-
         # get lore text based on battle state or inspecting character
         lore = []
         if battle_state == "Game Over":
@@ -174,9 +194,72 @@ class LoreBox:
             elif type == "less":
                 y_offset += 20
 
-        # draw the visible part of lore canvas onto the screen based on scroll position
-        visible_rect = pygame.Rect(0, int(lore_scroll), 580, 80)
-        screen.blit(lore_canvas, (610, 625), visible_rect)
+        # get box color based on inspecting character
+        if inspecting_character:
+            box_color = inspecting_character.box_background_color
+        else:
+            box_color = (50, 50, 50)
+
+        # draw expanded lore box
+        if battle_state == "Lore Expanded":
+            expanded_box_y = 700 - lore_height
+
+            # draw lore box background
+            pygame.draw.rect(screen, box_color, (600, expanded_box_y, 580, lore_height + 10))
+            pygame.draw.rect(screen, (255, 255, 255), (600, expanded_box_y, 580, lore_height + 10), 3)
+
+            # draw the lore canvas onto the screen
+            screen.blit(lore_canvas, (610, expanded_box_y + 5))
+
+        # draw normal lore box
+        else:
+
+            # draw lore box background
+            pygame.draw.rect(screen, box_color, self.lore_rect)
+            pygame.draw.rect(screen, (255, 255, 255), self.lore_rect, 3)
+
+            # draw the visible part of lore canvas onto the screen based on scroll position
+            visible_rect = pygame.Rect(0, int(lore_scroll), 580, 80)
+            screen.blit(lore_canvas, (610, 625), visible_rect)
+
+        # draw buttons to the side when inspecting a character
+        mouse_pos = pygame.mouse.get_pos()
+        if inspecting_character:
+
+            # draw expand button
+            if self.expand_button_rect.collidepoint(mouse_pos) and battle_state not in ["Lore Expanded", "Shop", "Lazer Movement"] and lore_height > 80:
+                button_color = inspecting_character.button_hover_color
+            else:
+                button_color = inspecting_character.button_color
+            pygame.draw.rect(screen, button_color, self.expand_button_rect)
+            pygame.draw.rect(screen, (255, 255, 255), self.expand_button_rect, 2)
+
+            # draw expand button arrow
+            if battle_state == "Lore Expanded" or lore_height <= 80:
+                arrow_color = inspecting_character.text_used_color
+            else:
+                arrow_color = (255, 255, 255)
+            up_arrow = render_text(fonts, text_cache, 24, "^", arrow_color)
+            up_arrow_rect = up_arrow.get_rect(center=self.expand_button_rect.center)
+            up_arrow_rect.y += 2
+            screen.blit(up_arrow, up_arrow_rect)
+
+            # draw collapse button
+            if self.collapse_button_rect.collidepoint(mouse_pos) and battle_state == "Lore Expanded":
+                button_color = inspecting_character.button_hover_color
+            else:
+                button_color = inspecting_character.button_color
+            pygame.draw.rect(screen, button_color, self.collapse_button_rect)
+            pygame.draw.rect(screen, (255, 255, 255), self.collapse_button_rect, 2)
+
+            # draw collapse button arrow
+            if battle_state != "Lore Expanded":
+                arrow_color = inspecting_character.text_used_color
+            else:
+                arrow_color = (255, 255, 255)
+            down_arrow = render_text(fonts, text_cache, 20, "v", arrow_color)
+            down_arrow_rect = down_arrow.get_rect(center=self.collapse_button_rect.center)
+            screen.blit(down_arrow, down_arrow_rect)
 
         return lore_height
 
@@ -193,6 +276,10 @@ class ShopBox:
         self.select_button_sound = pygame.mixer.Sound("assets/endless/select_shop_button_sound.mp3")
 
     def handle_event(self, event, all_bots, bot_upgrades, battle_state, previous_battle_state):
+        # dont open shop when lore is expanded
+        if battle_state == "Lore Expanded":
+            return battle_state, previous_battle_state
+
         if self.shop_button_rect.collidepoint(event.pos):
             self.select_button_sound.play()
 
@@ -224,7 +311,7 @@ class ShopBox:
 
         # draw shop button
         mouse_pos = pygame.mouse.get_pos()
-        if self.shop_button_rect.collidepoint(mouse_pos) and battle_state not in ["Game Over", "Lazer Movement"]:
+        if self.shop_button_rect.collidepoint(mouse_pos) and battle_state not in ["Lore Expanded", "Lazer Movement", "Game Over"]:
             if battle_state == "Shop":
                 button_color = (255, 125, 125)
             elif active_bot:

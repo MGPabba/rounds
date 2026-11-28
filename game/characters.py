@@ -214,7 +214,7 @@ class Character:
     def lore_text(self, fonts, lore):
         # add character name and description to lore text
         lore.append((f"Name: {self.name}", "normal"))
-        description_lines = wrap_text(f"Description: {self.description}", fonts, 560)
+        description_lines = wrap_text(f"Description: {self.description}", fonts, 530)
         for i, line in enumerate(description_lines):
             if i == len(description_lines) - 1:
                 lore.append((line, "normal"))

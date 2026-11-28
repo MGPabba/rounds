@@ -93,12 +93,15 @@ class Bot(Character):
         for action in self.actions:
             lore.append((f"Action: {action['name']}", "normal"))
 
-            # show different description for gun bot left gun if aiming is unlocked
+            # add different description for gun bot left gun if aiming is unlocked
             if action["name"] == "Left Gun" and action["aiming_unlocked"]:
-                action_description_lines = wrap_text("Description: An attack that fires at an enemy. The damage is based on the timing of the attack. The marker will go up and down until you attack. The damage is based on where the marker is.", fonts, 560)
-            
+                action_description_lines = wrap_text("Description: An attack that fires at an enemy. The damage is based on the timing of the attack. The marker will go up and down until you attack. The damage is based on where the marker is.", fonts, 530)
+
+            # add regular description for all other actions
             else:
-                action_description_lines = wrap_text(f"Description: {action['description']}", fonts, 560)
+                action_description_lines = wrap_text(f"Description: {action['description']}", fonts, 530)
+
+            # add each line of the action description to the lore text
             for i, line in enumerate(action_description_lines):
                 if i == len(action_description_lines) - 1:
                     lore.append((line, "normal"))
@@ -170,7 +173,7 @@ class Bot(Character):
         if self.rect.collidepoint(mouse_pos) and self.real_health > 0:
             if (battle_state in ["Target Bot", "Target Any"]) or (self.name == "Lazer Bot" and battle_state in ["Target Line", "Lazer Movement"]) or (self.name == "Duplo Bot" and battle_state == "Target Enemy or Self"):
                 pygame.draw.rect(screen, (0, 255, 0), self.rect, 3)
-            elif battle_state not in ["Lazer Movement", "Shop", "Game Over", "Victory"] and not self.acted:
+            elif battle_state not in ["Lore Expanded", "Shop", "Lazer Movement", "Game Over", "Victory"] and not self.acted:
                 pygame.draw.rect(screen, (0, 0, 255), self.rect, 3)
 
 # ------------------------------
@@ -681,7 +684,7 @@ class ElementalBot(Bot):
                 "image_path": "assets/bots/elemental_bot/elemental_bot_fire.png",
                 "image": None,
                 "sound": pygame.mixer.Sound("assets/bots/elemental_bot/elemental_bot_fire_sound.mp3"),
-                "description": "Shoots a fire projectile at an enemy. Sets the enemy on fire, dealing damage over time. The fire does damage at the end of the round. Fire damage ignores negative effects.",
+                "description": "Shoots a fire projectile at an enemy. Sets the enemy on fire, dealing damage over time. The fire does damage at the end of the round. Fire damage ignores effects.",
                 "scroll": 65,
                 "projectile_offset": (-22, 11)
             },

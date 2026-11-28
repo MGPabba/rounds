@@ -455,11 +455,16 @@ class EndlessModeScene():
             if event.type == pygame.MOUSEBUTTONDOWN:
 
                 # update target scroll based on mouse scroll
-                self.lore_target_scroll = self.lore_box.handle_event(event, self.lore_height, self.lore_target_scroll)
+                self.lore_target_scroll = self.lore_box.handle_event_scroll(event, self.lore_height, self.lore_target_scroll)
                 self.menu_target_scroll = self.shop_menu.handle_event_scroll(event, self.battle_state, self.menu_height, self.menu_target_scroll)
 
                 # handle left mouse clicks
                 if event.button == 1:
+
+                    # handle lore box events
+                    self.battle_state, self.previous_battle_state, self.lore_scroll, self.lore_target_scroll = self.lore_box.handle_event_click(event,
+                        self.battle_state, self.previous_battle_state,
+                        self.inspecting_character, self.lore_height, self.lore_scroll, self.lore_target_scroll)
 
                     # handle shop box events
                     self.battle_state, self.previous_battle_state = self.shop_box.handle_event(event, self.all_bots, self.bot_upgrades, self.battle_state, self.previous_battle_state)
@@ -474,8 +479,8 @@ class EndlessModeScene():
                             self.menu_scroll,
                             self.gears, self.rounds)
 
-                    # handle other events when shop is closed
-                    else:
+                    # handle other events when lore and shop aren't active
+                    elif self.battle_state not in ["Lore Expanded", "Shop"]:
 
                         # handle player zone, enemy zone, and action box events
                         self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event,
@@ -516,6 +521,13 @@ class EndlessModeScene():
                             for u in self.bot_upgrades[b["bot"].name]:
                                 u["confirm"] = False
 
+                    # close lore box
+                    elif self.battle_state == "Lore Expanded":
+                        self.battle_state = self.previous_battle_state
+                        self.lore_scroll = 0
+                        self.lore_target_scroll = 0
+                        self.right_click_sound.play()
+
                     # deselect action, bot, or inspected character
                     elif self.battle_state != "Lazer Movement":
                         if self.chosen_action:
@@ -543,7 +555,7 @@ class EndlessModeScene():
             elif event.type == pygame.KEYDOWN:
 
                 # handle action box events
-                if self.battle_state not in ["Shop", "Lazer Movement"]:
+                if self.battle_state not in ["Lore Expanded", "Shop", "Lazer Movement"]:
                     self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
                         self.battle_state, self.active_bot, self.chosen_action,
                         self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
@@ -820,40 +832,54 @@ class BattleScene():
             if event.type == pygame.MOUSEBUTTONDOWN:
 
                 # update target scroll based on mouse scroll
-                self.lore_target_scroll = self.lore_box.handle_event(event, self.lore_height, self.lore_target_scroll)
+                self.lore_target_scroll = self.lore_box.handle_event_scroll(event, self.lore_height, self.lore_target_scroll)
 
                 # handle left mouse clicks
                 if event.button == 1:
 
-                    # handle player zone, enemy zone, and action box events
-                    self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event, None,
-                        self.enemy_goons, self.active_effects,
-                        self.battle_state,
-                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll,
-                        self.gears)
-                    self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.player_zone.handle_event(event,
-                        self.player_bots,
-                        self.battle_state, self.active_bot, self.chosen_action,
-                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
-                    self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
-                        self.battle_state, self.active_bot, self.chosen_action,
-                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
+                    # handle lore box events
+                    self.battle_state, self.previous_battle_state, self.lore_scroll, self.lore_target_scroll = self.lore_box.handle_event_click(event,
+                        self.battle_state, self.previous_battle_state,
+                        self.inspecting_character, self.lore_height, self.lore_scroll, self.lore_target_scroll)
 
-                    # execute the chosen action
-                    self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_action(event,
-                        self.player_bots, self.enemy_goons, self.active_effects,
-                        self.battle_state, self.active_bot, self.chosen_action,
-                        self.inspecting_character)
-                    self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_laser_action(event,
-                        self.player_bots, self.enemy_goons, self.active_effects,
-                        self.battle_state, self.active_bot, self.chosen_action,
-                        self.inspecting_character)
+                    # handle other events when lore isn't active
+                    if self.battle_state != "Lore Expanded":
+
+                        # handle player zone, enemy zone, and action box events
+                        self.inspecting_character, self.lore_scroll, self.lore_target_scroll, self.gears = self.enemy_zone.handle_event(event, None,
+                            self.enemy_goons, self.active_effects,
+                            self.battle_state,
+                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll,
+                            self.gears)
+                        self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.player_zone.handle_event(event,
+                            self.player_bots,
+                            self.battle_state, self.active_bot, self.chosen_action,
+                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
+                        self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
+                            self.battle_state, self.active_bot, self.chosen_action,
+                            self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
+
+                        # execute the chosen action
+                        self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_action(event,
+                            self.player_bots, self.enemy_goons, self.active_effects,
+                            self.battle_state, self.active_bot, self.chosen_action,
+                            self.inspecting_character)
+                        self.battle_state, self.active_bot, self.chosen_action, self.inspecting_character = self.execution.execute_laser_action(event,
+                            self.player_bots, self.enemy_goons, self.active_effects,
+                            self.battle_state, self.active_bot, self.chosen_action,
+                            self.inspecting_character)
 
                 # handle right mouse clicks
                 elif event.button == 3:
 
+                    # close lore box
+                    if self.battle_state == "Lore Expanded":
+                        self.battle_state = self.previous_battle_state
+                        self.lore_scroll = 0
+                        self.lore_target_scroll = 0
+
                     # deselect action, bot, or inspected character
-                    if self.battle_state != "Lazer Movement":
+                    elif self.battle_state != "Lazer Movement":
                         if self.chosen_action:
                             self.chosen_action = None
                             self.battle_state = "Player Turn"
@@ -876,7 +902,7 @@ class BattleScene():
             elif event.type == pygame.KEYDOWN:
 
                 # handle action box events
-                if self.battle_state != "Lazer Movement":
+                if self.battle_state not in ["Lore Expanded", "Lazer Movement"]:
                     self.battle_state, self.chosen_action, self.inspecting_character, self.lore_scroll, self.lore_target_scroll = self.action_box.handle_event(event,
                         self.battle_state, self.active_bot, self.chosen_action,
                         self.inspecting_character, self.lore_scroll, self.lore_target_scroll)
@@ -1153,7 +1179,7 @@ class TutorialBattleScene(BattleScene):
                 step = self.tutorial_steps[self.current_step]
 
                 # update target scroll based on mouse scroll
-                self.lore_target_scroll = self.lore_box.handle_event(event, self.lore_height, self.lore_target_scroll)
+                self.lore_target_scroll = self.lore_box.handle_event_scroll(event, self.lore_height, self.lore_target_scroll)
 
                 # handle left mouse clicks
                 if event.button == 1:
